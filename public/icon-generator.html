@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PWA Icon Generator</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; }
+        canvas { border: 1px solid #ddd; margin: 10px 0; }
+        button { background: #f97316; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px; }
+        button:hover { background: #ea580c; }
+        .preview { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 20px; }
+        .preview-item { text-align: center; }
+        .preview-item img { border: 1px solid #ddd; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Restaurant Manager - PWA Icon Generator</h1>
+        <p>Genera automaticamente tutte le icone necessarie per l'installazione su iPhone</p>
+        
+        <canvas id="canvas" width="512" height="512"></canvas>
+        
+        <div>
+            <button onclick="generateIcons()">Genera Tutte le Icone</button>
+            <button onclick="downloadAll()">Scarica Tutto</button>
+        </div>
+        
+        <div class="preview" id="preview"></div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const icons = [];
+
+        function drawIcon(size) {
+            canvas.width = size;
+            canvas.height = size;
+            
+            // Gradient background
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#f97316');
+            gradient.addColorStop(1, '#ea580c');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, size, size);
+            
+            // Restaurant icon (fork and knife)
+            ctx.fillStyle = 'white';
+            const scale = size / 512;
+            
+            // Fork
+            ctx.fillRect(150 * scale, 100 * scale, 30 * scale, 300 * scale);
+            ctx.fillRect(140 * scale, 100 * scale, 10 * scale, 150 * scale);
+            ctx.fillRect(190 * scale, 100 * scale, 10 * scale, 150 * scale);
+            
+            // Knife
+            ctx.fillRect(330 * scale, 100 * scale, 30 * scale, 300 * scale);
+            ctx.beginPath();
+            ctx.moveTo(315 * scale, 100 * scale);
+            ctx.lineTo(375 * scale, 100 * scale);
+            ctx.lineTo(345 * scale, 50 * scale);
+            ctx.closePath();
+            ctx.fill();
+            
+            return canvas.toDataURL('image/png');
+        }
+
+        function generateIcons() {
+            const sizes = [
+                { name: 'icon-192.png', size: 192 },
+                { name: 'icon-512.png', size: 512 },
+                { name: 'apple-touch-icon.png', size: 180 },
+                { name: 'apple-splash-1170-2532.png', size: 1170, height: 2532 },
+                { name: 'apple-splash-1125-2436.png', size: 1125, height: 2436 },
+                { name: 'apple-splash-1536-2048.png', size: 1536, height: 2048 },
+                { name: 'apple-splash-1668-2388.png', size: 1668, height: 2388 },
+                { name: 'apple-splash-2048-2732.png', size: 2048, height: 2732 }
+            ];
+            
+            const preview = document.getElementById('preview');
+            preview.innerHTML = '';
+            icons.length = 0;
+            
+            sizes.forEach(({ name, size, height }) => {
+                const dataUrl = drawIcon(height || size);
+                icons.push({ name, dataUrl });
+                
+                const item = document.createElement('div');
+                item.className = 'preview-item';
+                item.innerHTML = `
+                    <img src="${dataUrl}" style="width: ${Math.min(size, 200)}px; height: auto;">
+                    <p>${name}<br>${size}x${height || size}</p>
+                `;
+                preview.appendChild(item);
+            });
+            
+            alert('✅ Icone generate! Clicca "Scarica Tutto" per salvarle.');
+        }
+
+        function downloadAll() {
+            if (icons.length === 0) {
+                alert('Prima genera le icone!');
+                return;
+            }
+            
+            icons.forEach(({ name, dataUrl }) => {
+                const link = document.createElement('a');
+                link.download = name;
+                link.href = dataUrl;
+                link.click();
+            });
+            
+            alert('✅ Download completato! Sposta tutti i file nella cartella public/');
+        }
+
+        // Generate on load
+        window.onload = () => generateIcons();
+    </script>
+</body>
+</html>

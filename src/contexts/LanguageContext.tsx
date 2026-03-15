@@ -1,0 +1,1 @@
+export { LanguageProvider, useLanguage } from '@/lib/i18n.tsx';

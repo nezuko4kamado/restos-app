@@ -1,0 +1,31 @@
+# Aggiungi queste chiavi all'interfaccia Translations (dopo securePaymentInfo: string;):
+  
+  // Supplier selection
+  searchExisting: string;
+  createNew: string;
+
+# Aggiungi queste traduzioni per ogni lingua:
+
+# Italiano (dopo securePaymentInfo):
+    searchExisting: 'Cerca Esistente',
+    createNew: 'Crea Nuovo',
+
+# English (dopo securePaymentInfo):
+    searchExisting: 'Search Existing',
+    createNew: 'Create New',
+
+# Español (dopo securePaymentInfo):
+    searchExisting: 'Buscar Existente',
+    createNew: 'Crear Nuevo',
+
+# Français (dopo securePaymentInfo):
+    searchExisting: 'Rechercher Existant',
+    createNew: 'Créer Nouveau',
+
+# Deutsch (dopo securePaymentInfo):
+    searchExisting: 'Vorhandene Suchen',
+    createNew: 'Neu Erstellen',
+
+# Lietuvių (dopo securePaymentInfo):
+    searchExisting: 'Ieškoti Esamo',
+    createNew: 'Sukurti Naują',

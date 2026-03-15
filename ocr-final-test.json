@@ -1,0 +1,119 @@
+{
+  "supplier": {
+    "name": "CBG",
+    "phone": "+34 972703370",
+    "email": "cbg@cbg.es"
+  },
+  "products": [
+    {
+      "name": "PINOT GRIGIO CA'LUNGHETTA DOC ROSATO BOTTER 750ml x 6",
+      "price": 21.22,
+      "category": "SECO"
+    },
+    {
+      "name": "DOLCETTO D'ALBA BRICCO VERGNE DOC 750ml x 6",
+      "price": 19.22,
+      "category": "SECO"
+    },
+    {
+      "name": "GAVI DOCG COMUNE DI GAVI GRANEE 750ml x 6",
+      "price": 21.39,
+      "category": "SECO"
+    },
+    {
+      "name": "I MURI NEGROAMARO PUGLIA IGP 750ml x 6",
+      "price": 31.34,
+      "category": "SECO"
+    },
+    {
+      "name": "SPUMANTE ROSÉ EXTRA DRY 750ml x 6",
+      "price": 28.93,
+      "category": "SECO"
+    },
+    {
+      "name": "CREMA DI CARCIOFI (EASY OP) 800g x 12",
+      "price": 11.81,
+      "category": "SECO"
+    },
+    {
+      "name": "LA TARTUFATA CLASSICA (CRISTAL) 500g x 6",
+      "price": 11.19,
+      "category": "SECO"
+    },
+    {
+      "name": "OLIVE RIVIERA SNOCCIOLATE IN OLIO DI SEMI DI GIRASOLE 910grxi",
+      "price": 13.07,
+      "category": "SECO"
+    },
+    {
+      "name": "BIRRA MORETTI RADLER 2º (cluster 33cl x 3) x 8",
+      "price": 30.65,
+      "category": "SECO"
+    },
+    {
+      "name": "PANE SFOGLIATINA GUTTIAU IDP 300g x 10",
+      "price": 51.17,
+      "category": "SECO"
+    },
+    {
+      "name": "PINSA CLASSICA AMBIENT (230g x 2) x 10",
+      "price": 130.02,
+      "category": "SECO"
+    },
+    {
+      "name": "PESTO DI PISTACCHIO E SALE MARINO DI TRAPANI IGP 1Kg x 6",
+      "price": 21.74,
+      "category": "SECO"
+    },
+    {
+      "name": "OLIVE VERDI NOCELLARA DI SICILIA 2,5Kg x 2",
+      "price": 21.61,
+      "category": "SECO"
+    },
+    {
+      "name": "MERLOT TRENTINO DOC 750ml x 6 LA VIS",
+      "price": 12.37,
+      "category": "SECO"
+    },
+    {
+      "name": "FIOR DI LATTE JULIENNE busta 2Kg x 4",
+      "price": 14.29,
+      "category": "FRIO"
+    },
+    {
+      "name": "PORCHETTA CASTELLI ROMANI 1/2 4,5Kg x 1",
+      "price": 68.51,
+      "category": "FRIO"
+    },
+    {
+      "name": "PECORINO ROMANO GRATTUGIATO 500g x 10",
+      "price": 59.89,
+      "category": "FRIO"
+    },
+    {
+      "name": "FOCACCIA ALL'OLIO EXTRAVERGINE D'OLIVA 540g (180g x 3) x 10",
+      "price": 67.02,
+      "category": "CONGELADO"
+    },
+    {
+      "name": "PINSA CLASSICA CONGELADA (230g x 3) x 7",
+      "price": 81.27,
+      "category": "CONGELADO"
+    },
+    {
+      "name": "STRIGOLI 3Kg x 1",
+      "price": 19.43,
+      "category": "CONGELADO"
+    },
+    {
+      "name": "RIGATONI PRECOTTE 1Kg x 4",
+      "price": 15.06,
+      "category": "CONGELADO"
+    },
+    {
+      "name": "LUNETTE CON FORMAGGIO DI CAPRA E CIPOLLA 3Kg x 1",
+      "price": 43.15,
+      "category": "CONGELADO"
+    }
+  ]
+}

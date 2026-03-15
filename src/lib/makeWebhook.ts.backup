@@ -1,0 +1,147 @@
+// Make.com Webhook Integration for Mindee OCR Processing
+
+export interface MakeWebhookResponse {
+  success: boolean;
+  data?: any;
+  error?: string;
+  products?: Array<{
+    name: string;
+    price: number;
+    quantity: number;
+    unit?: string;
+  }>;
+  supplier?: {
+    name: string;
+    email?: string;
+    phone?: string;
+  };
+  total?: number;
+  invoice_number?: string;
+  invoice_date?: string;
+}
+
+export interface OCRResult {
+  success: boolean;
+  products: Array<{
+    id: string;
+    name: string;
+    price: number;
+    quantity: number;
+    unit: string;
+    total: number;
+    category?: string;
+  }>;
+  supplier?: {
+    name: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+  };
+  total?: number;
+  invoice_number?: string;
+  invoice_date?: string;
+  currency?: string;
+  error?: string;
+}
+
+// Updated Make.com webhook URL
+const MAKE_WEBHOOK_URL = 'https://hook.eu1.make.com/6ykg28gohr59ofucsogyloa4p1q8tmwx';
+
+export async function callMakeWebhook(imageBase64: string): Promise<MakeWebhookResponse> {
+  try {
+    console.log('🚀 [MAKE] Starting Make.com webhook integration...');
+    console.log('📡 [MAKE] Webhook URL:', MAKE_WEBHOOK_URL);
+    console.log('🖼️ [MAKE] Converting image to base64...');
+    console.log('🖼️ [MAKE] Image base64 length:', imageBase64.length);
+
+    const startTime = Date.now();
+    
+    const response = await fetch(MAKE_WEBHOOK_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        image: imageBase64,
+        timestamp: new Date().toISOString(),
+        source: 'restos-app'
+      })
+    });
+
+    const processingTime = Date.now() - startTime;
+    console.log('⏱️ [MAKE] Processing time:', processingTime + 'ms');
+    console.log('📡 [MAKE] Response status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ [MAKE] Webhook error:', errorText);
+      throw new Error(`Webhook error: ${response.status} - ${errorText}`);
+    }
+
+    const result = await response.json();
+    console.log('✅ [MAKE] Webhook response:', result);
+
+    return {
+      success: true,
+      data: result,
+      products: result.products || [],
+      supplier: result.supplier,
+      total: result.total,
+      invoice_number: result.invoice_number,
+      invoice_date: result.invoice_date
+    };
+
+  } catch (error) {
+    console.error('❌ [MAKE] Make.com webhook failed:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
+
+export function convertMakeResponseToOCR(makeResponse: MakeWebhookResponse): OCRResult {
+  if (!makeResponse.success || !makeResponse.data) {
+    return {
+      success: false,
+      products: [],
+      error: makeResponse.error || 'Make.com webhook failed'
+    };
+  }
+
+  try {
+    const products = (makeResponse.products || []).map((product, index) => ({
+      id: `product-${index + 1}`,
+      name: product.name || `Product ${index + 1}`,
+      price: Number(product.price) || 0,
+      quantity: Number(product.quantity) || 1,
+      unit: product.unit || 'pz',
+      total: (Number(product.price) || 0) * (Number(product.quantity) || 1),
+      category: 'General'
+    }));
+
+    return {
+      success: true,
+      products,
+      supplier: makeResponse.supplier ? {
+        name: makeResponse.supplier.name || 'Unknown Supplier',
+        email: makeResponse.supplier.email,
+        phone: makeResponse.supplier.phone,
+        address: ''
+      } : undefined,
+      total: makeResponse.total || products.reduce((sum, p) => sum + p.total, 0),
+      invoice_number: makeResponse.invoice_number,
+      invoice_date: makeResponse.invoice_date,
+      currency: 'EUR'
+    };
+
+  } catch (error) {
+    console.error('❌ [MAKE] Error converting Make response:', error);
+    return {
+      success: false,
+      products: [],
+      error: 'Failed to convert Make.com response'
+    };
+  }
+}

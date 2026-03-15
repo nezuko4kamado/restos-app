@@ -1,0 +1,1769 @@
+import { useState, useRef, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Plus, Trash2, Mail, Calendar, Upload, Search, Check, X, MessageCircle, Minus, Edit2, FileDown, Copy, AlertCircle, Save } from 'lucide-react';
+import { toast } from 'sonner';
+import type { Order, Product, Supplier } from '@/types';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { generateOrderPDF } from '@/lib/pdf-generator';
+import { extractDataFromImage } from '@/lib/ocrService';
+import { saveCancelledDraft, getCancelledDraft, clearCancelledDraft, clearDraftOrder, saveDraftOrder, getDraftOrder } from '@/lib/storage';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+
+interface OrdersSectionProps {
+  orders: Order[];
+  setOrders: React.Dispatch<React.SetStateAction<Order[]>>;
+  products: Product[];
+  setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
+  suppliers: Supplier[];
+  setSuppliers: React.Dispatch<React.SetStateAction<Supplier[]>>;
+}
+
+interface OrderItem {
+  product_id: string;
+  quantity: number;
+  price: number;
+}
+
+interface GroupedItems {
+  [supplier_id: string]: OrderItem[];
+}
+
+const SUPPLIER_WHITELIST: { [key: string]: string[] } = {
+  'cbg': ['cbg', 'comercial cbg', 'commercial cbg'],
+};
+
+export default function OrdersSection({ orders, setOrders, products, setProducts, suppliers, setSuppliers }: OrdersSectionProps) {
+  const { language, t } = useLanguage();
+  const [isCreatingOrder, setIsCreatingOrder] = useState(false);
+  const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [quantity, setQuantity] = useState(1);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [editingProductName, setEditingProductName] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  
+  const [temporaryOcrProducts, setTemporaryOcrProducts] = useState<Product[]>([]);
+
+  const [editingSupplierId, setEditingSupplierId] = useState<string | null>(null);
+  const [editingSupplierName, setEditingSupplierName] = useState('');
+  const [editingSupplierMobile, setEditingSupplierMobile] = useState('');
+  const [editingSupplierEmail, setEditingSupplierEmail] = useState('');
+
+  const [isCreatingNewProduct, setIsCreatingNewProduct] = useState(false);
+  const [newProductName, setNewProductName] = useState('');
+  const [newProductSupplier, setNewProductSupplier] = useState('');
+  const [isCreatingNewSupplier, setIsCreatingNewSupplier] = useState(false);
+  const [newSupplierName, setNewSupplierName] = useState('');
+  const [newSupplierMobile, setNewSupplierMobile] = useState('');
+  const [newSupplierEmail, setNewSupplierEmail] = useState('');
+
+  // Track if there's a cancelled draft available
+  const [hasCancelledDraft, setHasCancelledDraft] = useState(false);
+  
+  // NEW: Flag to prevent auto-restore after cancellation
+  const [skipAutoSave, setSkipAutoSave] = useState(false);
+
+  const allProductsForDisplay = [...products, ...temporaryOcrProducts];
+
+  // Check if there are any orders
+  const hasOrders = orders.length > 0;
+
+  // Check for cancelled draft on mount
+  useEffect(() => {
+    const checkCancelledDraft = async () => {
+      const cancelledDraft = await getCancelledDraft();
+    console.log('📋 getCancelledDraft() returned:', cancelledDraft);
+    
+    if (cancelledDraft && cancelledDraft.orderItems && Array.isArray(cancelledDraft.orderItems) && cancelledDraft.orderItems.length > 0) {
+      console.log('✅ Found cancelled draft with', cancelledDraft.orderItems.length, 'items');
+      
+      // Validate each item has required fields
+      const validItems = cancelledDraft.orderItems.filter(item => 
+        item && 
+        typeof item === 'object' && 
+        'product_id' in item && 
+        'quantity' in item && 
+        'price' in item
+      );
+      
+      if (validItems.length > 0) {
+        setOrderItems(validItems);
+        setIsCreatingOrder(true);
+        
+        // Restore temporary OCR products if they exist
+        if (cancelledDraft.temporaryOcrProducts && cancelledDraft.temporaryOcrProducts.length > 0) {
+          setTemporaryOcrProducts(cancelledDraft.temporaryOcrProducts);
+          console.log('✅ Restored', cancelledDraft.temporaryOcrProducts.length, 'temporary OCR products');
+        }
+        
+        await clearCancelledDraft();
+        setHasCancelledDraft(false);
+        
+        toast.success('Ordine annullato recuperato!', {
+          description: `Recuperati ${validItems.length} prodotti dall'ordine annullato.`,
+        });
+        
+        console.log('📋 ========== COPY LAST ORDER END (SUCCESS) ==========');
+        return;
+      }
+    }
+    
+    // SECOND: Check Supabase for last order
+    if (!hasOrders) {
+      toast.error('Nessun ordine precedente', {
+        description: 'Devi prima inviare un ordine per poterlo copiare. Salva un ordine come PDF per crearlo.',
+      });
+      return;
+    }
+
+    const lastOrder = orders[0];
+    
+    if (!lastOrder.items || lastOrder.items.length === 0) {
+      toast.error('Ordine vuoto', {
+        description: 'L\'ultimo ordine non contiene prodotti.',
+      });
+      return;
+    }
+    
+    // Convert Order items to OrderItem format
+    const copiedItems: OrderItem[] = lastOrder.items.map(item => ({
+      product_id: item.product_id,
+      quantity: item.quantity,
+      price: item.price || 0,
+    }));
+
+    setOrderItems(copiedItems);
+    setIsCreatingOrder(true);
+    setSearchTerm('');
+    setSelectedProduct(null);
+    setQuantity(1);
+    setTemporaryOcrProducts([]);
+    setIsCreatingNewProduct(false);
+    
+    const supplier = suppliers.find(s => s.id === lastOrder.supplier_id);
+    toast.success('Ultimo ordine copiato!', {
+      description: `${copiedItems.length} prodotti da ${supplier?.name || 'fornitore'}`,
+    });
+    console.log('📋 ========== COPY LAST ORDER END (FROM SUPABASE) ==========');
+  };
+
+  // Manual save draft function
+  const handleSaveDraft = async () => {
+    if (orderItems.length === 0) {
+      toast.error('Ordine vuoto', {
+        description: 'Aggiungi almeno un prodotto prima di salvare la bozza.',
+      });
+      return;
+    }
+
+    console.log('💾 Manually saving draft order with', orderItems.length, 'items');
+    
+    try {
+      await saveDraftOrder(orderItems, temporaryOcrProducts);
+      console.log('💾 Draft saved manually to Supabase');
+      
+      toast.success('Bozza salvata!', {
+        description: `${orderItems.length} prodotti salvati nella bozza.`,
+      });
+    } catch (error) {
+      console.error('❌ Error saving draft order:', error);
+      toast.error('Errore nel salvataggio', {
+        description: 'Impossibile salvare la bozza.',
+      });
+    }
+  };
+
+  const handleSelectProduct = (product: Product) => {
+    setSelectedProduct(product);
+    setSearchTerm('');
+    setIsCreatingNewProduct(false);
+  };
+
+  const handleStartCreateNewProduct = () => {
+    setIsCreatingNewProduct(true);
+    setSelectedProduct(null);
+    setSearchTerm('');
+    setNewProductName('');
+    setNewProductSupplier(suppliers[0]?.id || '');
+  };
+
+  const handleCancelCreateNewProduct = () => {
+    setIsCreatingNewProduct(false);
+    setNewProductName('');
+    setNewProductSupplier('');
+    setIsCreatingNewSupplier(false);
+    setNewSupplierName('');
+    setNewSupplierMobile('');
+    setNewSupplierEmail('');
+  };
+
+  const handleCreateNewSupplier = () => {
+    if (!newSupplierName.trim()) {
+      toast.error('Nome fornitore obbligatorio');
+      return;
+    }
+
+    const newSupplier: Supplier = {
+      id: crypto.randomUUID(),
+      name: newSupplierName.trim(),
+      phone: newSupplierMobile.trim(),
+      mobile: newSupplierMobile.trim(),
+      email: newSupplierEmail.trim(),
+      products: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    setSuppliers((prev) => [...prev, newSupplier]);
+    setNewProductSupplier(newSupplier.id);
+    setIsCreatingNewSupplier(false);
+    setNewSupplierName('');
+    setNewSupplierMobile('');
+    setNewSupplierEmail('');
+    toast.success(`Fornitore creato: ${newSupplier.name}`);
+  };
+
+  const handleAddProduct = () => {
+    if (isCreatingNewProduct) {
+      if (!newProductName.trim()) {
+        toast.error('Nome prodotto obbligatorio');
+        return;
+      }
+
+      if (!newProductSupplier) {
+        toast.error('Seleziona un fornitore');
+        return;
+      }
+
+      if (quantity <= 0) {
+        toast.error('Quantità deve essere maggiore di 0');
+        return;
+      }
+
+      const newProduct: Product = {
+        id: crypto.randomUUID(),
+        name: newProductName.trim(),
+        category: 'other',
+        supplier_id: newProductSupplier,
+        price: 0,
+        unit: 'pz',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      setTemporaryOcrProducts((prev) => [...prev, newProduct]);
+
+      const newItem: OrderItem = {
+        product_id: newProduct.id,
+        quantity,
+        price: 0,
+      };
+
+      setOrderItems([...orderItems, newItem]);
+      
+      const supplier = suppliers.find((s) => s.id === newProductSupplier);
+      toast.success(`${newProduct.name} aggiunto (${supplier?.name || t.supplier})`);
+      
+      setNewProductName('');
+      setQuantity(1);
+      searchInputRef.current?.focus();
+      return;
+    }
+
+    if (!selectedProduct) {
+      toast.error(t.error);
+      return;
+    }
+
+    if (quantity < 0) {
+      toast.error(t.error);
+      return;
+    }
+
+    const newItem: OrderItem = {
+      product_id: selectedProduct.id,
+      quantity,
+      price: selectedProduct.price,
+    };
+
+    setOrderItems([...orderItems, newItem]);
+    setSelectedProduct(null);
+    setQuantity(1);
+    
+    const supplier = suppliers.find((s) => s.id === selectedProduct.supplier_id);
+    toast.success(`${selectedProduct.name} ${t.productsAdded} (${supplier?.name || t.supplier})`);
+    searchInputRef.current?.focus();
+  };
+
+  const handleUpdateQuantity = (index: number, newQuantity: number) => {
+    if (newQuantity < 0) {
+      toast.error(t.error);
+      return;
+    }
+
+    if (newQuantity === 0) {
+      handleRemoveItem(index);
+      return;
+    }
+
+    const updatedItems = [...orderItems];
+    updatedItems[index] = { ...updatedItems[index], quantity: newQuantity };
+    setOrderItems(updatedItems);
+  };
+
+  const handleRemoveItem = (index: number) => {
+    const updatedItems = orderItems.filter((_, i) => i !== index);
+    setOrderItems(updatedItems);
+    toast.success(t.productDeleted);
+  };
+
+  const handleStartEditProductName = (productId: string, currentName: string) => {
+    setEditingProductId(productId);
+    setEditingProductName(currentName);
+  };
+
+  const handleSaveProductName = (productId: string) => {
+    if (!editingProductName.trim()) {
+      toast.error(t.error);
+      return;
+    }
+
+    setProducts((prev) =>
+      prev.map((p) =>
+        p.id === productId
+          ? { ...p, name: editingProductName.trim(), updated_at: new Date().toISOString() }
+          : p
+      )
+    );
+    
+    setTemporaryOcrProducts((prev) =>
+      prev.map((p) =>
+        p.id === productId
+          ? { ...p, name: editingProductName.trim(), updated_at: new Date().toISOString() }
+          : p
+      )
+    );
+
+    setEditingProductId(null);
+    setEditingProductName('');
+    toast.success(t.productUpdated);
+  };
+
+  const handleCancelEditProductName = () => {
+    setEditingProductId(null);
+    setEditingProductName('');
+  };
+
+  const handleStartEditSupplier = (supplierId: string) => {
+    const supplier = suppliers.find((s) => s.id === supplierId);
+    if (supplier) {
+      setEditingSupplierId(supplierId);
+      setEditingSupplierName(supplier.name);
+      setEditingSupplierMobile(supplier.mobile || '');
+      setEditingSupplierEmail(supplier.email || '');
+    }
+  };
+
+  const handleSaveSupplier = () => {
+    if (!editingSupplierId) return;
+    
+    if (!editingSupplierName.trim()) {
+      toast.error(t.error);
+      return;
+    }
+
+    setSuppliers((prev) =>
+      prev.map((s) =>
+        s.id === editingSupplierId
+          ? { 
+              ...s, 
+              name: editingSupplierName.trim(),
+              mobile: editingSupplierMobile.trim(),
+              email: editingSupplierEmail.trim(),
+              updated_at: new Date().toISOString() 
+            }
+          : s
+      )
+    );
+
+    setEditingSupplierId(null);
+    setEditingSupplierName('');
+    setEditingSupplierMobile('');
+    setEditingSupplierEmail('');
+    toast.success(t.supplierUpdated);
+  };
+
+  const handleCreateNewSupplierFromEdit = () => {
+    if (!editingSupplierId) return;
+    
+    if (!editingSupplierName.trim()) {
+      toast.error(t.error);
+      return;
+    }
+
+    // Create new supplier
+    const newSupplier: Supplier = {
+      id: crypto.randomUUID(),
+      name: editingSupplierName.trim(),
+      phone: editingSupplierMobile.trim(),
+      mobile: editingSupplierMobile.trim(),
+      email: editingSupplierEmail.trim(),
+      products: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    setSuppliers((prev) => [...prev, newSupplier]);
+
+    // Update all products in the current order that belong to the old supplier
+    const productsToUpdate = allProductsForDisplay.filter(
+      (p) => p.supplier_id === editingSupplierId
+    );
+
+    productsToUpdate.forEach((product) => {
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === product.id
+            ? { ...p, supplier_id: newSupplier.id, updated_at: new Date().toISOString() }
+            : p
+        )
+      );
+      
+      setTemporaryOcrProducts((prev) =>
+        prev.map((p) =>
+          p.id === product.id
+            ? { ...p, supplier_id: newSupplier.id, updated_at: new Date().toISOString() }
+            : p
+        )
+      );
+    });
+
+    setEditingSupplierId(null);
+    setEditingSupplierName('');
+    setEditingSupplierMobile('');
+    setEditingSupplierEmail('');
+    toast.success(t.supplierCreatedSuccess);
+  };
+
+  const handleCancelEditSupplier = () => {
+    setEditingSupplierId(null);
+    setEditingSupplierName('');
+    setEditingSupplierMobile('');
+    setEditingSupplierEmail('');
+  };
+
+  const handleCancelOrder = async () => {
+    console.log('🗑️ ========== CANCEL ORDER START ==========');
+    console.log('🗑️ Current orderItems:', orderItems.length);
+    
+    // Set flag to prevent auto-save from triggering
+    setSkipAutoSave(true);
+    console.log('🔒 Auto-save disabled');
+    
+    // Save current draft before cancelling
+    if (orderItems.length > 0) {
+      console.log('💾 Saving cancelled draft with', orderItems.length, 'items');
+      
+      try {
+        await saveCancelledDraft(orderItems, temporaryOcrProducts);
+        console.log('✅ Cancelled draft saved to Supabase');
+        
+        setHasCancelledDraft(true);
+        
+        toast.info('Ordine salvato', {
+          description: 'Puoi recuperarlo premendo "Copia ultimo".',
+        });
+      } catch (error) {
+        console.error('❌ Error saving cancelled draft:', error);
+      }
+    }
+    
+    // Clear the order state
+    console.log('🗑️ Clearing order state...');
+    setIsCreatingOrder(false);
+    setOrderItems([]);
+    setSearchTerm('');
+    setSelectedProduct(null);
+    setQuantity(1);
+    setTemporaryOcrProducts([]);
+    setIsCreatingNewProduct(false);
+    setNewProductName('');
+    setNewProductSupplier('');
+    
+    // Clear draft from Supabase
+    console.log('🗑️ Clearing draft from Supabase...');
+    try {
+      await clearDraftOrder();
+      console.log('✅ Draft cleared from Supabase');
+    } catch (error) {
+      console.error('❌ Error clearing draft:', error);
+    }
+    
+    console.log('🗑️ ========== CANCEL ORDER END ==========');
+  };
+
+  const filteredProducts = products.filter((p) => {
+    if (!searchTerm) return false;
+    return p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+           (p.code && p.code.toLowerCase().includes(searchTerm.toLowerCase()));
+  });
+
+  const groupedItems: GroupedItems = orderItems.reduce((acc, item) => {
+    const product = allProductsForDisplay.find((p) => p.id === item.product_id);
+    if (product) {
+      const supplierId = product.supplier_id;
+      if (!acc[supplierId]) {
+        acc[supplierId] = [];
+      }
+      acc[supplierId].push(item);
+    }
+    return acc;
+  }, {} as GroupedItems);
+
+  const handleSavePDF = async () => {
+    if (orderItems.length === 0) {
+      toast.error(t.noProductsInOrder);
+      return;
+    }
+
+    try {
+      await generateOrderPDF({
+        orderItems,
+        products: allProductsForDisplay,
+        suppliers
+      }, language);
+      toast.success(t.success);
+      
+      // Clear draft after saving PDF
+      await clearDraftOrder();
+      
+      // Disable auto-save and clear state
+      setSkipAutoSave(true);
+      setIsCreatingOrder(false);
+      setOrderItems([]);
+      setTemporaryOcrProducts([]);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error(t.error);
+    }
+  };
+
+  const normalizeText = (text: string): string => {
+    let normalized = text.toLowerCase().trim();
+    
+    const businessPrefixes = [
+      'comercial', 'commercial', 'fornitore', 'azienda', 'ditta', 'impresa',
+      'societa', 'società', 'company', 'supplier', 'vendor'
+    ];
+    
+    const legalSuffixes = [
+      's\\.r\\.l\\.?', 'srl', 's\\.p\\.a\\.?', 'spa', 's\\.n\\.c\\.?', 'snc',
+      's\\.a\\.s\\.?', 'sas', 's\\.s\\.?', 'ss', 'ltd', 'llc', 'inc',
+      's\\.l\\.?', 'sl', 's\\.a\\.?', 'sa'
+    ];
+    
+    const articles = ['il', 'lo', 'la', 'i', 'gli', 'le', 'un', 'una', 'uno'];
+    
+    const wordsToRemove = [...businessPrefixes, ...legalSuffixes, ...articles];
+    
+    wordsToRemove.forEach((word) => {
+      const regex = new RegExp(`\\b${word}\\b`, 'gi');
+      normalized = normalized.replace(regex, '');
+    });
+    
+    normalized = normalized.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, '');
+    normalized = normalized.replace(/\s+/g, ' ').trim();
+    
+    return normalized;
+  };
+
+  const normalizeSupplierName = (name: string): string => {
+    const suffixes = ['S.r.l.', 'S.p.A.', 'Ltd', 'LLC', 'Inc', 'Commercial', 'Comercial', 'S.L.', 'S.A.'];
+    let normalized = name.trim();
+    
+    suffixes.forEach((suffix) => {
+      const regex = new RegExp(`\\b${suffix}\\b`, 'gi');
+      normalized = normalized.replace(regex, '').trim();
+    });
+    
+    return normalized;
+  };
+
+  const normalizePhoneNumber = (phone: string): string => {
+    if (!phone) return '';
+    return phone.replace(/\D/g, '');
+  };
+
+  const getLastNDigits = (phone: string, n: number): string => {
+    const normalized = normalizePhoneNumber(phone);
+    return normalized.slice(-n);
+  };
+
+  const isLikelyAcronym = (text: string): boolean => {
+    const trimmed = text.trim();
+    return /^[A-Z]{2,5}$/.test(trimmed) && !trimmed.includes(' ');
+  };
+
+  const areInSameWhitelistGroup = (name1: string, name2: string): boolean => {
+    const normalized1 = normalizeText(name1);
+    const normalized2 = normalizeText(name2);
+    
+    for (const [key, aliases] of Object.entries(SUPPLIER_WHITELIST)) {
+      const normalizedAliases = aliases.map(alias => normalizeText(alias));
+      
+      if (normalizedAliases.includes(normalized1) && normalizedAliases.includes(normalized2)) {
+        console.log(`✅ WHITELIST MATCH: "${name1}" e "${name2}" sono nello stesso gruppo whitelist (${key})`);
+        return true;
+      }
+    }
+    
+    return false;
+  };
+
+  const levenshteinDistance = (str1: string, str2: string): number => {
+    const len1 = str1.length;
+    const len2 = str2.length;
+    const matrix: number[][] = [];
+
+    for (let i = 0; i <= len1; i++) {
+      matrix[i] = [i];
+    }
+    for (let j = 0; j <= len2; j++) {
+      matrix[0][j] = j;
+    }
+
+    for (let i = 1; i <= len1; i++) {
+      for (let j = 1; j <= len2; j++) {
+        const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j - 1] + cost
+        );
+      }
+    }
+
+    return matrix[len1][len2];
+  };
+
+  const calculateSimilarity = (str1: string, str2: string): number => {
+    const distance = levenshteinDistance(str1, str2);
+    const maxLength = Math.max(str1.length, str2.length);
+    if (maxLength === 0) return 100;
+    return ((maxLength - distance) / maxLength) * 100;
+  };
+
+  const findMatchingSupplier = (supplierName: string, supplierPhone?: string): Supplier | null => {
+    if (!supplierName) return null;
+    
+    console.log('🔍 Ricerca fornitore corrispondente:', supplierName);
+    
+    for (const supplier of suppliers) {
+      if (areInSameWhitelistGroup(supplierName, supplier.name)) {
+        console.log('✅ WHITELIST MATCH: Uso fornitore esistente:', supplier.name);
+        return supplier;
+      }
+    }
+    
+    if (supplierPhone) {
+      const ocrPhoneLast5 = getLastNDigits(supplierPhone, 5);
+      
+      if (ocrPhoneLast5.length === 5) {
+        for (const supplier of suppliers) {
+          if (supplier.phone) {
+            const supplierPhoneLast5 = getLastNDigits(supplier.phone, 5);
+            
+            if (supplierPhoneLast5 === ocrPhoneLast5) {
+              console.log(`✅ PHONE MATCH: "${supplier.name}"`);
+              return supplier;
+            }
+          }
+        }
+      }
+    }
+    
+    const normalizedSearchName = normalizeText(normalizeSupplierName(supplierName));
+    
+    for (const supplier of suppliers) {
+      const normalizedSupplierName = normalizeText(normalizeSupplierName(supplier.name));
+      if (normalizedSupplierName === normalizedSearchName) {
+        console.log(`✅ EXACT NAME MATCH: "${supplierName}" matches "${supplier.name}"`);
+        return supplier;
+      }
+    }
+    
+    for (const supplier of suppliers) {
+      const normalizedSupplierName = normalizeText(normalizeSupplierName(supplier.name));
+      const minLength = Math.min(normalizedSearchName.length, normalizedSupplierName.length);
+      const maxLength = Math.max(normalizedSearchName.length, normalizedSupplierName.length);
+      
+      const threshold = minLength <= 5 ? 0.5 : 0.8;
+      
+      if (minLength / maxLength >= threshold) {
+        if (normalizedSupplierName.includes(normalizedSearchName) || normalizedSearchName.includes(normalizedSupplierName)) {
+          console.log(`✅ CONTAINMENT NAME MATCH: "${supplierName}" matches "${supplier.name}"`);
+          return supplier;
+        }
+      }
+    }
+    
+    let bestMatch: Supplier | null = null;
+    let bestSimilarity = 0;
+    
+    for (const supplier of suppliers) {
+      const normalizedSupplierName = normalizeText(normalizeSupplierName(supplier.name));
+      const similarity = calculateSimilarity(normalizedSearchName, normalizedSupplierName);
+      
+      if (similarity >= 85 && similarity > bestSimilarity) {
+        bestMatch = supplier;
+        bestSimilarity = similarity;
+      }
+    }
+    
+    if (bestMatch) {
+      console.log(`✅ FUZZY NAME MATCH: "${supplierName}" matches "${bestMatch.name}"`);
+      return bestMatch;
+    }
+    
+    console.log(`✨ NEW SUPPLIER: Creazione nuovo fornitore`);
+    return null;
+  };
+
+  const findSimilarProduct = (name: string, productList: Product[]): Product | null => {
+    const normalizedSearchName = normalizeText(name);
+    
+    for (const product of productList) {
+      const normalizedProductName = normalizeText(product.name);
+      if (normalizedProductName === normalizedSearchName) {
+        return product;
+      }
+    }
+    
+    for (const product of productList) {
+      const normalizedProductName = normalizeText(product.name);
+      const minLength = Math.min(normalizedSearchName.length, normalizedProductName.length);
+      const maxLength = Math.max(normalizedSearchName.length, normalizedProductName.length);
+      
+      const threshold = minLength <= 5 ? 0.5 : 0.8;
+      
+      if (minLength / maxLength >= threshold) {
+        if (normalizedProductName.includes(normalizedSearchName) || normalizedSearchName.includes(normalizedProductName)) {
+          return product;
+        }
+      }
+    }
+    
+    let bestMatch: Product | null = null;
+    let bestSimilarity = 0;
+    
+    for (const product of productList) {
+      const normalizedProductName = normalizeText(product.name);
+      const similarity = calculateSimilarity(normalizedSearchName, normalizedProductName);
+      
+      if (similarity >= 85 && similarity > bestSimilarity) {
+        bestMatch = product;
+        bestSimilarity = similarity;
+      }
+    }
+    
+    return bestMatch;
+  };
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error(t.error);
+      event.target.value = '';
+      return;
+    }
+
+    setIsProcessing(true);
+    toast.info(t.loading);
+
+    try {
+      const extractedData = await extractDataFromImage(file, 'order');
+
+      if (!extractedData?.orderItems || extractedData.orderItems.length === 0) {
+        toast.error(t.error);
+        setIsProcessing(false);
+        event.target.value = '';
+        return;
+      }
+
+      const validItems = extractedData.orderItems.filter(item => 
+        item.name && item.name.trim().length > 0
+      );
+
+      if (validItems.length === 0) {
+        toast.error(t.error);
+        setIsProcessing(false);
+        event.target.value = '';
+        return;
+      }
+
+      const newItems: OrderItem[] = [];
+      const newProductsCreated: string[] = [];
+      const matchedProducts: string[] = [];
+      let unitsRecognized = 0;
+      
+      let recognizedSupplier: Supplier | null = null;
+      
+      if (extractedData.supplier) {
+        const supplierName = typeof extractedData.supplier === 'string' 
+          ? extractedData.supplier 
+          : extractedData.supplier.name;
+        const supplierPhone = typeof extractedData.supplier === 'object' 
+          ? extractedData.supplier.phone 
+          : undefined;
+        
+        recognizedSupplier = findMatchingSupplier(supplierName, supplierPhone);
+        
+        if (recognizedSupplier) {
+          toast.success(`${t.supplier}: ${recognizedSupplier.name}`);
+        } else {
+          const newSupplier: Supplier = {
+            id: crypto.randomUUID(),
+            name: normalizeSupplierName(supplierName),
+            phone: supplierPhone || '',
+            email: typeof extractedData.supplier === 'object' ? extractedData.supplier.email || '' : '',
+            address: typeof extractedData.supplier === 'object' ? extractedData.supplier.address || '' : '',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+          
+          setSuppliers((prev) => [...prev, newSupplier]);
+          recognizedSupplier = newSupplier;
+          
+          let toastMessage = `${t.supplierAdded}: ${newSupplier.name}`;
+          if (supplierPhone) {
+            toastMessage += ` (${t.phone}: ${supplierPhone})`;
+          }
+          toast.success(toastMessage);
+        }
+      }
+      
+      const defaultSupplierId = recognizedSupplier?.id || suppliers[0]?.id || 'unknown';
+      const localNewProducts: Product[] = [];
+      
+      for (let index = 0; index < validItems.length; index++) {
+        const item = validItems[index];
+        
+        let existingProduct = findSimilarProduct(item.name, products);
+        
+        if (!existingProduct) {
+          existingProduct = findSimilarProduct(item.name, temporaryOcrProducts);
+        }
+        
+        if (!existingProduct) {
+          existingProduct = findSimilarProduct(item.name, localNewProducts);
+        }
+
+        if (!existingProduct) {
+          const productUnit = item.unit || 'pz';
+          
+          const newProduct: Product = {
+            id: crypto.randomUUID(),
+            name: item.name,
+            category: 'other',
+            supplier_id: defaultSupplierId,
+            price: item.price || 0,
+            unit: productUnit,
+            vatRate: item.vatRate,
+            discountPercent: item.discountPercent,
+            price_history: [{ price: item.price || 0, date: new Date().toISOString() }],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+          
+          localNewProducts.push(newProduct);
+          existingProduct = newProduct;
+          newProductsCreated.push(item.name);
+          
+          if (item.unit) {
+            unitsRecognized++;
+          }
+        } else {
+          matchedProducts.push(`"${item.name}" → "${existingProduct.name}"`);
+          
+          if (item.unit && item.unit !== existingProduct.unit) {
+            setProducts((prev) =>
+              prev.map((p) =>
+                p.id === existingProduct!.id
+                  ? { ...p, unit: item.unit, updated_at: new Date().toISOString() }
+                  : p
+              )
+            );
+            
+            setTemporaryOcrProducts((prev) =>
+              prev.map((p) =>
+                p.id === existingProduct!.id
+                  ? { ...p, unit: item.unit, updated_at: new Date().toISOString() }
+                  : p
+              )
+            );
+            
+            const localIndex = localNewProducts.findIndex(p => p.id === existingProduct!.id);
+            if (localIndex !== -1) {
+              localNewProducts[localIndex].unit = item.unit;
+            }
+            
+            unitsRecognized++;
+          }
+        }
+
+        newItems.push({
+          product_id: existingProduct.id,
+          quantity: item.quantity || 1,
+          price: item.price || 0,
+        });
+      }
+
+      if (localNewProducts.length > 0) {
+        setTemporaryOcrProducts((prev) => [...prev, ...localNewProducts]);
+      }
+
+      setOrderItems([...orderItems, ...newItems]);
+
+      let message = `${t.productsAdded}: ${extractedData.orderItems.length}\n`;
+      message += `• ${newItems.length} ${t.productsAdded}`;
+      
+      if (matchedProducts.length > 0) {
+        message += `\n• ${matchedProducts.length} ${t.productsAdded}`;
+      }
+      
+      if (newProductsCreated.length > 0) {
+        message += `\n• ${newProductsCreated.length} ${t.productsAdded}`;
+      }
+      
+      if (unitsRecognized > 0) {
+        message += `\n• ${unitsRecognized} ${t.unit}`;
+      }
+      
+      if (recognizedSupplier) {
+        message += `\n• ${t.supplier}: ${recognizedSupplier.name}`;
+      }
+      
+      toast.success(message);
+    } catch (error) {
+      console.error('❌ Error processing image:', error);
+      toast.error(t.error);
+    } finally {
+      setIsProcessing(false);
+      event.target.value = '';
+    }
+  };
+
+  const handleSendWhatsAppSavedOrder = (order: Order) => {
+    const supplier = suppliers.find((s) => s.id === order.supplier_id);
+    const phoneNumber = supplier?.mobile || supplier?.phone;
+    
+    if (!phoneNumber) {
+      toast.error(t.error);
+      return;
+    }
+
+    let message = `${t.orderMessageGreeting}
+
+`;
+    
+    order.items.forEach((item) => {
+      const product = products.find((p) => p.id === item.product_id);
+      if (product) {
+        const unitDisplay = product.unit && product.unit.toLowerCase() !== 'pz' ? ` ${product.unit}` : '';
+        message += `• ${item.quantity}${unitDisplay} - ${product.name}\n`;
+      }
+    });
+
+    message += `
+${t.orderMessageClosing}`;
+
+    const cleanPhoneNumber = phoneNumber.replace(/[^0-9]/g, '');
+    const whatsappUrl = `https://wa.me/${cleanPhoneNumber}?text=${encodeURIComponent(message)}`;
+    
+    window.open(whatsappUrl, '_blank');
+    toast.success(t.success);
+  };
+
+  const handleSendEmailSavedOrder = (order: Order) => {
+    const supplier = suppliers.find((s) => s.id === order.supplier_id);
+    if (!supplier?.email) {
+      toast.error(t.error);
+      return;
+    }
+
+    let body = `${t.orderMessageGreeting}
+
+`;
+    
+    order.items.forEach((item) => {
+      const product = products.find((p) => p.id === item.product_id);
+      if (product) {
+        const unitDisplay = product.unit && product.unit.toLowerCase() !== 'pz' ? ` ${product.unit}` : '';
+        body += `• ${item.quantity}${unitDisplay} - ${product.name}\n`;
+      }
+    });
+
+    body += `
+${t.orderMessageClosing}`;
+
+    const subject = `${t.orderEmailSubject} - ${new Date(order.order_date).toLocaleDateString()}`;
+    const mailtoUrl = `mailto:${supplier.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    
+    window.open(mailtoUrl, '_blank');
+    toast.success(t.success);
+  };
+
+  const handleSendWhatsApp = (supplierId: string) => {
+    const supplier = suppliers.find((s) => s.id === supplierId);
+    const phoneNumber = supplier?.mobile || supplier?.phone;
+    
+    if (!phoneNumber) {
+      toast.error(t.error);
+      return;
+    }
+
+    const items = groupedItems[supplierId] || [];
+    let message = `${t.orderMessageGreeting}
+
+`;
+    
+    items.forEach((item) => {
+      const product = allProductsForDisplay.find((p) => p.id === item.product_id);
+      if (product) {
+        const code = product.code ? ` (${product.code})` : '';
+        const unitDisplay = product.unit && product.unit.toLowerCase() !== 'pz' ? ` ${product.unit}` : '';
+        message += `• ${item.quantity}${unitDisplay} - ${product.name}${code}\n`;
+      }
+    });
+
+    message += `
+${t.orderMessageClosing}`;
+
+    const cleanPhoneNumber = phoneNumber.replace(/[^0-9]/g, '');
+    const whatsappUrl = `https://wa.me/${cleanPhoneNumber}?text=${encodeURIComponent(message)}`;
+    
+    window.open(whatsappUrl, '_blank');
+    toast.success(t.success);
+  };
+
+  const handleSendEmail = (supplierId: string) => {
+    const supplier = suppliers.find((s) => s.id === supplierId);
+    if (!supplier?.email) {
+      toast.error(t.error);
+      return;
+    }
+
+    const items = groupedItems[supplierId] || [];
+    let body = `${t.orderMessageGreeting}
+
+`;
+    
+    items.forEach((item) => {
+      const product = allProductsForDisplay.find((p) => p.id === item.product_id);
+      if (product) {
+        const code = product.code ? ` (${product.code})` : '';
+        const unitDisplay = product.unit && product.unit.toLowerCase() !== 'pz' ? ` ${product.unit}` : '';
+        body += `• ${item.quantity}${unitDisplay} - ${product.name}${code}\n`;
+      }
+    });
+
+    body += `
+${t.orderMessageClosing}`;
+
+    const subject = `${t.orderEmailSubject} - ${new Date().toLocaleDateString()}`;
+    const mailtoUrl = `mailto:${supplier.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    
+    window.open(mailtoUrl, '_blank');
+    toast.success(t.success);
+  };
+
+  const handleDeleteOrder = (id: string) => {
+    setOrders(orders.filter((o) => o.id !== id));
+    toast.success(t.orderDeleted);
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      pending: { label: t.pending, className: 'bg-gradient-to-r from-yellow-400 to-orange-400 text-white border-0' },
+      confirmed: { label: t.pending, className: 'bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0' },
+      delivered: { label: t.completed, className: 'bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0' },
+      cancelled: { label: t.cancelled, className: 'bg-gradient-to-r from-red-500 to-red-600 text-white border-0' },
+    };
+
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+    return <Badge className={config.className}>{config.label}</Badge>;
+  };
+
+  // Button should be enabled if there are orders OR if there's a cancelled draft
+  const canCopyLastOrder = hasOrders || hasCancelledDraft;
+
+  return (
+    <Card className="backdrop-blur-xl bg-white/80 border-white/20 shadow-xl w-full max-w-full overflow-hidden">
+      <CardHeader className="px-4 sm:px-6">
+        <CardTitle className="text-xl sm:text-2xl bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+          {t.orders}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-4 sm:px-6">
+        {!isCreatingOrder ? (
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <Button 
+                onClick={handleStartNewOrder}
+                className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg h-11 sm:h-10 text-sm sm:text-base"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                {t.createNewOrder}
+              </Button>
+              
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="relative">
+                      <Button 
+                        onClick={handleCopyLastOrder}
+                        disabled={!canCopyLastOrder}
+                        variant="outline"
+                        className={`border-2 h-11 sm:h-10 px-3 sm:px-4 ${
+                          canCopyLastOrder
+                            ? 'border-purple-600 text-purple-600 hover:bg-purple-50' 
+                            : 'border-gray-300 text-gray-400 cursor-not-allowed'
+                        }`}
+                        title={canCopyLastOrder ? "Copia ultimo ordine" : "Nessun ordine da copiare"}
+                      >
+                        {hasCancelledDraft && (
+                          <span className="absolute -top-1 -right-1 h-3 w-3 bg-orange-500 rounded-full animate-pulse" />
+                        )}
+                        <Copy className="h-4 w-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Copia ultimo</span>
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {!canCopyLastOrder && (
+                    <TooltipContent>
+                      <p className="text-sm">Invia prima un ordine per poterlo copiare</p>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+
+            {orders.map((order) => {
+              const supplier = suppliers.find((s) => s.id === order.supplier_id);
+              return (
+                <div 
+                  key={order.id} 
+                  className="group p-4 sm:p-6 border-2 border-slate-200 rounded-2xl hover:border-purple-300 bg-white hover:shadow-xl transition-all"
+                >
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 sm:gap-4 mb-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-2">
+                        <h3 className="font-bold text-lg sm:text-xl text-slate-800 truncate">{supplier?.name || t.supplier}</h3>
+                        {getStatusBadge(order.status)}
+                      </div>
+                      <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-600">
+                        <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                        <span>{new Date(order.order_date).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSendWhatsAppSavedOrder(order)}
+                        className="border-green-500 text-green-600 hover:bg-green-50 h-9 sm:h-8 text-xs sm:text-sm flex-1 sm:flex-none min-w-[44px]"
+                        title={t.uploadInvoice}
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSendEmailSavedOrder(order)}
+                        className="border-blue-500 text-blue-600 hover:bg-blue-50 h-9 sm:h-8 text-xs sm:text-sm flex-1 sm:flex-none min-w-[44px]"
+                        title={t.uploadInvoice}
+                      >
+                        <Mail className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleDeleteOrder(order.id)}
+                        className="hover:bg-red-100 hover:text-red-600 h-9 sm:h-8 min-w-[44px]"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 mb-4">
+                    {order.items.map((item, index) => {
+                      const product = products.find((p) => p.id === item.product_id);
+                      const unitDisplay = product?.unit && product.unit.toLowerCase() !== 'pz' ? ` ${product.unit}` : '';
+                      return (
+                        <div key={index} className="flex justify-between items-center text-xs sm:text-sm p-2 bg-slate-50 rounded-lg">
+                          <span className="text-slate-700 truncate pr-2">
+                            {item.quantity}{unitDisplay} - {product?.name}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+
+            {orders.length === 0 && (
+              <div className="text-center py-12 sm:py-16">
+                <p className="text-slate-600 text-base sm:text-lg">{t.addFirstOrder}</p>
+                <p className="text-slate-500 text-sm mt-2">Crea e salva un ordine come PDF per iniziare</p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-4 sm:space-y-6">
+            {orderItems.length > 0 && (
+              <div className="flex items-start gap-3 p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded-lg">
+                <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-yellow-800">Ordine in bozza</p>
+                  <p className="text-xs text-yellow-700 mt-1">
+                    {orderItems.length} prodotti • Salvato automaticamente su Supabase
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="p-4 sm:p-6 border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl space-y-4">
+              <h3 className="text-base sm:text-lg font-semibold text-slate-800">{t.createOrder}</h3>
+
+              <div className="border-t-2 border-purple-200 pt-4 space-y-2">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  id="invoice-upload"
+                  disabled={isProcessing}
+                />
+                <label htmlFor="invoice-upload">
+                  <Button
+                    type="button"
+                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 h-11 sm:h-10 text-sm sm:text-base"
+                    disabled={isProcessing}
+                    asChild
+                  >
+                    <span>
+                      <Upload className="h-4 w-4 mr-2 flex-shrink-0" />
+                      <span className="truncate">{isProcessing ? t.loading : t.importFromPhoto}</span>
+                    </span>
+                  </Button>
+                </label>
+                <p className="text-xs text-slate-500 text-center px-2">
+                  {t.uploadOrderDescription}
+                </p>
+                <p className="text-xs text-gray-500 text-center px-2 italic">
+                  {t.recognizesHandwriting}
+                </p>
+              </div>
+
+              <div className="border-t-2 border-purple-200 pt-4 space-y-3">
+                <h4 className="font-semibold text-slate-800 text-sm sm:text-base">{t.addProducts}</h4>
+                
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={!isCreatingNewProduct ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setIsCreatingNewProduct(false);
+                      setSelectedProduct(null);
+                    }}
+                    className="flex-1 h-9"
+                  >
+                    {t.searchExisting}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={isCreatingNewProduct ? "default" : "outline"}
+                    size="sm"
+                    onClick={handleStartCreateNewProduct}
+                    className="flex-1 h-9"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    {t.createNew}
+                  </Button>
+                </div>
+
+                {!isCreatingNewProduct ? (
+                  <div>
+                    <Label className="text-slate-700 text-sm">{t.products}</Label>
+                    <div className="relative">
+                      <Input
+                        ref={searchInputRef}
+                        type="text"
+                        placeholder={t.searchProduct}
+                        value={searchTerm}
+                        onChange={(e) => {
+                          setSearchTerm(e.target.value);
+                        }}
+                        className="mt-2 border-2 focus:border-purple-500 rounded-xl pr-10 h-11 sm:h-10 text-sm sm:text-base"
+                      />
+                      <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400 mt-1" />
+                    </div>
+                    
+                    {searchTerm && filteredProducts.length > 0 && (
+                      <div className="mt-2 border-2 border-purple-200 rounded-xl bg-white shadow-lg max-h-60 overflow-y-auto">
+                        {filteredProducts.map((product) => {
+                          const supplier = suppliers.find((s) => s.id === product.supplier_id);
+                          const isSelected = selectedProduct?.id === product.id;
+                          return (
+                            <div
+                              key={product.id}
+                              className={`p-3 cursor-pointer hover:bg-purple-50 transition-colors ${
+                                isSelected ? 'bg-purple-100 border-l-4 border-purple-600' : ''
+                              }`}
+                              onClick={() => handleSelectProduct(product)}
+                            >
+                              <div className="flex justify-between items-center gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-slate-800 text-sm truncate">{product.name}</p>
+                                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                    {product.code && (
+                                      <p className="text-xs text-slate-500 truncate">{t.productName}: {product.code}</p>
+                                    )}
+                                    <Badge variant="outline" className="text-xs truncate max-w-[120px]">
+                                      {supplier?.name || t.supplier}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    
+                    {selectedProduct && (
+                      <div className="mt-2 p-3 bg-purple-100 border-2 border-purple-300 rounded-xl">
+                        <p className="text-xs sm:text-sm font-medium text-purple-900">
+                          {t.products}: <span className="font-bold truncate block sm:inline">{selectedProduct.name}</span>
+                        </p>
+                        <p className="text-xs text-purple-700 mt-1">
+                          {t.quantity}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-3 p-3 bg-white rounded-lg border-2 border-purple-300">
+                    <div>
+                      <Label className="text-xs text-slate-600">{t.productNameLabel}</Label>
+                      <Input
+                        type="text"
+                        value={newProductName}
+                        onChange={(e) => setNewProductName(e.target.value)}
+                        placeholder="Es: Ricotta Cannoli"
+                        className="h-9 text-sm mt-1"
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-xs text-slate-600">{t.supplierLabel}</Label>
+                      {!isCreatingNewSupplier ? (
+                        <div className="flex gap-2 mt-1">
+                          <Select value={newProductSupplier} onValueChange={setNewProductSupplier}>
+                            <SelectTrigger className="h-9 text-sm flex-1">
+                              <SelectValue placeholder={t.selectSupplierPlaceholder} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {suppliers.map((supplier) => (
+                                <SelectItem key={supplier.id} value={supplier.id}>
+                                  {supplier.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setIsCreatingNewSupplier(true)}
+                            className="h-9 px-3 flex-shrink-0"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="space-y-2 mt-1 p-2 bg-slate-50 rounded-lg border border-slate-200">
+                          <Input
+                            type="text"
+                            value={newSupplierName}
+                            onChange={(e) => setNewSupplierName(e.target.value)}
+                            placeholder={t.supplierNamePlaceholder}
+                            className="h-8 text-sm"
+                          />
+                          <Input
+                            type="text"
+                            value={newSupplierMobile}
+                            onChange={(e) => setNewSupplierMobile(e.target.value)}
+                            placeholder={t.whatsappPlaceholder}
+                            className="h-8 text-sm"
+                          />
+                          <Input
+                            type="email"
+                            value={newSupplierEmail}
+                            onChange={(e) => setNewSupplierEmail(e.target.value)}
+                            placeholder={t.emailOptionalPlaceholder}
+                            className="h-8 text-sm"
+                          />
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              variant="default"
+                              size="sm"
+                              onClick={handleCreateNewSupplier}
+                              className="flex-1 h-8 bg-green-600 hover:bg-green-700"
+                            >
+                              <Check className="h-3 w-3 mr-1" />
+                              {t.create}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setIsCreatingNewSupplier(false);
+                                setNewSupplierName('');
+                                setNewSupplierMobile('');
+                                setNewSupplierEmail('');
+                              }}
+                              className="flex-1 h-8"
+                            >
+                              <X className="h-3 w-3 mr-1" />
+                              {t.cancel}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleCancelCreateNewProduct}
+                      className="w-full h-8 text-xs"
+                    >
+                      <X className="h-3 w-3 mr-1" />
+                      {t.cancelCreation}
+                    </Button>
+                  </div>
+                )}
+
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    <Label className="text-slate-700 text-sm">{t.quantity}</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={quantity}
+                      onChange={(e) => setQuantity(parseInt(e.target.value) || 0)}
+                      className="mt-2 border-2 focus:border-purple-500 rounded-xl h-11 sm:h-10 text-sm sm:text-base"
+                    />
+                  </div>
+                  <Button
+                    onClick={handleAddProduct}
+                    disabled={!isCreatingNewProduct && !selectedProduct}
+                    className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 h-11 sm:h-10 w-11 sm:w-10 p-0 flex-shrink-0"
+                  >
+                    <Plus className="h-5 w-5" />
+                  </Button>
+                </div>
+                <p className="text-xs text-slate-500 px-1">
+                  {isCreatingNewProduct 
+                    ? "Crea un nuovo prodotto e aggiungilo all'ordine" 
+                    : t.info
+                  }
+                </p>
+              </div>
+
+              {orderItems.length > 0 && (
+                <div className="border-t-2 border-purple-200 pt-4 space-y-3 sm:space-y-4">
+                  <Label className="text-slate-700 font-medium text-sm sm:text-base">
+                    {t.productsAdded} ({orderItems.length})
+                  </Label>
+                  
+                  {Object.entries(groupedItems).map(([supplierId, items]) => {
+                    const supplier = suppliers.find((s) => s.id === supplierId);
+                    const isEditingSupplier = editingSupplierId === supplierId;
+
+                    return (
+                      <div key={supplierId} className="border-2 border-purple-200 rounded-xl p-3 sm:p-4 bg-white space-y-3">
+                        {isEditingSupplier ? (
+                          <div className="space-y-3 p-3 bg-purple-50 rounded-lg border-2 border-purple-300">
+                            <div>
+                              <Label className="text-xs text-slate-600">Nome Fornitore</Label>
+                              <Input
+                                type="text"
+                                value={editingSupplierName}
+                                onChange={(e) => setEditingSupplierName(e.target.value)}
+                                className="h-9 text-sm mt-1"
+                                autoFocus
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs text-slate-600">WhatsApp (Mobile)</Label>
+                              <Input
+                                type="text"
+                                value={editingSupplierMobile}
+                                onChange={(e) => setEditingSupplierMobile(e.target.value)}
+                                placeholder="+34 123 456 789"
+                                className="h-9 text-sm mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs text-slate-600">Email</Label>
+                              <Input
+                                type="email"
+                                value={editingSupplierEmail}
+                                onChange={(e) => setEditingSupplierEmail(e.target.value)}
+                                placeholder="fornitore@example.com"
+                                className="h-9 text-sm mt-1"
+                              />
+                            </div>
+                            <div className="flex flex-col gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleCancelEditSupplier}
+                                className="w-full h-9"
+                              >
+                                <X className="h-4 w-4 mr-1" />
+                                {t.cancel}
+                              </Button>
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={handleCreateNewSupplierFromEdit}
+                                className="w-full bg-blue-600 hover:bg-blue-700 text-white h-9"
+                              >
+                                <Plus className="h-4 w-4 mr-1" />
+                                {t.createNewSupplierButton}
+                              </Button>
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={handleSaveSupplier}
+                                className="w-full bg-green-600 hover:bg-green-700 h-9"
+                              >
+                                <Check className="h-4 w-4 mr-1" />
+                                {t.saveChanges}
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-4">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <h5 className="font-bold text-slate-800 flex items-center gap-2 flex-wrap text-sm sm:text-base">
+                                <span className="truncate">{supplier?.name || t.supplier}</span>
+                                <Badge className="bg-purple-100 text-purple-700 text-xs flex-shrink-0">
+                                  {items.length} {t.products}
+                                </Badge>
+                              </h5>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleStartEditSupplier(supplierId)}
+                                className="h-8 w-8 p-0 hover:bg-purple-100 flex-shrink-0"
+                                title="Modifica fornitore"
+                              >
+                                <Edit2 className="h-4 w-4 text-purple-600" />
+                              </Button>
+                            </div>
+                            <div className="flex gap-2 flex-wrap">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleSendWhatsApp(supplierId)}
+                                className="border-green-500 text-green-600 hover:bg-green-50 h-9 text-xs flex-1 sm:flex-none min-w-[44px]"
+                              >
+                                <MessageCircle className="h-4 w-4 sm:mr-1" />
+                                <span className="hidden sm:inline">WhatsApp</span>
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleSendEmail(supplierId)}
+                                className="border-blue-500 text-blue-600 hover:bg-blue-50 h-9 text-xs flex-1 sm:flex-none min-w-[44px]"
+                              >
+                                <Mail className="h-4 w-4 sm:mr-1" />
+                                <span className="hidden sm:inline">Email</span>
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="space-y-2">
+                          {items.map((item, index) => {
+                            const product = allProductsForDisplay.find((p) => p.id === item.product_id);
+                            const globalIndex = orderItems.findIndex((oi) => oi === item);
+                            const unitDisplay = product?.unit && product.unit.toLowerCase() !== 'pz' ? ` ${product.unit}` : '';
+                            const isEditing = editingProductId === product?.id;
+                            
+                            return (
+                              <div key={index} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 p-2 bg-slate-50 rounded-lg">
+                                {isEditing ? (
+                                  <div className="flex-1 flex items-center gap-2">
+                                    <Input
+                                      type="text"
+                                      value={editingProductName}
+                                      onChange={(e) => setEditingProductName(e.target.value)}
+                                      className="h-9 text-sm flex-1"
+                                      autoFocus
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          handleSaveProductName(product!.id);
+                                        } else if (e.key === 'Escape') {
+                                          handleCancelEditProductName();
+                                        }
+                                      }}
+                                    />
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleSaveProductName(product!.id)}
+                                      className="h-9 w-9 p-0 text-green-600 hover:bg-green-50 flex-shrink-0"
+                                    >
+                                      <Check className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={handleCancelEditProductName}
+                                      className="h-9 w-9 p-0 text-red-600 hover:bg-red-50 flex-shrink-0"
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <span 
+                                    className="text-slate-700 text-sm flex-1 cursor-pointer hover:text-purple-600 flex items-center gap-2 group/name min-w-0"
+                                    onClick={() => product && handleStartEditProductName(product.id, product.name)}
+                                    title={t.editProduct}
+                                  >
+                                    <span className="truncate">{item.quantity}{unitDisplay} - {product?.name}</span>
+                                    <Edit2 className="h-3 w-3 opacity-0 group-hover/name:opacity-50 transition-opacity flex-shrink-0" />
+                                  </span>
+                                )}
+                                
+                                <div className="flex items-center gap-2 justify-between sm:justify-end w-full sm:w-auto">
+                                  <div className="flex items-center gap-1 bg-white rounded-lg border border-slate-200 px-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleUpdateQuantity(globalIndex, item.quantity - 1)}
+                                      className="h-9 w-9 p-0 hover:bg-slate-100"
+                                    >
+                                      <Minus className="h-4 w-4" />
+                                    </Button>
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      value={item.quantity}
+                                      onChange={(e) => handleUpdateQuantity(globalIndex, parseInt(e.target.value) || 0)}
+                                      className="h-9 w-12 sm:w-14 text-center border-0 p-0 text-sm"
+                                    />
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleUpdateQuantity(globalIndex, item.quantity + 1)}
+                                      className="h-9 w-9 p-0 hover:bg-slate-100"
+                                    >
+                                      <Plus className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    onClick={() => handleRemoveItem(globalIndex)}
+                                    className="hover:bg-red-100 hover:text-red-600 h-9 w-9 p-0 flex-shrink-0"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {orderItems.length === 0 && (
+                <div className="text-center py-6 sm:py-8 text-slate-500 border-t-2 border-purple-200 pt-4">
+                  <p className="font-medium text-sm sm:text-base">{t.noProductsInOrder}</p>
+                  <p className="text-xs sm:text-sm mt-1 px-2">
+                    {t.addProducts}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t-2 border-purple-200">
+                {orderItems.length > 0 && (
+                  <>
+                    <Button 
+                      onClick={handleSavePDF}
+                      className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 h-11 sm:h-10 text-sm sm:text-base"
+                    >
+                      <FileDown className="h-4 w-4 mr-2" />
+                      {t.savePDF}
+                    </Button>
+                    <Button 
+                      onClick={handleSaveDraft}
+                      variant="outline"
+                      className="flex-1 border-2 border-purple-600 text-purple-600 hover:bg-purple-50 h-11 sm:h-10 text-sm sm:text-base"
+                    >
+                      <Save className="h-4 w-4 mr-2" />
+                      Salva bozza
+                    </Button>
+                  </>
+                )}
+                <Button 
+                  variant="outline" 
+                  onClick={handleCancelOrder}
+                  className={`${orderItems.length > 0 ? 'sm:flex-none sm:w-auto' : 'w-full'} border-2 hover:border-red-500 hover:text-red-500 h-11 sm:h-10 text-sm sm:text-base`}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  {t.cancel}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

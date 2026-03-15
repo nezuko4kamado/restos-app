@@ -1,0 +1,1383 @@
+// Internationalization system for the restaurant management app
+// Supports Italian, English, Spanish, French, German, and Lithuanian
+
+export type Language = 'it' | 'en' | 'es' | 'fr' | 'de' | 'lt';
+
+export interface Translations {
+  // Header
+  appTitle: string;
+  demoMode: string;
+  dataSavedLocally: string;
+  clearData: string;
+  clearDataConfirm: string;
+  dataCleared: string;
+  
+  // Clear Data Dialog
+  clearDataDialogTitle: string;
+  clearDataDialogMessage: string;
+  yes: string;
+  no: string;
+  
+  // Stats
+  products: string;
+  suppliers: string;
+  orders: string;
+  notifications: string;
+  
+  // Tabs
+  dashboard: string;
+  settings: string;
+  
+  // Auth
+  login: string;
+  register: string;
+  loginTitle: string;
+  registerTitle: string;
+  loginDescription: string;
+  registerDescription: string;
+  emailPlaceholder: string;
+  passwordPlaceholder: string;
+  confirmPasswordPlaceholder: string;
+  loginButton: string;
+  registerButton: string;
+  noAccount: string;
+  hasAccount: string;
+  dataSyncedCloud: string;
+  enterEmailPassword: string;
+  passwordsDontMatch: string;
+  passwordMinLength: string;
+  emailOrPasswordIncorrect: string;
+  emailAlreadyRegistered: string;
+  registrationComplete: string;
+  authError: string;
+  loading: string;
+  selectLanguage: string;
+  emailConfirmationNotice: string;
+  
+  // Auth - Additional (RegisterForm & ForgotPasswordDialog)
+  fullName: string;
+  fullNamePlaceholder: string;
+  enterFullName: string;
+  enterValidEmail: string;
+  enterPassword: string;
+  enterYourEmail: string;
+  password: string;
+  confirmPassword: string;
+  passwordNotMeetRequirements: string;
+  databaseErrorRegistration: string;
+  autoLoginSuccess: string;
+  registrationFailed: string;
+  registrationError: string;
+  registering: string;
+  recoverPassword: string;
+  resetPasswordDescription: string;
+  recoveryEmailSent: string;
+  errorSendingEmail: string;
+  emailSentSuccess: string;
+  checkEmailInstructions: string;
+  emailAddress: string;
+  sendEmail: string;
+  emailNotReceived: string;
+  
+  // Products Section
+  productsList: string;
+  addProduct: string;
+  editProduct: string;
+  deleteProduct: string;
+  productName: string;
+  category: string;
+  supplier: string;
+  price: string;
+  unit: string;
+  lastPrice: string;
+  priceHistory: string;
+  actions: string;
+  noProducts: string;
+  addFirstProduct: string;
+  productAdded: string;
+  productUpdated: string;
+  productDeleted: string;
+  deleteProductConfirm: string;
+  save: string;
+  cancel: string;
+  selectSupplier: string;
+  detectedCategory: string;
+  
+  // Export functionality
+  export: string;
+  exportExcel: string;
+  exportPDF: string;
+  saveInvoiceIn: string;
+  savePDF: string;
+  
+  // Categories
+  beverages: string;
+  meat: string;
+  fish: string;
+  vegetables: string;
+  fruit: string;
+  breadCereals: string;
+  dairy: string;
+  sweets: string;
+  condiments: string;
+  other: string;
+  
+  // Suppliers Section
+  suppliersList: string;
+  addSupplier: string;
+  editSupplier: string;
+  deleteSupplier: string;
+  supplierName: string;
+  contact: string;
+  email: string;
+  phone: string;
+  address: string;
+  notes: string;
+  noSuppliers: string;
+  addFirstSupplier: string;
+  supplierAdded: string;
+  supplierUpdated: string;
+  supplierDeleted: string;
+  deleteSupplierConfirm: string;
+  supplierAlreadyExists: string;
+  
+  // Orders Section
+  ordersList: string;
+  addOrder: string;
+  editOrder: string;
+  deleteOrder: string;
+  orderDate: string;
+  totalAmount: string;
+  status: string;
+  recurring: string;
+  frequency: string;
+  nextOrder: string;
+  noOrders: string;
+  addFirstOrder: string;
+  orderAdded: string;
+  orderUpdated: string;
+  orderDeleted: string;
+  deleteOrderConfirm: string;
+  selectProducts: string;
+  quantity: string;
+  uploadInvoice: string;
+  searchProducts: string;
+  createOrderMode: string;
+  createNewOrder: string;
+  uploadOrderDescription: string;
+  importFromPhoto: string;
+  recognizesHandwriting: string;
+  
+  // New Order Creation Fields
+  productNameLabel: string;
+  supplierLabel: string;
+  selectSupplierPlaceholder: string;
+  supplierNamePlaceholder: string;
+  whatsappPlaceholder: string;
+  emailOptionalPlaceholder: string;
+  create: string;
+  cancelCreation: string;
+  
+  // Supplier Edit in Orders
+  editOrderSupplier: string;
+  selectExistingSupplier: string;
+  createNewSupplier: string;
+  createNewSupplierButton: string;
+  saveChanges: string;
+  groupOrders: string;
+  supplierNameRequired: string;
+  phoneOrEmailRequired: string;
+  supplierCreatedSuccess: string;
+  
+  // Order Status
+  pending: string;
+  completed: string;
+  cancelled: string;
+  
+  // Frequency
+  daily: string;
+  weekly: string;
+  monthly: string;
+  
+  // Settings Section
+  generalSettings: string;
+  configurePreferences: string;
+  country: string;
+  language: string;
+  notificationSettings: string;
+  manageAlertsReminders: string;
+  priceChangeAlerts: string;
+  priceChangeAlertsDesc: string;
+  changeThreshold: string;
+  changeThresholdDesc: string;
+  recurringOrderReminders: string;
+  recurringOrderRemindersDesc: string;
+  reminderAdvance: string;
+  reminderAdvanceDesc: string;
+  days: string;
+  saveSettings: string;
+  settingsSaved: string;
+  settingsInfo: string;
+  
+  // Data Management
+  dataManagement: string;
+  dataManagementDesc: string;
+  clearDataWarning: string;
+  clearDataWarningDesc: string;
+  allProducts: string;
+  allSuppliers: string;
+  allOrders: string;
+  allNotifications: string;
+  allSettings: string;
+  cannotBeUndone: string;
+  
+  // Dashboard
+  analytics: string;
+  viewAnalytics: string;
+  topProducts: string;
+  topSuppliers: string;
+  mainSuppliers: string;
+  priceAlerts30Days: string;
+  recentOrders: string;
+  priceAlerts: string;
+  recurringReminders: string;
+  noData: string;
+  noAlerts: string;
+  noReminders: string;
+  priceIncreased: string;
+  priceDecreased: string;
+  upcomingOrder: string;
+  acknowledge: string;
+  
+  // Payment Section
+  securePayment: string;
+  manageSubscription: string;
+  manageSubscriptionDesc: string;
+  securePaymentDesc: string;
+  paymentProcessedSecurely: string;
+  fullAccessToFeatures: string;
+  perMonth: string;
+  unlimitedProductSupplierManagement: string;
+  invoiceUploadWithOCR: string;
+  advancedStatisticsAnalytics: string;
+  personalizedNotificationsReminders: string;
+  paymentSecurityMessage: string;
+  
+  // New translations
+  managePlan: string;
+  subscription: string;
+  logout: string;
+  connectedAs: string;
+  subscriptionStatus: string;
+  
+  // Subscription Section translations
+  subscriptionActive: string;
+  trialPeriod: string;
+  subscriptionExpired: string;
+  unknownStatus: string;
+  manageYourPlan: string;
+  daysRemaining: string;
+  lastDay: string;
+  type: string;
+  monthlyPlan: string;
+  lifetimeAccess: string;
+  freeTrial: string;
+  active: string;
+  paymentOverdue: string;
+  startDate: string;
+  expiredOn: string;
+  renewal: string;
+  willBeCancelled: string;
+  renewSubscription: string;
+  activatePremium: string;
+  fullAccessMessage: string;
+  unlimitedManagement: string;
+  advancedOCR: string;
+  detailedStats: string;
+  customNotifications: string;
+  noSubscriptionFound: string;
+  activateSubscription: string;
+  
+  // Feature Locked translations
+  featureLockedTitle: string;
+  featureLockedMessage: string;
+  activateSubscriptionButton: string;
+  
+  // Tutorial translations
+  tutorialWelcomeTitle: string;
+  tutorialWelcomeContent: string;
+  tutorialProductsTitle: string;
+  tutorialProductsContent: string;
+  tutorialUploadTitle: string;
+  tutorialUploadContent: string;
+  tutorialAddProductTitle: string;
+  tutorialAddProductContent: string;
+  tutorialSuppliersTitle: string;
+  tutorialSuppliersContent: string;
+  tutorialOrdersTitle: string;
+  tutorialOrdersContent: string;
+  tutorialCompleteTitle: string;
+  tutorialCompleteContent: string;
+  tutorialCompleteTip: string;
+  tutorialBack: string;
+  tutorialClose: string;
+  tutorialLast: string;
+  tutorialNext: string;
+  tutorialSkip: string;
+  
+  // Common
+  search: string;
+  filter: string;
+  import: string;
+  error: string;
+  success: string;
+  warning: string;
+  info: string;
+  
+  // Supplier details
+  details: string;
+  statistics: string;
+  invoices: string;
+  invoicesCount: string;
+  totalInvoices: string;
+  totalProducts: string;
+  monthlyAverage: string;
+  totalSpent: string;
+  
+  // Payment Section - Additional translations
+  unlimitedProductsSuppliers: string;
+  fullAccessToAllFeatures: string;
+  advancedStatistics: string;
+  paymentCompleted: string;
+  paymentCancelled: string;
+  paymentError: string;
+  stripeNotConfigured: string;
+  portalError: string;
+  portalNotConfigured: string;
+  subscriptionActiveTitle: string;
+  subscriptionActiveMessage: string;
+  redirecting: string;
+  manageSubscriptionButton: string;
+  manageSubscriptionInfo: string;
+  stripePortalFeatures: string;
+  viewPaymentHistory: string;
+  updatePaymentMethod: string;
+  downloadReceipts: string;
+  cancelSubscription: string;
+  paymentServiceConfiguring: string;
+  paymentServiceConfiguringMessage: string;
+  contactSupportToActivate: string;
+  supportChatComing: string;
+  chatWithSupport: string;
+  securePaymentInfo: string;
+  
+  // Supplier selection
+  searchExisting: string;
+  createNew: string;
+  
+  // Contact Us translations
+  contactUs: string;
+  contactDescription: string;
+  name: string;
+  namePlaceholder: string;
+  subject: string;
+  subjectPlaceholder: string;
+  message: string;
+  messagePlaceholder: string;
+  send: string;
+  sending: string;
+  messageSentSuccess: string;
+  messageSendError: string;
+  nameRequired: string;
+  emailRequired: string;
+  invalidEmail: string;
+  subjectRequired: string;
+  messageRequired: string;
+  note: string;
+  contactNote: string;
+  back: string;
+  
+  // Invoice Management
+  invoiceManagement: string;
+  manualEntry: string;
+  date: string;
+  amount: string;
+  addInvoice: string;
+  invoiceData: string;
+  extractedProducts: string;
+  registeredInvoices: string;
+  clickToExpandYearMonth: string;
+  noInvoicesRegistered: string;
+  mobile: string;
+  openingInvoiceManagement: string;
+  invoiceNumber: string;
+  together: string;
+  supplierDeletedWithInvoices: string;
+  
+  // Invoice Payment Status
+  paid: string;
+  unpaid: string;
+  markAsPaid: string;
+  markAsUnpaid: string;
+  invoiceMarkedPaid: string;
+  invoiceMarkedUnpaid: string;
+  paymentStatus: string;
+  paidInvoices: string;
+  unpaidInvoices: string;
+  totalPaid: string;
+  totalUnpaid: string;
+  
+  // Invoice Management - Additional
+  invoiceProcessedSuccess: string;
+  invoiceProcessingError: string;
+  fillRequiredFields: string;
+  invoiceAddedSuccess: string;
+  invoiceAddError: string;
+  incompleteInvoiceData: string;
+  confirmDeleteInvoice: string;
+  invoiceDeleted: string;
+  featureNotAvailable: string;
+  invoiceUpdateError: string;
+  uploadInvoicePdfOrImage: string;
+  processingInProgress: string;
+  qty: string;
+  match: string;
+  partial: string;
+  new: string;
+  priceChanged: string;
+  deleteInvoice: string;
+  
+  // Additional component translations
+  unknownSupplier: string;
+  importOrderFromPhotoPdf: string;
+  supplierCreated: string;
+  productCreated: string;
+  apiSettings: string;
+  invoiceAdded: string;
+  averagePerInvoice: string;
+  invoiceDetail: string;
+  
+  // ProductsSection additional translations
+  vat: string;
+  withVAT: string;
+  withoutVAT: string;
+  vatRatesUpdated: string;
+  exportSuccess: string;
+  exportError: string;
+  areRequired: string;
+  errorSavingProduct: string;
+  manualEdit: string;
+  errorUpdatingProduct: string;
+  errorDeletingProduct: string;
+  pleaseUploadImage: string;
+  analyzingInvoice: string;
+  noProductsFoundInInvoice: string;
+  supplierRecognized: string;
+  discount: string;
+  updatedFromInvoice: string;
+  importedFromInvoice: string;
+  updated: string;
+  newProducts: string;
+  failed: string;
+  noProductsSaved: string;
+  errorUploadingInvoice: string;
+  verifyImageClear: string;
+  
+  // SettingsDialog translations
+  configureApiKey: string;
+  usingPersonalKey: string;
+  usingDefaultKey: string;
+  apiKeyStoredLocally: string;
+  howToGetApiKey: string;
+  apiStep1: string;
+  apiStep2: string;
+  apiStep3: string;
+  apiStep4: string;
+  apiStep5: string;
+  openGoogleAIStudio: string;
+  configurationSaved: string;
+  saveConfiguration: string;
+  restoreDefault: string;
+}
+
+const createCompleteTranslations = (baseTranslations: Record<string, string>): Translations => {
+  return baseTranslations as Translations;
+};
+
+// Italian translations (IT) - BASE
+const itTranslations = createCompleteTranslations({
+  appTitle: 'RESTO',
+  demoMode: 'Demo Mode',
+  dataSavedLocally: 'Dati salvati localmente nel browser',
+  clearData: 'Cancella Dati',
+  clearDataConfirm: 'Sei sicuro di voler cancellare tutti i dati? Questa azione non può essere annullata.',
+  dataCleared: 'Tutti i dati sono stati cancellati',
+  clearDataDialogTitle: 'Attenzione!',
+  clearDataDialogMessage: 'Sei sicuro di voler cancellare tutti i dati? Questa azione eliminerà permanentemente tutti i prodotti, fornitori, ordini e impostazioni.',
+  yes: 'Sì, Cancella Tutto',
+  no: 'No, Annulla',
+  products: 'Prodotti',
+  suppliers: 'Fornitori',
+  orders: 'Ordini',
+  notifications: 'Notifiche',
+  dashboard: 'Dashboard',
+  settings: 'Impostazioni',
+  login: 'Accedi',
+  register: 'Registrati',
+  loginTitle: 'Accedi',
+  registerTitle: 'Registrati',
+  loginDescription: 'Accedi al tuo account per gestire ordini e fatture',
+  registerDescription: 'Crea un nuovo account per iniziare',
+  emailPlaceholder: 'tuo@email.com',
+  passwordPlaceholder: '••••••••',
+  confirmPasswordPlaceholder: '••••••••',
+  loginButton: 'Accedi',
+  registerButton: 'Registrati',
+  noAccount: 'Non hai un account? Registrati',
+  hasAccount: 'Hai già un account? Accedi',
+  dataSyncedCloud: '💡 Nota: I tuoi dati saranno sincronizzati nel cloud.',
+  enterEmailPassword: 'Inserisci email e password',
+  passwordsDontMatch: 'Le password non corrispondono',
+  passwordMinLength: 'La password deve essere di almeno 6 caratteri',
+  emailOrPasswordIncorrect: 'Email o password non corretti',
+  emailAlreadyRegistered: 'Email già registrata',
+  registrationComplete: 'Registrazione completata! Controlla la tua email.',
+  authError: 'Errore durante l\'autenticazione',
+  loading: 'Caricamento...',
+  selectLanguage: 'Seleziona Lingua',
+  emailConfirmationNotice: 'Controlla la tua email per confermare.',
+  fullName: 'Nome Completo',
+  fullNamePlaceholder: 'Mario Rossi',
+  enterFullName: 'Inserisci il tuo nome completo',
+  enterValidEmail: 'Inserisci un indirizzo email valido',
+  enterPassword: 'Inserisci una password',
+  enterYourEmail: 'Inserisci il tuo indirizzo email',
+  password: 'Password',
+  confirmPassword: 'Conferma Password',
+  passwordNotMeetRequirements: 'La password non soddisfa tutti i requisiti di sicurezza',
+  databaseErrorRegistration: 'Errore del database durante la registrazione. Controlla i log per maggiori dettagli.',
+  autoLoginSuccess: 'Accesso effettuato automaticamente!',
+  registrationFailed: 'Registrazione fallita: nessun dato utente restituito',
+  registrationError: 'Errore durante la registrazione',
+  registering: 'Registrazione in corso...',
+  recoverPassword: 'Recupera Password',
+  resetPasswordDescription: 'Inserisci il tuo indirizzo email e ti invieremo un link per reimpostare la password.',
+  recoveryEmailSent: 'Email di recupero inviata con successo!',
+  errorSendingEmail: 'Errore durante l\'invio dell\'email',
+  emailSentSuccess: 'Email inviata con successo!',
+  checkEmailInstructions: 'Controlla la tua casella di posta elettronica e segui le istruzioni per reimpostare la password.',
+  emailAddress: 'Indirizzo Email',
+  sendEmail: 'Invia Email',
+  emailNotReceived: '💡 Non hai ricevuto l\'email? Controlla la cartella spam o riprova tra qualche minuto.',
+  searchExisting: 'Cerca Esistente',
+  createNew: 'Crea Nuovo',
+  contactUs: 'Contattaci',
+  contactDescription: 'Hai domande o suggerimenti? Siamo qui per aiutarti!',
+  name: 'Nome',
+  namePlaceholder: 'Il tuo nome',
+  subject: 'Oggetto',
+  subjectPlaceholder: 'Oggetto del messaggio',
+  message: 'Messaggio',
+  messagePlaceholder: 'Scrivi qui il tuo messaggio...',
+  send: 'Invia Messaggio',
+  sending: 'Invio in corso...',
+  messageSentSuccess: 'Messaggio inviato con successo!',
+  messageSendError: 'Errore durante l\'invio del messaggio. Riprova più tardi.',
+  nameRequired: 'Nome richiesto',
+  emailRequired: 'Email richiesta',
+  invalidEmail: 'Email non valida',
+  subjectRequired: 'Oggetto richiesto',
+  messageRequired: 'Messaggio richiesto',
+  note: 'Nota',
+  contactNote: 'Risponderemo alla tua richiesta il prima possibile. Assicurati di fornire un indirizzo email valido per ricevere la nostra risposta.',
+  back: 'Indietro',
+  productsList: 'Lista Prodotti',
+  addProduct: 'Aggiungi Prodotto',
+  editProduct: 'Modifica Prodotto',
+  deleteProduct: 'Elimina Prodotto',
+  productName: 'Nome Prodotto',
+  category: 'Categoria',
+  supplier: 'Fornitore',
+  price: 'Prezzo',
+  unit: 'Unità',
+  lastPrice: 'Ultimo Prezzo',
+  priceHistory: 'Storico Prezzi',
+  actions: 'Azioni',
+  noProducts: 'Nessun prodotto disponibile',
+  addFirstProduct: 'Aggiungi il tuo primo prodotto',
+  productAdded: 'Prodotto aggiunto',
+  productUpdated: 'Prodotto aggiornato',
+  productDeleted: 'Prodotto eliminato',
+  deleteProductConfirm: 'Eliminare questo prodotto?',
+  save: 'Salva',
+  cancel: 'Annulla',
+  selectSupplier: 'Seleziona Fornitore',
+  detectedCategory: 'Categoria Rilevata',
+  export: 'Esporta',
+  exportExcel: 'Esporta Excel',
+  exportPDF: 'Esporta PDF',
+  savePDF: 'Salva PDF',
+  saveInvoiceIn: 'Salva Fattura in',
+  beverages: 'Bevande',
+  meat: 'Carne',
+  fish: 'Pesce',
+  vegetables: 'Verdure',
+  fruit: 'Frutta',
+  breadCereals: 'Pane e Cereali',
+  dairy: 'Latticini',
+  sweets: 'Dolci',
+  condiments: 'Condimenti',
+  other: 'Altro',
+  suppliersList: 'Lista Fornitori',
+  addSupplier: 'Aggiungi Fornitore',
+  editSupplier: 'Modifica Fornitore',
+  deleteSupplier: 'Elimina Fornitore',
+  supplierName: 'Nome Fornitore',
+  contact: 'Contatto',
+  email: 'Email',
+  phone: 'Telefono',
+  address: 'Indirizzo',
+  notes: 'Note',
+  noSuppliers: 'Nessun fornitore disponibile',
+  addFirstSupplier: 'Aggiungi il tuo primo fornitore',
+  supplierAdded: 'Fornitore aggiunto',
+  supplierUpdated: 'Fornitore aggiornato',
+  supplierDeleted: 'Fornitore eliminato',
+  deleteSupplierConfirm: 'Eliminare questo fornitore?',
+  supplierAlreadyExists: 'Fornitore già esistente',
+  ordersList: 'Lista Ordini',
+  addOrder: 'Aggiungi Ordine',
+  editOrder: 'Modifica Ordine',
+  deleteOrder: 'Elimina Ordine',
+  orderDate: 'Data Ordine',
+  totalAmount: 'Totale',
+  status: 'Stato',
+  recurring: 'Ricorrente',
+  frequency: 'Frequenza',
+  nextOrder: 'Prossimo Ordine',
+  noOrders: 'Nessun ordine disponibile',
+  addFirstOrder: 'Aggiungi il tuo primo ordine',
+  orderAdded: 'Ordine aggiunto',
+  orderUpdated: 'Ordine aggiornato',
+  orderDeleted: 'Ordine eliminato',
+  deleteOrderConfirm: 'Eliminare questo ordine?',
+  selectProducts: 'Seleziona Prodotti',
+  quantity: 'Quantità',
+  uploadInvoice: 'Carica Fattura',
+  searchProducts: 'Cerca Prodotti',
+  createOrderMode: 'Modalità Creazione',
+  createNewOrder: 'Crea Nuovo Ordine',
+  uploadOrderDescription: 'Carica foto ordine',
+  importFromPhoto: 'Importa da Foto',
+  recognizesHandwriting: 'Riconosce anche scrittura a penna',
+  productNameLabel: 'Nome Prodotto',
+  supplierLabel: 'Fornitore',
+  selectSupplierPlaceholder: 'Seleziona fornitore',
+  supplierNamePlaceholder: 'Nome fornitore',
+  whatsappPlaceholder: 'WhatsApp',
+  emailOptionalPlaceholder: 'Email (opzionale)',
+  create: 'Crea',
+  cancelCreation: 'Annulla',
+  editOrderSupplier: 'Modifica Fornitore',
+  selectExistingSupplier: 'Seleziona fornitore esistente',
+  createNewSupplier: 'Crea nuovo fornitore',
+  createNewSupplierButton: 'Crea Nuovo Fornitore',
+  saveChanges: 'Salva Modifiche',
+  groupOrders: 'Raggruppa ordini',
+  supplierNameRequired: 'Nome fornitore obbligatorio',
+  phoneOrEmailRequired: 'Telefono o email obbligatorio',
+  supplierCreatedSuccess: 'Nuovo fornitore creato con successo',
+  pending: 'In Attesa',
+  completed: 'Completato',
+  cancelled: 'Annullato',
+  daily: 'Giornaliero',
+  weekly: 'Settimanale',
+  monthly: 'Mensile',
+  generalSettings: 'Impostazioni Generali',
+  configurePreferences: 'Configura preferenze',
+  country: 'Paese',
+  language: 'Lingua',
+  notificationSettings: 'Notifiche',
+  manageAlertsReminders: 'Gestisci avvisi',
+  priceChangeAlerts: 'Avvisi Prezzi',
+  priceChangeAlertsDesc: 'Notifiche variazioni prezzi',
+  changeThreshold: 'Soglia (%)',
+  changeThresholdDesc: 'Percentuale minima',
+  recurringOrderReminders: 'Promemoria Ordini',
+  recurringOrderRemindersDesc: 'Promemoria automatici',
+  reminderAdvance: 'Anticipo (giorni)',
+  reminderAdvanceDesc: 'Giorni prima',
+  days: 'giorni',
+  saveSettings: 'Salva',
+  settingsSaved: 'Salvato',
+  settingsInfo: 'Salvato nel browser',
+  dataManagement: 'Gestione Dati',
+  dataManagementDesc: 'Cancella dati',
+  clearDataWarning: 'Cancellerà:',
+  clearDataWarningDesc: 'Non reversibile!',
+  allProducts: 'Tutti i prodotti',
+  allSuppliers: 'Tutti i fornitori',
+  allOrders: 'Tutti gli ordini',
+  allNotifications: 'Tutte le notifiche',
+  allSettings: 'Tutte le impostazioni',
+  cannotBeUndone: '⚠️ Non reversibile!',
+  analytics: 'Analisi',
+  viewAnalytics: 'Visualizza statistiche',
+  topProducts: 'Top Prodotti',
+  topSuppliers: 'Top Fornitori',
+  mainSuppliers: 'Fornitori Principali',
+  priceAlerts30Days: 'Avvisi (30gg)',
+  recentOrders: 'Ordini Recenti',
+  priceAlerts: 'Avvisi Prezzi',
+  recurringReminders: 'Promemoria',
+  noData: 'Nessun dato',
+  noAlerts: 'Nessun avviso',
+  noReminders: 'Nessun promemoria',
+  priceIncreased: 'Prezzo aumentato',
+  priceDecreased: 'Prezzo diminuito',
+  upcomingOrder: 'Ordine in arrivo',
+  acknowledge: 'Conferma',
+  securePayment: 'Pagamento Sicuro',
+  manageSubscription: 'Gestisci Abbonamento',
+  manageSubscriptionDesc: 'Gestisci via Stripe',
+  securePaymentDesc: 'Pagamento sicuro',
+  paymentProcessedSecurely: 'Pagamento sicuro',
+  fullAccessToFeatures: 'Accesso completo',
+  perMonth: 'al mese',
+  unlimitedProductSupplierManagement: 'Gestione illimitata',
+  invoiceUploadWithOCR: 'Caricamento con OCR',
+  advancedStatisticsAnalytics: 'Statistiche avanzate',
+  personalizedNotificationsReminders: 'Notifiche personalizzate',
+  paymentSecurityMessage: 'Pagamenti sicuri via Stripe',
+  managePlan: 'Gestisci Piano',
+  subscription: 'Abbonamento',
+  logout: 'Logout',
+  connectedAs: 'Connesso come',
+  subscriptionStatus: 'Stato',
+  subscriptionActive: 'Attivo',
+  trialPeriod: 'Prova',
+  subscriptionExpired: 'Scaduto',
+  unknownStatus: 'Sconosciuto',
+  manageYourPlan: 'Gestisci piano',
+  daysRemaining: 'giorni rimanenti',
+  lastDay: 'Ultimo giorno',
+  type: 'Tipo',
+  monthlyPlan: 'Mensile',
+  lifetimeAccess: 'A Vita',
+  freeTrial: 'Prova Gratuita',
+  active: 'Attivo',
+  paymentOverdue: 'In Ritardo',
+  startDate: 'Data Inizio',
+  expiredOn: 'Scaduto il',
+  renewal: 'Rinnovo',
+  willBeCancelled: 'Sarà cancellato',
+  renewSubscription: 'Rinnova',
+  activatePremium: 'Attiva Premium',
+  fullAccessMessage: 'Accesso completo!',
+  unlimitedManagement: 'Gestione illimitata',
+  advancedOCR: 'OCR avanzato',
+  detailedStats: 'Statistiche dettagliate',
+  customNotifications: 'Notifiche custom',
+  noSubscriptionFound: 'Nessun abbonamento',
+  activateSubscription: 'Attiva',
+  featureLockedTitle: 'Bloccato',
+  featureLockedMessage: 'Trial scaduto',
+  activateSubscriptionButton: 'Attiva (€9.90/mese)',
+  tutorialWelcomeTitle: '👋 Benvenuto!',
+  tutorialWelcomeContent: 'Guida rapida',
+  tutorialProductsTitle: '📦 Prodotti',
+  tutorialProductsContent: 'Gestisci prodotti',
+  tutorialUploadTitle: '📄 Carica',
+  tutorialUploadContent: 'Carica fatture',
+  tutorialAddProductTitle: '➕ Aggiungi',
+  tutorialAddProductContent: 'Aggiungi manualmente',
+  tutorialSuppliersTitle: '🏢 Fornitori',
+  tutorialSuppliersContent: 'Gestisci fornitori',
+  tutorialOrdersTitle: '📋 Ordini',
+  tutorialOrdersContent: 'Crea ordini',
+  tutorialCompleteTitle: '🎉 Perfetto!',
+  tutorialCompleteContent: 'Sei pronto!',
+  tutorialCompleteTip: '💡 Inizia caricando una fattura',
+  tutorialBack: 'Indietro',
+  tutorialClose: 'Chiudi',
+  tutorialLast: 'Fine',
+  tutorialNext: 'Avanti',
+  tutorialSkip: 'Salta',
+  search: 'Cerca',
+  filter: 'Filtra',
+  import: 'Importa',
+  error: 'Errore',
+  success: 'Successo',
+  warning: 'Attenzione',
+  info: 'Info',
+  details: 'Dettagli',
+  statistics: 'Statistiche',
+  invoices: 'Fatture',
+  invoicesCount: 'fatture',
+  totalInvoices: 'Totale Fatture',
+  totalProducts: 'Totale Prodotti',
+  monthlyAverage: 'Media Mensile',
+  totalSpent: 'Totale Speso',
+  unlimitedProductsSuppliers: 'Illimitati',
+  fullAccessToAllFeatures: 'Accesso completo',
+  advancedStatistics: 'Statistiche avanzate',
+  paymentCompleted: 'Completato',
+  paymentCancelled: 'Annullato',
+  paymentError: 'Errore',
+  stripeNotConfigured: 'Non configurato',
+  portalError: 'Errore portale',
+  portalNotConfigured: 'Portale non configurato',
+  subscriptionActiveTitle: 'Attivo',
+  subscriptionActiveMessage: 'Abbonamento attivo',
+  redirecting: 'Reindirizzamento...',
+  manageSubscriptionButton: 'Gestisci',
+  manageSubscriptionInfo: 'Gestisci via Stripe',
+  stripePortalFeatures: 'Funzionalità portale',
+  viewPaymentHistory: 'Cronologia pagamenti',
+  updatePaymentMethod: 'Aggiorna metodo',
+  downloadReceipts: 'Scarica ricevute',
+  cancelSubscription: 'Annulla abbonamento',
+  paymentServiceConfiguring: 'Configurazione',
+  paymentServiceConfiguringMessage: 'In configurazione',
+  contactSupportToActivate: 'Contatta supporto',
+  supportChatComing: 'Chat in arrivo',
+  chatWithSupport: 'Chat supporto',
+  securePaymentInfo: 'Info pagamento',
+  invoiceManagement: 'Gestione Fatture',
+  manualEntry: 'Inserimento Manuale',
+  date: 'Data',
+  amount: 'Importo',
+  addInvoice: 'Aggiungi Fattura',
+  invoiceData: 'Dati Fattura',
+  extractedProducts: 'Prodotti Estratti',
+  registeredInvoices: 'Fatture Registrate',
+  clickToExpandYearMonth: 'Clicca per espandere anno/mese',
+  noInvoicesRegistered: 'Nessuna fattura registrata',
+  mobile: 'Cellulare',
+  openingInvoiceManagement: 'Apertura gestione fatture per',
+  invoiceNumber: 'Numero Fattura',
+  together: 'insieme a',
+  supplierDeletedWithInvoices: 'Fornitore eliminato',
+  paid: 'Pagata',
+  unpaid: 'Non Pagata',
+  markAsPaid: 'Segna come Pagata',
+  markAsUnpaid: 'Segna come Non Pagata',
+  invoiceMarkedPaid: 'Fattura segnata come pagata',
+  invoiceMarkedUnpaid: 'Fattura segnata come non pagata',
+  paymentStatus: 'Stato Pagamento',
+  paidInvoices: 'Fatture Pagate',
+  unpaidInvoices: 'Fatture Non Pagate',
+  totalPaid: 'Totale Pagato',
+  totalUnpaid: 'Totale Non Pagato',
+  invoiceProcessedSuccess: 'Fattura elaborata con successo!',
+  invoiceProcessingError: 'Errore nell\'elaborazione della fattura',
+  fillRequiredFields: 'Compila tutti i campi obbligatori',
+  invoiceAddedSuccess: 'Fattura aggiunta con successo!',
+  invoiceAddError: 'Errore nell\'aggiunta della fattura',
+  incompleteInvoiceData: 'Dati fattura incompleti',
+  confirmDeleteInvoice: 'Sei sicuro di voler eliminare questa fattura?',
+  invoiceDeleted: 'Fattura eliminata',
+  featureNotAvailable: 'Funzionalità non disponibile',
+  invoiceUpdateError: 'Errore nell\'aggiornamento della fattura',
+  uploadInvoicePdfOrImage: 'Carica una fattura (PDF o immagine)',
+  processingInProgress: 'Elaborazione in corso...',
+  qty: 'Qtà',
+  match: 'Match',
+  partial: 'Parziale',
+  new: 'Nuovo',
+  priceChanged: 'Prezzo cambiato',
+  deleteInvoice: 'Elimina fattura',
+  unknownSupplier: 'Fornitore Sconosciuto',
+  importOrderFromPhotoPdf: 'Importa Ordine da Foto/PDF',
+  supplierCreated: 'Fornitore creato',
+  productCreated: 'Prodotto creato',
+  apiSettings: 'Impostazioni API',
+  invoiceAdded: 'Fattura aggiunta',
+  averagePerInvoice: 'Media per Fattura',
+  invoiceDetail: 'Dettaglio Fattura',
+  vat: 'IVA',
+  withVAT: 'Con IVA',
+  withoutVAT: 'senza IVA',
+  vatRatesUpdated: 'Aliquote IVA aggiornate per',
+  exportSuccess: '✅ Prodotti esportati con successo!',
+  exportError: 'Errore durante l\'esportazione',
+  areRequired: 'sono obbligatori',
+  errorSavingProduct: 'Errore nel salvataggio del prodotto',
+  manualEdit: 'Modifica manuale',
+  errorUpdatingProduct: 'Errore nell\'aggiornamento del prodotto',
+  errorDeletingProduct: 'Errore nell\'eliminazione del prodotto',
+  pleaseUploadImage: 'Carica un\'immagine (JPG, PNG, WebP)',
+  analyzingInvoice: '🔍 Analisi fattura con AI...',
+  noProductsFoundInInvoice: 'Nessun prodotto trovato nella fattura',
+  supplierRecognized: 'Fornitore riconosciuto',
+  discount: 'Sconto',
+  updatedFromInvoice: 'Aggiornato da fattura',
+  importedFromInvoice: 'Importato da fattura',
+  updated: 'aggiornati',
+  newProducts: 'nuovi',
+  failed: 'falliti',
+  noProductsSaved: 'Nessun prodotto salvato. Controlla i log per dettagli.',
+  errorUploadingInvoice: 'Errore nel caricamento della fattura',
+  verifyImageClear: 'Verifica che l\'immagine sia chiara e leggibile',
+  configureApiKey: 'Configura la tua API key di Google AI per il riconoscimento OCR',
+  usingPersonalKey: 'Stai usando la tua API key personale (account illimitato)',
+  usingDefaultKey: 'Stai usando l\'API key di default (limiti: 15 richieste/minuto)',
+  apiKeyStoredLocally: 'La tua API key viene salvata solo nel browser e non viene mai inviata a server esterni',
+  howToGetApiKey: 'Come ottenere la tua API Key:',
+  apiStep1: 'Vai su Google AI Studio',
+  apiStep2: 'Accedi con il tuo account Google Cloud',
+  apiStep3: 'Clicca su "Get API Key" o "Create API Key"',
+  apiStep4: 'Copia l\'API Key e incollala qui sopra',
+  apiStep5: 'Clicca "Salva Configurazione"',
+  openGoogleAIStudio: 'Apri Google AI Studio',
+  configurationSaved: 'Configurazione salvata con successo!',
+  saveConfiguration: 'Salva Configurazione',
+  restoreDefault: 'Ripristina Default',
+});
+
+// English translations (EN)
+const enTranslations = createCompleteTranslations({
+  ...itTranslations,
+  appTitle: 'RESTO',
+  products: 'Products',
+  suppliers: 'Suppliers',
+  orders: 'Orders',
+  notifications: 'Notifications',
+  dashboard: 'Dashboard',
+  settings: 'Settings',
+  contactUs: 'Contact Us',
+  loginDescription: 'Sign in to your account to manage orders and invoices',
+  registerDescription: 'Create a new account to get started',
+  noAccount: 'Don\'t have an account? Sign up',
+  hasAccount: 'Already have an account? Sign in',
+  enterEmailPassword: 'Enter email and password',
+  passwordsDontMatch: 'Passwords don\'t match',
+  passwordMinLength: 'Password must be at least 6 characters',
+  emailOrPasswordIncorrect: 'Email or password incorrect',
+  emailAlreadyRegistered: 'Email already registered',
+  registrationComplete: 'Registration complete! Check your email.',
+  authError: 'Authentication error',
+  loading: 'Loading...',
+  selectLanguage: 'Select Language',
+  emailConfirmationNotice: 'Check your email to confirm.',
+  fullName: 'Full Name',
+  fullNamePlaceholder: 'John Doe',
+  enterFullName: 'Enter your full name',
+  enterValidEmail: 'Enter a valid email address',
+  enterPassword: 'Enter a password',
+  enterYourEmail: 'Enter your email address',
+  password: 'Password',
+  confirmPassword: 'Confirm Password',
+  passwordNotMeetRequirements: 'Password does not meet all security requirements',
+  databaseErrorRegistration: 'Database error during registration. Check logs for more details.',
+  autoLoginSuccess: 'Logged in automatically!',
+  registrationFailed: 'Registration failed: no user data returned',
+  registrationError: 'Error during registration',
+  registering: 'Registering...',
+  recoverPassword: 'Recover Password',
+  resetPasswordDescription: 'Enter your email address and we will send you a link to reset your password.',
+  recoveryEmailSent: 'Recovery email sent successfully!',
+  errorSendingEmail: 'Error sending email',
+  emailSentSuccess: 'Email sent successfully!',
+  checkEmailInstructions: 'Check your inbox and follow the instructions to reset your password.',
+  emailAddress: 'Email Address',
+  sendEmail: 'Send Email',
+  emailNotReceived: '💡 Didn\'t receive the email? Check your spam folder or try again in a few minutes.',
+  paid: 'Paid',
+  unpaid: 'Unpaid',
+  markAsPaid: 'Mark as Paid',
+  markAsUnpaid: 'Mark as Unpaid',
+  invoiceMarkedPaid: 'Invoice marked as paid',
+  invoiceMarkedUnpaid: 'Invoice marked as unpaid',
+  paymentStatus: 'Payment Status',
+  paidInvoices: 'Paid Invoices',
+  unpaidInvoices: 'Unpaid Invoices',
+  totalPaid: 'Total Paid',
+  totalUnpaid: 'Total Unpaid',
+  invoiceProcessedSuccess: 'Invoice processed successfully!',
+  invoiceProcessingError: 'Error processing invoice',
+  fillRequiredFields: 'Fill all required fields',
+  invoiceAddedSuccess: 'Invoice added successfully!',
+  invoiceAddError: 'Error adding invoice',
+  incompleteInvoiceData: 'Incomplete invoice data',
+  confirmDeleteInvoice: 'Are you sure you want to delete this invoice?',
+  invoiceDeleted: 'Invoice deleted',
+  featureNotAvailable: 'Feature not available',
+  invoiceUpdateError: 'Error updating invoice',
+  uploadInvoicePdfOrImage: 'Upload an invoice (PDF or image)',
+  processingInProgress: 'Processing...',
+  qty: 'Qty',
+  match: 'Match',
+  partial: 'Partial',
+  new: 'New',
+  priceChanged: 'Price changed',
+  deleteInvoice: 'Delete invoice',
+  unknownSupplier: 'Unknown Supplier',
+  deleteSupplier: 'Delete Supplier',
+  importOrderFromPhotoPdf: 'Import Order from Photo/PDF',
+  supplierCreated: 'Supplier created',
+  supplierName: 'Supplier Name',
+  productCreated: 'Product created',
+  apiSettings: 'API Settings',
+  invoiceAdded: 'Invoice added',
+  averagePerInvoice: 'Average per Invoice',
+  invoiceDetail: 'Invoice Detail',
+  vat: 'VAT',
+  withVAT: 'With VAT',
+  withoutVAT: 'without VAT',
+  vatRatesUpdated: 'VAT rates updated for',
+  exportSuccess: '✅ Products exported successfully!',
+  exportError: 'Error during export',
+  areRequired: 'are required',
+  errorSavingProduct: 'Error saving product',
+  manualEdit: 'Manual edit',
+  errorUpdatingProduct: 'Error updating product',
+  errorDeletingProduct: 'Error deleting product',
+  pleaseUploadImage: 'Please upload an image (JPG, PNG, WebP)',
+  analyzingInvoice: '🔍 Analyzing invoice with AI...',
+  noProductsFoundInInvoice: 'No products found in invoice',
+  supplierRecognized: 'Supplier recognized',
+  discount: 'Discount',
+  updatedFromInvoice: 'Updated from invoice',
+  importedFromInvoice: 'Imported from invoice',
+  updated: 'updated',
+  newProducts: 'new',
+  failed: 'failed',
+  noProductsSaved: 'No products saved. Check logs for details.',
+  errorUploadingInvoice: 'Error uploading invoice',
+  verifyImageClear: 'Verify that the image is clear and readable',
+  topProducts: 'Top Products',
+  configureApiKey: 'Configure your Google AI API key for OCR recognition',
+  usingPersonalKey: 'Using your personal API key (unlimited account)',
+  usingDefaultKey: 'Using default API key (limits: 15 requests/minute)',
+  apiKeyStoredLocally: 'Your API key is stored only in the browser and never sent to external servers',
+  howToGetApiKey: 'How to get your API Key:',
+  apiStep1: 'Go to Google AI Studio',
+  apiStep2: 'Sign in with your Google Cloud account',
+  apiStep3: 'Click "Get API Key" or "Create API Key"',
+  apiStep4: 'Copy the API Key and paste it above',
+  apiStep5: 'Click "Save Configuration"',
+  openGoogleAIStudio: 'Open Google AI Studio',
+  configurationSaved: 'Configuration saved successfully!',
+  saveConfiguration: 'Save Configuration',
+  restoreDefault: 'Restore Default',
+});
+
+// Spanish translations (ES)
+const esTranslations = createCompleteTranslations({
+  ...itTranslations,
+  products: 'Productos',
+  suppliers: 'Proveedores',
+  orders: 'Pedidos',
+  notifications: 'Notificaciones',
+  dashboard: 'Panel',
+  settings: 'Configuración',
+  contactUs: 'Contáctanos',
+  loginDescription: 'Inicia sesión en tu cuenta para gestionar pedidos y facturas',
+  registerDescription: 'Crea una nueva cuenta para comenzar',
+  noAccount: '¿No tienes cuenta? Regístrate',
+  hasAccount: '¿Ya tienes cuenta? Inicia sesión',
+  enterEmailPassword: 'Ingresa email y contraseña',
+  passwordsDontMatch: 'Las contraseñas no coinciden',
+  passwordMinLength: 'La contraseña debe tener al menos 6 caracteres',
+  emailOrPasswordIncorrect: 'Email o contraseña incorrectos',
+  emailAlreadyRegistered: 'Email ya registrado',
+  registrationComplete: '¡Registro completado! Revisa tu email.',
+  authError: 'Error de autenticación',
+  loading: 'Cargando...',
+  selectLanguage: 'Seleccionar Idioma',
+  emailConfirmationNotice: 'Revisa tu email para confirmar.',
+  fullName: 'Nombre Completo',
+  fullNamePlaceholder: 'Juan Pérez',
+  enterFullName: 'Ingresa tu nombre completo',
+  enterValidEmail: 'Ingresa una dirección de email válida',
+  enterPassword: 'Ingresa una contraseña',
+  enterYourEmail: 'Ingresa tu dirección de email',
+  password: 'Contraseña',
+  confirmPassword: 'Confirmar Contraseña',
+  passwordNotMeetRequirements: 'La contraseña no cumple con todos los requisitos de seguridad',
+  databaseErrorRegistration: 'Error de base de datos durante el registro. Consulta los registros para más detalles.',
+  autoLoginSuccess: '¡Inicio de sesión automático!',
+  registrationFailed: 'Registro fallido: no se devolvieron datos de usuario',
+  registrationError: 'Error durante el registro',
+  registering: 'Registrando...',
+  recoverPassword: 'Recuperar Contraseña',
+  resetPasswordDescription: 'Ingresa tu dirección de email y te enviaremos un enlace para restablecer tu contraseña.',
+  recoveryEmailSent: '¡Email de recuperación enviado con éxito!',
+  errorSendingEmail: 'Error al enviar el email',
+  emailSentSuccess: '¡Email enviado con éxito!',
+  checkEmailInstructions: 'Revisa tu bandeja de entrada y sigue las instrucciones para restablecer tu contraseña.',
+  emailAddress: 'Dirección de Email',
+  sendEmail: 'Enviar Email',
+  emailNotReceived: '💡 ¿No recibiste el email? Revisa tu carpeta de spam o intenta nuevamente en unos minutos.',
+  paid: 'Pagada',
+  unpaid: 'No Pagada',
+  markAsPaid: 'Marcar como Pagada',
+  markAsUnpaid: 'Marcar como No Pagada',
+  invoiceMarkedPaid: 'Factura marcada como pagada',
+  invoiceMarkedUnpaid: 'Factura marcada como no pagada',
+  paymentStatus: 'Estado de Pago',
+  paidInvoices: 'Facturas Pagadas',
+  unpaidInvoices: 'Facturas No Pagadas',
+  totalPaid: 'Total Pagado',
+  totalUnpaid: 'Total No Pagado',
+  vat: 'IVA',
+  withVAT: 'Con IVA',
+  withoutVAT: 'sin IVA',
+  topProducts: 'Productos Principales',
+});
+
+// French translations (FR)
+const frTranslations = createCompleteTranslations({
+  ...itTranslations,
+  products: 'Produits',
+  suppliers: 'Fournisseurs',
+  orders: 'Commandes',
+  notifications: 'Notifications',
+  dashboard: 'Tableau de Bord',
+  settings: 'Paramètres',
+  contactUs: 'Contactez-nous',
+  loginDescription: 'Connectez-vous à votre compte pour gérer les commandes et les factures',
+  registerDescription: 'Créez un nouveau compte pour commencer',
+  noAccount: 'Pas de compte? Inscrivez-vous',
+  hasAccount: 'Vous avez déjà un compte? Connectez-vous',
+  enterEmailPassword: 'Entrez email et mot de passe',
+  passwordsDontMatch: 'Les mots de passe ne correspondent pas',
+  passwordMinLength: 'Le mot de passe doit contenir au moins 6 caractères',
+  emailOrPasswordIncorrect: 'Email ou mot de passe incorrect',
+  emailAlreadyRegistered: 'Email déjà enregistré',
+  registrationComplete: 'Inscription terminée! Vérifiez votre email.',
+  authError: 'Erreur d\'authentification',
+  loading: 'Chargement...',
+  selectLanguage: 'Sélectionner la Langue',
+  emailConfirmationNotice: 'Vérifiez votre email pour confirmer.',
+  fullName: 'Nom Complet',
+  fullNamePlaceholder: 'Jean Dupont',
+  enterFullName: 'Entrez votre nom complet',
+  enterValidEmail: 'Entrez une adresse email valide',
+  enterPassword: 'Entrez un mot de passe',
+  enterYourEmail: 'Entrez votre adresse email',
+  password: 'Mot de passe',
+  confirmPassword: 'Confirmer le Mot de passe',
+  passwordNotMeetRequirements: 'Le mot de passe ne répond pas à toutes les exigences de sécurité',
+  databaseErrorRegistration: 'Erreur de base de données lors de l\'inscription. Consultez les journaux pour plus de détails.',
+  autoLoginSuccess: 'Connecté automatiquement!',
+  registrationFailed: 'Inscription échouée: aucune donnée utilisateur retournée',
+  registrationError: 'Erreur lors de l\'inscription',
+  registering: 'Inscription en cours...',
+  recoverPassword: 'Récupérer le Mot de passe',
+  resetPasswordDescription: 'Entrez votre adresse email et nous vous enverrons un lien pour réinitialiser votre mot de passe.',
+  recoveryEmailSent: 'Email de récupération envoyé avec succès!',
+  errorSendingEmail: 'Erreur lors de l\'envoi de l\'email',
+  emailSentSuccess: 'Email envoyé avec succès!',
+  checkEmailInstructions: 'Vérifiez votre boîte de réception et suivez les instructions pour réinitialiser votre mot de passe.',
+  emailAddress: 'Adresse Email',
+  sendEmail: 'Envoyer l\'Email',
+  emailNotReceived: '💡 Vous n\'avez pas reçu l\'email? Vérifiez votre dossier spam ou réessayez dans quelques minutes.',
+  paid: 'Payée',
+  unpaid: 'Non Payée',
+  markAsPaid: 'Marquer comme Payée',
+  markAsUnpaid: 'Marquer comme Non Payée',
+  invoiceMarkedPaid: 'Facture marquée comme payée',
+  invoiceMarkedUnpaid: 'Facture marquée comme non payée',
+  paymentStatus: 'État du Paiement',
+  paidInvoices: 'Factures Payées',
+  unpaidInvoices: 'Factures Non Payées',
+  totalPaid: 'Total Payé',
+  totalUnpaid: 'Total Non Payé',
+  vat: 'TVA',
+  withVAT: 'Avec TVA',
+  withoutVAT: 'sans TVA',
+  topProducts: 'Produits Principaux',
+});
+
+// German translations (DE)
+const deTranslations = createCompleteTranslations({
+  ...itTranslations,
+  products: 'Produkte',
+  suppliers: 'Lieferanten',
+  orders: 'Bestellungen',
+  notifications: 'Benachrichtigungen',
+  dashboard: 'Dashboard',
+  settings: 'Einstellungen',
+  contactUs: 'Kontaktieren Sie Uns',
+  loginDescription: 'Melden Sie sich bei Ihrem Konto an, um Bestellungen und Rechnungen zu verwalten',
+  registerDescription: 'Erstellen Sie ein neues Konto, um zu beginnen',
+  noAccount: 'Kein Konto? Registrieren',
+  hasAccount: 'Haben Sie bereits ein Konto? Anmelden',
+  enterEmailPassword: 'E-Mail und Passwort eingeben',
+  passwordsDontMatch: 'Passwörter stimmen nicht überein',
+  passwordMinLength: 'Das Passwort muss mindestens 6 Zeichen lang sein',
+  emailOrPasswordIncorrect: 'E-Mail oder Passwort falsch',
+  emailAlreadyRegistered: 'E-Mail bereits registriert',
+  registrationComplete: 'Registrierung abgeschlossen! Überprüfen Sie Ihre E-Mail.',
+  authError: 'Authentifizierungsfehler',
+  loading: 'Laden...',
+  selectLanguage: 'Sprache Auswählen',
+  emailConfirmationNotice: 'Überprüfen Sie Ihre E-Mail zur Bestätigung.',
+  fullName: 'Vollständiger Name',
+  fullNamePlaceholder: 'Max Mustermann',
+  enterFullName: 'Geben Sie Ihren vollständigen Namen ein',
+  enterValidEmail: 'Geben Sie eine gültige E-Mail-Adresse ein',
+  enterPassword: 'Geben Sie ein Passwort ein',
+  enterYourEmail: 'Geben Sie Ihre E-Mail-Adresse ein',
+  password: 'Passwort',
+  confirmPassword: 'Passwort Bestätigen',
+  passwordNotMeetRequirements: 'Das Passwort erfüllt nicht alle Sicherheitsanforderungen',
+  databaseErrorRegistration: 'Datenbankfehler bei der Registrierung. Überprüfen Sie die Protokolle für weitere Details.',
+  autoLoginSuccess: 'Automatisch angemeldet!',
+  registrationFailed: 'Registrierung fehlgeschlagen: keine Benutzerdaten zurückgegeben',
+  registrationError: 'Fehler bei der Registrierung',
+  registering: 'Registrierung läuft...',
+  recoverPassword: 'Passwort Wiederherstellen',
+  resetPasswordDescription: 'Geben Sie Ihre E-Mail-Adresse ein und wir senden Ihnen einen Link zum Zurücksetzen Ihres Passworts.',
+  recoveryEmailSent: 'Wiederherstellungs-E-Mail erfolgreich gesendet!',
+  errorSendingEmail: 'Fehler beim Senden der E-Mail',
+  emailSentSuccess: 'E-Mail erfolgreich gesendet!',
+  checkEmailInstructions: 'Überprüfen Sie Ihren Posteingang und folgen Sie den Anweisungen zum Zurücksetzen Ihres Passworts.',
+  emailAddress: 'E-Mail-Adresse',
+  sendEmail: 'E-Mail Senden',
+  emailNotReceived: '💡 E-Mail nicht erhalten? Überprüfen Sie Ihren Spam-Ordner oder versuchen Sie es in ein paar Minuten erneut.',
+  paid: 'Bezahlt',
+  unpaid: 'Unbezahlt',
+  markAsPaid: 'Als Bezahlt Markieren',
+  markAsUnpaid: 'Als Unbezahlt Markieren',
+  invoiceMarkedPaid: 'Rechnung als bezahlt markiert',
+  invoiceMarkedUnpaid: 'Rechnung als unbezahlt markiert',
+  paymentStatus: 'Zahlungsstatus',
+  paidInvoices: 'Bezahlte Rechnungen',
+  unpaidInvoices: 'Unbezahlte Rechnungen',
+  totalPaid: 'Gesamt Bezahlt',
+  totalUnpaid: 'Gesamt Unbezahlt',
+  vat: 'MwSt',
+  withVAT: 'Mit MwSt',
+  withoutVAT: 'ohne MwSt',
+  topProducts: 'Top-Produkte',
+});
+
+// Lithuanian translations (LT)
+const ltTranslations = createCompleteTranslations({
+  ...itTranslations,
+  products: 'Produktai',
+  suppliers: 'Tiekėjai',
+  orders: 'Užsakymai',
+  notifications: 'Pranešimai',
+  dashboard: 'Skydelis',
+  settings: 'Nustatymai',
+  contactUs: 'Susisiekite su Mumis',
+  loginDescription: 'Prisijunkite prie savo paskyros, kad valdytumėte užsakymus ir sąskaitas',
+  registerDescription: 'Sukurkite naują paskyrą, kad pradėtumėte',
+  noAccount: 'Neturite paskyros? Registruokitės',
+  hasAccount: 'Jau turite paskyrą? Prisijunkite',
+  enterEmailPassword: 'Įveskite el. paštą ir slaptažodį',
+  passwordsDontMatch: 'Slaptažodžiai nesutampa',
+  passwordMinLength: 'Slaptažodis turi būti bent 6 simbolių',
+  emailOrPasswordIncorrect: 'El. paštas arba slaptažodis neteisingas',
+  emailAlreadyRegistered: 'El. paštas jau užregistruotas',
+  registrationComplete: 'Registracija baigta! Patikrinkite savo el. paštą.',
+  authError: 'Autentifikavimo klaida',
+  loading: 'Kraunama...',
+  selectLanguage: 'Pasirinkti Kalbą',
+  emailConfirmationNotice: 'Patikrinkite savo el. paštą patvirtinimui.',
+  fullName: 'Pilnas Vardas',
+  fullNamePlaceholder: 'Jonas Jonaitis',
+  enterFullName: 'Įveskite savo pilną vardą',
+  enterValidEmail: 'Įveskite galiojantį el. pašto adresą',
+  enterPassword: 'Įveskite slaptažodį',
+  enterYourEmail: 'Įveskite savo el. pašto adresą',
+  password: 'Slaptažodis',
+  confirmPassword: 'Patvirtinti Slaptažodį',
+  passwordNotMeetRequirements: 'Slaptažodis neatitinka visų saugumo reikalavimų',
+  databaseErrorRegistration: 'Duomenų bazės klaida registracijos metu. Patikrinkite žurnalus dėl daugiau informacijos.',
+  autoLoginSuccess: 'Automatiškai prisijungta!',
+  registrationFailed: 'Registracija nepavyko: negrąžinti vartotojo duomenys',
+  registrationError: 'Klaida registracijos metu',
+  registering: 'Registruojama...',
+  recoverPassword: 'Atkurti Slaptažodį',
+  resetPasswordDescription: 'Įveskite savo el. pašto adresą ir mes atsiųsime jums nuorodą slaptažodžio atkūrimui.',
+  recoveryEmailSent: 'Atkūrimo el. laiškas sėkmingai išsiųstas!',
+  errorSendingEmail: 'Klaida siunčiant el. laišką',
+  emailSentSuccess: 'El. laiškas sėkmingai išsiųstas!',
+  checkEmailInstructions: 'Patikrinkite savo gautus laiškus ir vykdykite instrukcijas slaptažodžio atkūrimui.',
+  emailAddress: 'El. Pašto Adresas',
+  sendEmail: 'Siųsti El. Laišką',
+  emailNotReceived: '💡 Negavote el. laiško? Patikrinkite šlamšto aplanką arba bandykite dar kartą po kelių minučių.',
+  paid: 'Apmokėta',
+  unpaid: 'Neapmokėta',
+  markAsPaid: 'Pažymėti kaip Apmokėtą',
+  markAsUnpaid: 'Pažymėti kaip Neapmokėtą',
+  invoiceMarkedPaid: 'Sąskaita pažymėta kaip apmokėta',
+  invoiceMarkedUnpaid: 'Sąskaita pažymėta kaip neapmokėta',
+  paymentStatus: 'Mokėjimo Būsena',
+  paidInvoices: 'Apmokėtos Sąskaitos',
+  unpaidInvoices: 'Neapmokėtos Sąskaitos',
+  totalPaid: 'Iš Viso Apmokėta',
+  totalUnpaid: 'Iš Viso Neapmokėta',
+  vat: 'PVM',
+  withVAT: 'Su PVM',
+  withoutVAT: 'be PVM',
+  topProducts: 'Populiariausi Produktai',
+});
+
+// Export translations
+export const translations: Record<Language, Translations> = {
+  it: itTranslations,
+  en: enTranslations,
+  es: esTranslations,
+  fr: frTranslations,
+  de: deTranslations,
+  lt: ltTranslations,
+};
+
+export function detectBrowserLanguage(): Language {
+  const browserLang = navigator.language || navigator.languages?.[0] || 'it';
+  const primaryLang = browserLang.split('-')[0].toLowerCase();
+  const supportedLanguages: Language[] = ['it', 'en', 'es', 'fr', 'de', 'lt'];
+  
+  if (supportedLanguages.includes(primaryLang as Language)) {
+    return primaryLang as Language;
+  }
+  
+  return 'it';
+}
+
+export function getLanguage(): Language {
+  const savedLang = localStorage.getItem('language');
+  
+  if (savedLang && ['it', 'en', 'es', 'fr', 'de', 'lt'].includes(savedLang)) {
+    return savedLang as Language;
+  }
+  
+  const detectedLang = detectBrowserLanguage();
+  localStorage.setItem('language', detectedLang);
+  
+  return detectedLang;
+}
+
+export function setLanguage(lang: Language): void {
+  localStorage.setItem('language', lang);
+}
+
+export function getAvailableLanguages() {
+  return [
+    { code: 'it' as Language, name: 'Italiano', flag: '🇮🇹' },
+    { code: 'en' as Language, name: 'English', flag: '🇬🇧' },
+    { code: 'es' as Language, name: 'Español', flag: '🇪🇸' },
+    { code: 'fr' as Language, name: 'Français', flag: '🇫🇷' },
+    { code: 'de' as Language, name: 'Deutsch', flag: '🇩🇪' },
+    { code: 'lt' as Language, name: 'Lietuvių', flag: '🇱🇹' },
+  ];
+}
+
+export function useTranslations(language: Language): Translations {
+  return translations[language] || translations.it;
+}
+
+export const languageOptions = [
+  { value: 'it' as Language, label: '🇮🇹 Italiano', flag: '🇮🇹' },
+  { value: 'en' as Language, label: '🇬🇧 English', flag: '🇬🇧' },
+  { value: 'es' as Language, label: '🇪🇸 Español', flag: '🇪🇸' },
+  { value: 'fr' as Language, label: '🇫🇷 Français', flag: '🇫🇷' },
+  { value: 'de' as Language, label: '🇩🇪 Deutsch', flag: '🇩🇪' },
+  { value: 'lt' as Language, label: '🇱🇹 Lietuvių', flag: '🇱🇹' },
+];

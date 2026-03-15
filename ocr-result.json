@@ -1,0 +1,114 @@
+{
+  "products": [
+    {
+      "name": "PINOT GRIGIO CA'LUNGHETTA DOC ROSATO BOTTER 750ml x 6",
+      "price": 3.929,
+      "category": "SECO"
+    },
+    {
+      "name": "DOLCETTO D'ALBA BRICCO VERGNE DOC 750ml x 6",
+      "price": 10.678,
+      "category": "SECO"
+    },
+    {
+      "name": "GAVI DOCG COMUNE DI GAVI GRANEE 750ml x 6",
+      "price": 11.882,
+      "category": "SECO"
+    },
+    {
+      "name": "I MURI NEGROAMARO PUGLIA IGP 750ml x 6",
+      "price": 5.804,
+      "category": "SECO"
+    },
+    {
+      "name": "SPUMANTE ROSÉ EXTRA DRY 750ml x 6",
+      "price": 5.358,
+      "category": "SECO"
+    },
+    {
+      "name": "CREMA DI CARCIOFI (EASY OP) 800g x 12",
+      "price": 13.123,
+      "category": "SECO"
+    },
+    {
+      "name": "LA TARTUFATA CLASSICA (CRISTAL) 500g x 6",
+      "price": 11.187,
+      "category": "SECO"
+    },
+    {
+      "name": "OLIVE RIVIERA SNOCCIOLATE IN OLIO DI SEMI DI GIRASOLE 910grxi",
+      "price": 14.523,
+      "category": "SECO"
+    },
+    {
+      "name": "BIRRA MORETTI RADLER 2º (cluster 33cl x 3) x 8",
+      "price": 1.419,
+      "category": "SECO"
+    },
+    {
+      "name": "PANE SFOGLIATINA GUTTIAU IDP 300g x 10",
+      "price": 5.686,
+      "category": "SECO"
+    },
+    {
+      "name": "PINSA CLASSICA AMBIENT (230g x 2) x 10",
+      "price": 4.816,
+      "category": "SECO"
+    },
+    {
+      "name": "PESTO DI PISTACCHIO E SALE MARINO DI TRAPANI IGP 1Kg x 6",
+      "price": 24.151,
+      "category": "SECO"
+    },
+    {
+      "name": "OLIVE VERDI NOCELLARA DI SICILIA 2,5Kg x 2",
+      "price": 24.012,
+      "category": "SECO"
+    },
+    {
+      "name": "MERLOT TRENTINO DOC 750ml x 6 LA VIS",
+      "price": 6.873,
+      "category": "SECO"
+    },
+    {
+      "name": "FIOR DI LATTE JULIENNE busta 2Kg x 4",
+      "price": 15.872,
+      "category": "FRIO"
+    },
+    {
+      "name": "PORCHETTA CASTELLI ROMANI 1/2 4,5Kg x 1",
+      "price": 15.974,
+      "category": "FRIO"
+    },
+    {
+      "name": "PECORINO ROMANO GRATTUGIATO 500g x 10",
+      "price": 11.09,
+      "category": "FRIO"
+    },
+    {
+      "name": "FOCACCIA ALL'OLIO EXTRAVERGINE D'OLIVA 540g (180g x 3) x 10",
+      "price": 3.723,
+      "category": "CONGELADO"
+    },
+    {
+      "name": "PINSA CLASSICA CONGELADA (230g x 3) x 7",
+      "price": 6.45,
+      "category": "CONGELADO"
+    },
+    {
+      "name": "STRIGOLI 3Kg x 1",
+      "price": 21.591,
+      "category": "CONGELADO"
+    },
+    {
+      "name": "RIGATONI PRECOTTE 1Kg x 4",
+      "price": 4.183,
+      "category": "CONGELADO"
+    },
+    {
+      "name": "LUNETTE CON FORMAGGIO DI CAPRA E CIPOLLA 3Kg x 1",
+      "price": 47.94,
+      "category": "CONGELADO"
+    }
+  ]
+}

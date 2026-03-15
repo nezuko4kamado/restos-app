@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test OCR</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .image-section img {
+            max-width: 100%;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+        }
+        .results-section {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .loading {
+            color: #666;
+            font-style: italic;
+        }
+        .error {
+            color: #d32f2f;
+            background: #ffebee;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success {
+            color: #2e7d32;
+            background: #e8f5e9;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        pre {
+            background: white;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background: #4CAF50;
+            color: white;
+        }
+        .upload-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #e3f2fd;
+            border-radius: 8px;
+        }
+        input[type="file"] {
+            padding: 10px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Test OCR - Riconoscimento Prodotti</h1>
+    
+    <div class="upload-section">
+        <h2>Carica la tua immagine</h2>
+        <input type="file" id="imageInput" accept="image/*">
+        <button onclick="testOCR()">🚀 Avvia Test OCR</button>
+    </div>
+    
+    <div class="container">
+        <div class="image-section">
+            <h2>Immagine da Analizzare</h2>
+            <img id="previewImage" src="" alt="Carica un'immagine" style="display:none;">
+        </div>
+        
+        <div class="results-section">
+            <h2>Risultati OCR</h2>
+            <div id="status"></div>
+            <div id="results"></div>
+        </div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+        
+        document.getElementById('imageInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                selectedFile = file;
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.getElementById('previewImage');
+                    img.src = e.target.result;
+                    img.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        async function testOCR() {
+            const statusDiv = document.getElementById('status');
+            const resultsDiv = document.getElementById('results');
+            
+            if (!selectedFile) {
+                statusDiv.innerHTML = '<div class="error">❌ Per favore carica prima un\'immagine!</div>';
+                return;
+            }
+            
+            statusDiv.innerHTML = '<div class="loading">⏳ Preparazione immagine...</div>';
+            resultsDiv.innerHTML = '';
+            
+            try {
+                statusDiv.innerHTML = '<div class="loading">🔍 Analisi in corso con Gemini 2.0 Flash...</div>';
+                console.log('📸 File caricato:', selectedFile.name, selectedFile.size, 'bytes');
+                
+                // Convert to base64
+                const base64Image = await fileToBase64(selectedFile);
+                console.log('✅ Conversione base64 completata');
+                
+                const prompt = `Analizza attentamente questa immagine e estrai TUTTI i prodotti con i loro prezzi. 
+                   Questa è un'immagine di un listino prezzi italiano.
+                   
+                   ISTRUZIONI IMPORTANTI:
+                   - Estrai OGNI SINGOLO prodotto visibile
+                   - I prezzi sono sulla DESTRA di ogni prodotto
+                   - I prezzi possono essere in formato: €12.50, 12,50€, 12.50, 12,50
+                   - Converti SEMPRE i prezzi in formato decimale con PUNTO (esempio: 12.50)
+                   - Se vedi categorie o sezioni, includile
+                   - Ignora intestazioni, loghi, o testo non rilevante
+                   - Se un prodotto ha varianti (es. "Pomodori - piccoli/grandi"), crea voci separate
+                   
+                   Restituisci un JSON valido nel formato:
+                   {
+                     "products": [
+                       {"name": "nome prodotto esatto", "price": 12.50, "category": "categoria se visibile"}
+                     ]
+                   }
+                   
+                   IMPORTANTE: Restituisci SOLO il JSON, senza testo aggiuntivo prima o dopo.`;
+                
+                // Call Gemini API
+                const apiResponse = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=AIzaSyCBElQTEZHle3gQtXprgWrl7l5WXBQ8Uxo', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [
+                                { text: prompt },
+                                {
+                                    inline_data: {
+                                        mime_type: selectedFile.type,
+                                        data: base64Image.split(',')[1]
+                                    }
+                                }
+                            ]
+                        }],
+                        generationConfig: {
+                            temperature: 0.1,
+                            maxOutputTokens: 8192,
+                        }
+                    })
+                });
+                
+                console.log('📡 Risposta API status:', apiResponse.status);
+                
+                if (!apiResponse.ok) {
+                    const errorData = await apiResponse.json();
+                    console.error('❌ Errore API:', errorData);
+                    throw new Error(`Errore API (${apiResponse.status}): ${JSON.stringify(errorData)}`);
+                }
+                
+                const data = await apiResponse.json();
+                console.log('📦 Dati ricevuti:', data);
+                
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                console.log('📝 Testo estratto:', text);
+                
+                if (!text) {
+                    throw new Error('Nessun testo ricevuto dall\'API');
+                }
+                
+                // Extract JSON
+                let jsonText = text.trim();
+                const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+                if (jsonMatch) {
+                    jsonText = jsonMatch[1].trim();
+                    console.log('✂️ JSON estratto da code block');
+                } else {
+                    const objectMatch = text.match(/\{[\s\S]*\}/);
+                    if (objectMatch) {
+                        jsonText = objectMatch[0];
+                        console.log('✂️ JSON estratto da testo');
+                    }
+                }
+                
+                jsonText = jsonText.replace(/^[^{]*/, '').replace(/[^}]*$/, '');
+                console.log('🧹 JSON pulito:', jsonText);
+                
+                const result = JSON.parse(jsonText);
+                console.log('✅ Parsing completato:', result);
+                
+                // Display results
+                statusDiv.innerHTML = `<div class="success">✅ Trovati ${result.products.length} prodotti!</div>`;
+                
+                let tableHTML = '<table><thead><tr><th>Prodotto</th><th>Prezzo</th><th>Categoria</th></tr></thead><tbody>';
+                result.products.forEach(product => {
+                    tableHTML += `<tr>
+                        <td>${product.name}</td>
+                        <td>€${product.price.toFixed(2)}</td>
+                        <td>${product.category || '-'}</td>
+                    </tr>`;
+                });
+                tableHTML += '</tbody></table>';
+                
+                resultsDiv.innerHTML = tableHTML + '<h3>JSON Completo:</h3><pre>' + JSON.stringify(result, null, 2) + '</pre>';
+                
+            } catch (error) {
+                console.error('❌ Errore:', error);
+                statusDiv.innerHTML = `<div class="error">❌ Errore: ${error.message}</div>`;
+                resultsDiv.innerHTML = '<pre>' + error.stack + '</pre>';
+            }
+        }
+        
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+    </script>
+</body>
+</html>

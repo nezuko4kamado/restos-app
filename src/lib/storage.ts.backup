@@ -1,0 +1,1118 @@
+import { supabase } from './supabase';
+import type { 
+  Product, 
+  Supplier, 
+  Order, 
+  Invoice, 
+  Settings, 
+  OrderItem,
+  ExtractedInvoiceItem,
+  PriceHistory
+} from '@/types';
+
+// ============================================
+// STORAGE KEYS
+// ============================================
+const SETTINGS_KEY = 'restaurant_settings';
+const PRODUCTS_KEY = 'restaurant_products';
+const SUPPLIERS_KEY = 'restaurant_suppliers';
+const ORDERS_KEY = 'restaurant_orders';
+const INVOICES_KEY = 'restaurant_invoices';
+
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+
+export const isSupabaseConfigured = (): boolean => {
+  return !!supabase;
+};
+
+const getCurrentUserId = async (): Promise<string | null> => {
+  if (!supabase) return null;
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  return user?.id || null;
+};
+
+// ============================================
+// DRAFT ORDERS - SUPABASE ONLY
+// ============================================
+
+export interface DraftOrder {
+  orderItems: OrderItem[];
+  temporaryOcrProducts?: Product[];
+}
+
+export const saveDraftOrder = async (draft: DraftOrder): Promise<void> => {
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      console.error('❌ No user logged in, cannot save draft order');
+      throw new Error('User not authenticated');
+    }
+
+    await supabase
+      .from('draft_orders')
+      .delete()
+      .eq('user_id', userId);
+
+    const { error } = await supabase
+      .from('draft_orders')
+      .insert({
+        user_id: userId,
+        order_items: draft.orderItems,
+        temporary_ocr_products: draft.temporaryOcrProducts || []
+      });
+
+    if (error) throw error;
+    console.log('💾 Saved draft order to Supabase:', draft);
+  } catch (error) {
+    console.error('❌ Error saving draft order:', error);
+    throw error;
+  }
+};
+
+export const getDraftOrder = async (): Promise<DraftOrder | null> => {
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      console.log('⚠️ No user logged in, cannot load draft order');
+      return null;
+    }
+
+    const { data, error } = await supabase
+      .from('draft_orders')
+      .select('*')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return null;
+      }
+      throw error;
+    }
+
+    if (!data) return null;
+
+    const draft: DraftOrder = {
+      orderItems: data.order_items || [],
+      temporaryOcrProducts: data.temporary_ocr_products || []
+    };
+
+    console.log('📥 Loaded draft order from Supabase:', draft);
+    return draft;
+  } catch (error) {
+    console.error('❌ Error loading draft order:', error);
+    return null;
+  }
+};
+
+export const clearDraftOrder = async (): Promise<void> => {
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      console.error('❌ No user logged in, cannot clear draft order');
+      return;
+    }
+
+    const { error } = await supabase
+      .from('draft_orders')
+      .delete()
+      .eq('user_id', userId);
+
+    if (error) throw error;
+    console.log('🗑️ Cleared draft order from Supabase');
+  } catch (error) {
+    console.error('❌ Error clearing draft order:', error);
+  }
+};
+
+// ============================================
+// CANCELLED DRAFT ORDERS
+// ============================================
+
+export const saveCancelledDraft = async (draft: DraftOrder): Promise<void> => {
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      console.error('❌ No user logged in, cannot save cancelled draft');
+      throw new Error('User not authenticated');
+    }
+
+    await supabase
+      .from('cancelled_draft_orders')
+      .delete()
+      .eq('user_id', userId);
+
+    const { error } = await supabase
+      .from('cancelled_draft_orders')
+      .insert({
+        user_id: userId,
+        order_items: draft.orderItems,
+        temporary_ocr_products: draft.temporaryOcrProducts || []
+      });
+
+    if (error) throw error;
+    console.log('💾 Saved cancelled draft to Supabase:', draft);
+  } catch (error) {
+    console.error('❌ Error saving cancelled draft:', error);
+    throw error;
+  }
+};
+
+export const getCancelledDraft = async (): Promise<DraftOrder | null> => {
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      console.log('⚠️ No user logged in, cannot load cancelled draft');
+      return null;
+    }
+
+    const { data, error } = await supabase
+      .from('cancelled_draft_orders')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return null;
+      }
+      throw error;
+    }
+
+    if (!data) return null;
+
+    const draft: DraftOrder = {
+      orderItems: data.order_items || [],
+      temporaryOcrProducts: data.temporary_ocr_products || []
+    };
+
+    console.log('📥 Loaded cancelled draft from Supabase:', draft);
+    return draft;
+  } catch (error) {
+    console.error('❌ Error loading cancelled draft:', error);
+    return null;
+  }
+};
+
+export const clearCancelledDraft = async (): Promise<void> => {
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      console.error('❌ No user logged in, cannot clear cancelled draft');
+      return;
+    }
+
+    const { error } = await supabase
+      .from('cancelled_draft_orders')
+      .delete()
+      .eq('user_id', userId);
+
+    if (error) throw error;
+    console.log('🗑️ Cleared cancelled draft from Supabase');
+  } catch (error) {
+    console.error('❌ Error clearing cancelled draft:', error);
+  }
+};
+
+// ============================================
+// SETTINGS
+// ============================================
+
+const DEFAULT_SETTINGS: Settings = {
+  country: 'IT',
+  language: 'it',
+  defaultCurrency: 'EUR',
+  fontSize: 'medium',
+  layoutMode: 'expanded',
+  notifications: {
+    price_change_threshold: 10,
+    recurring_order_reminder_days: 3,
+    enable_recurring_reminders: true
+  },
+  storeName: 'Il Mio Ristorante'
+};
+
+export const loadSettings = async (): Promise<Settings> => {
+  try {
+    const userId = await getCurrentUserId();
+    
+    if (!userId) {
+      console.log('⚠️ No user logged in, using default settings');
+      return DEFAULT_SETTINGS;
+    }
+
+    const { data, error } = await supabase
+      .from('user_settings')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        console.log('📥 No settings found, creating default settings');
+        await saveSettings(DEFAULT_SETTINGS);
+        return DEFAULT_SETTINGS;
+      }
+      throw error;
+    }
+
+    if (!data) return DEFAULT_SETTINGS;
+
+    const settings: Settings = {
+      country: data.country || DEFAULT_SETTINGS.country,
+      language: data.language || DEFAULT_SETTINGS.language,
+      defaultCurrency: data.default_currency || DEFAULT_SETTINGS.defaultCurrency,
+      fontSize: data.font_size || DEFAULT_SETTINGS.fontSize,
+      layoutMode: data.layout_mode || DEFAULT_SETTINGS.layoutMode,
+      notifications: {
+        price_change_threshold: data.price_change_threshold || 10,
+        recurring_order_reminder_days: data.recurring_order_reminder_days || 3,
+        enable_recurring_reminders: data.enable_recurring_reminders ?? true
+      },
+      storeName: data.store_name || DEFAULT_SETTINGS.storeName
+    };
+
+    console.log('📥 Loaded settings from Supabase:', settings);
+    return settings;
+  } catch (error) {
+    console.error('❌ Error loading settings:', error);
+    return DEFAULT_SETTINGS;
+  }
+};
+
+export const getSettings = loadSettings;
+
+export const saveSettings = async (settings: Settings): Promise<void> => {
+  try {
+    const userId = await getCurrentUserId();
+    
+    if (!userId) {
+      console.error('❌ No user logged in, cannot save settings');
+      throw new Error('User not authenticated');
+    }
+
+    const settingsData = {
+      user_id: userId,
+      country: settings.country,
+      language: settings.language,
+      default_currency: settings.defaultCurrency,
+      font_size: settings.fontSize,
+      layout_mode: settings.layoutMode,
+      price_change_threshold: settings.notifications?.price_change_threshold || 10,
+      recurring_order_reminder_days: settings.notifications?.recurring_order_reminder_days || 3,
+      enable_recurring_reminders: settings.notifications?.enable_recurring_reminders ?? true,
+      store_name: settings.storeName,
+      updated_at: new Date().toISOString()
+    };
+
+    const { error } = await supabase
+      .from('user_settings')
+      .upsert(settingsData, {
+        onConflict: 'user_id'
+      });
+
+    if (error) throw error;
+    console.log('✅ Saved settings to Supabase:', settings);
+  } catch (error) {
+    console.error('❌ Error saving settings:', error);
+    throw error;
+  }
+};
+
+// ============================================
+// PRODUCTS
+// ============================================
+
+export const getProducts = async (): Promise<Product[]> => {
+  try {
+    const userId = await getCurrentUserId();
+    
+    if (!userId) {
+      console.warn('⚠️ No user logged in, cannot load products');
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('user_id', userId)
+      .order('name');
+
+    if (error) throw error;
+
+    const products: Product[] = (data || []).map(item => ({
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      image: item.image,
+      supplierId: item.supplier_id,
+      supplier_id: item.supplier_id,
+      category: item.category,
+      priceHistory: item.price_history || [],
+      price_history: item.price_history || [],
+      vatRate: item.vat_rate,
+      vat_rate: item.vat_rate,
+      discountPercent: item.discount_percent,
+      originalPrice: item.original_price,
+      original_price: item.original_price,
+      discount: item.discount,
+      unit: item.unit,
+      notes: item.notes,
+      code: item.code,
+      ean_code: item.ean_code,
+      created_at: item.created_at,
+      updated_at: item.updated_at,
+      last_price_change: item.last_price_change,
+      stock_quantity: item.stock_quantity,
+      min_stock_level: item.min_stock_level
+    }));
+
+    console.log('📥 Fetched', products.length, 'products from Supabase');
+    return products;
+  } catch (error) {
+    console.error('❌ Error fetching products:', error);
+    return [];
+  }
+};
+
+export const saveProducts = async (products: Product[]): Promise<void> => {
+  try {
+    const userId = await getCurrentUserId();
+    
+    if (!userId) {
+      console.error('❌ No user logged in, cannot save products');
+      throw new Error('User not authenticated');
+    }
+
+    const uniqueProducts = Array.from(
+      new Map(products.map(p => [p.id, p])).values()
+    );
+
+    const productsData = uniqueProducts.map(product => ({
+      id: product.id,
+      user_id: userId,
+      name: product.name,
+      price: product.price,
+      image: product.image,
+      supplier_id: product.supplierId || product.supplier_id,
+      category: product.category,
+      price_history: product.priceHistory || product.price_history || [],
+      vat_rate: product.vatRate || product.vat_rate,
+      discount_percent: product.discountPercent,
+      original_price: product.originalPrice || product.original_price,
+      discount: product.discount,
+      unit: product.unit,
+      notes: product.notes,
+      code: product.code,
+      ean_code: product.ean_code,
+      stock_quantity: product.stock_quantity,
+      min_stock_level: product.min_stock_level,
+      updated_at: new Date().toISOString()
+    }));
+
+    const { error } = await supabase
+      .from('products')
+      .upsert(productsData, {
+        onConflict: 'id'
+      });
+
+    if (error) throw error;
+    console.log('✅ Saved', uniqueProducts.length, 'products to Supabase');
+  } catch (error) {
+    console.error('❌ Error saving products:', error);
+    throw error;
+  }
+};
+
+export const addProduct = async (productData: Partial<Product>): Promise<Product> => {
+  try {
+    const userId = await getCurrentUserId();
+    
+    if (!userId) {
+      console.error('❌ No user logged in, cannot add product');
+      throw new Error('User not authenticated');
+    }
+
+    const newProductData = {
+      user_id: userId,
+      name: productData.name,
+      price: productData.price,
+      image: productData.image,
+      supplier_id: productData.supplier_id || productData.supplierId,
+      category: productData.category || 'general',
+      price_history: productData.priceHistory || productData.price_history || [],
+      vat_rate: productData.vatRate || productData.vat_rate,
+      discount_percent: productData.discountPercent,
+      original_price: productData.originalPrice || productData.original_price,
+      discount: productData.discount,
+      unit: productData.unit || 'kg',
+      notes: productData.notes,
+      code: productData.code,
+      ean_code: productData.ean_code,
+      stock_quantity: productData.stock_quantity,
+      min_stock_level: productData.min_stock_level,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    const { data, error } = await supabase
+      .from('products')
+      .insert(newProductData)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    const product: Product = {
+      id: data.id,
+      name: data.name,
+      price: data.price,
+      image: data.image,
+      supplierId: data.supplier_id,
+      supplier_id: data.supplier_id,
+      category: data.category,
+      priceHistory: data.price_history || [],
+      price_history: data.price_history || [],
+      vatRate: data.vat_rate,
+      vat_rate: data.vat_rate,
+      discountPercent: data.discount_percent,
+      originalPrice: data.original_price,
+      original_price: data.original_price,
+      discount: data.discount,
+      unit: data.unit,
+      notes: data.notes,
+      code: data.code,
+      ean_code: data.ean_code,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+      last_price_change: data.last_price_change,
+      stock_quantity: data.stock_quantity,
+      min_stock_level: data.min_stock_level
+    };
+
+    console.log('✅ Added product to Supabase:', product.name);
+    return product;
+  } catch (error) {
+    console.error('❌ Error adding product:', error);
+    throw error;
+  }
+};
+
+export const updateProduct = async (id: string, updates: Partial<Product>): Promise<void> => {
+  try {
+    const userId = await getCurrentUserId();
+    
+    if (!userId) {
+      console.error('❌ No user logged in, cannot update product');
+      throw new Error('User not authenticated');
+    }
+
+    const updateData: Record<string, unknown> = {
+      updated_at: new Date().toISOString()
+    };
+
+    if (updates.name !== undefined) updateData.name = updates.name;
+    if (updates.price !== undefined) updateData.price = updates.price;
+    if (updates.image !== undefined) updateData.image = updates.image;
+    if (updates.supplier_id !== undefined || updates.supplierId !== undefined) {
+      updateData.supplier_id = updates.supplier_id || updates.supplierId;
+    }
+    if (updates.category !== undefined) updateData.category = updates.category;
+    if (updates.priceHistory !== undefined || updates.price_history !== undefined) {
+      updateData.price_history = updates.priceHistory || updates.price_history;
+    }
+    if (updates.vatRate !== undefined || updates.vat_rate !== undefined) {
+      updateData.vat_rate = updates.vatRate || updates.vat_rate;
+    }
+    if (updates.discountPercent !== undefined) updateData.discount_percent = updates.discountPercent;
+    if (updates.originalPrice !== undefined || updates.original_price !== undefined) {
+      updateData.original_price = updates.originalPrice || updates.original_price;
+    }
+    if (updates.discount !== undefined) updateData.discount = updates.discount;
+    if (updates.unit !== undefined) updateData.unit = updates.unit;
+    if (updates.notes !== undefined) updateData.notes = updates.notes;
+    if (updates.code !== undefined) updateData.code = updates.code;
+    if (updates.ean_code !== undefined) updateData.ean_code = updates.ean_code;
+    if (updates.stock_quantity !== undefined) updateData.stock_quantity = updates.stock_quantity;
+    if (updates.min_stock_level !== undefined) updateData.min_stock_level = updates.min_stock_level;
+    if (updates.last_price_change !== undefined) updateData.last_price_change = updates.last_price_change;
+
+    const { error } = await supabase
+      .from('products')
+      .update(updateData)
+      .eq('id', id)
+      .eq('user_id', userId);
+
+    if (error) throw error;
+    console.log('✅ Updated product in Supabase:', id);
+  } catch (error) {
+    console.error('❌ Error updating product:', error);
+    throw error;
+  }
+};
+
+export const deleteProduct = async (id: string): Promise<void> => {
+  try {
+    const userId = await getCurrentUserId();
+    
+    if (!userId) {
+      console.error('❌ No user logged in, cannot delete product');
+      throw new Error('User not authenticated');
+    }
+
+    const { error } = await supabase
+      .from('products')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId);
+
+    if (error) throw error;
+    console.log('✅ Deleted product from Supabase:', id);
+  } catch (error) {
+    console.error('❌ Error deleting product:', error);
+    throw error;
+  }
+};
+
+// ============================================
+// SUPPLIERS
+// ============================================
+
+export const getSuppliers = async (): Promise<Supplier[]> => {
+  try {
+    const userId = await getCurrentUserId();
+    
+    if (!userId) {
+      console.warn('⚠️ No user logged in, cannot load suppliers');
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from('suppliers')
+      .select('*')
+      .eq('user_id', userId)
+      .order('name');
+
+    if (error) throw error;
+
+    const suppliers: Supplier[] = (data || []).map(item => ({
+      id: item.id,
+      name: item.name,
+      phone: item.phone,
+      mobile: item.mobile,
+      email: item.email,
+      products: item.products || [],
+      address: item.address,
+      notes: item.notes,
+      country: item.country,
+      created_at: item.created_at,
+      updated_at: item.updated_at,
+      is_whitelisted: item.is_whitelisted,
+      contact: item.contact
+    }));
+
+    console.log('📥 Fetched', suppliers.length, 'suppliers from Supabase');
+    return suppliers;
+  } catch (error) {
+    console.error('❌ Error fetching suppliers:', error);
+    return [];
+  }
+};
+
+export const saveSuppliers = async (suppliers: Supplier[]): Promise<void> => {
+  try {
+    const userId = await getCurrentUserId();
+    
+    if (!userId) {
+      console.error('❌ No user logged in, cannot save suppliers');
+      throw new Error('User not authenticated');
+    }
+
+    // CRITICAL FIX: Don't save empty array during deletion
+    if (suppliers.length === 0) {
+      console.log('⏸️ Skipping save of empty suppliers array');
+      return;
+    }
+
+    const suppliersData = suppliers.map(supplier => ({
+      id: supplier.id,
+      user_id: userId,
+      name: supplier.name,
+      phone: supplier.phone,
+      mobile: supplier.mobile,
+      email: supplier.email,
+      products: supplier.products || [],
+      address: supplier.address,
+      notes: supplier.notes,
+      country: supplier.country,
+      is_whitelisted: supplier.is_whitelisted,
+      contact: supplier.contact,
+      updated_at: new Date().toISOString()
+    }));
+
+    const { error } = await supabase
+      .from('suppliers')
+      .upsert(suppliersData, {
+        onConflict: 'id'
+      });
+
+    if (error) throw error;
+    console.log('✅ Saved', suppliers.length, 'suppliers to Supabase');
+  } catch (error) {
+    console.error('❌ Error saving suppliers:', error);
+    throw error;
+  }
+};
+
+export const addSupplier = async (supplierData: Partial<Supplier>): Promise<Supplier> => {
+  try {
+    const userId = await getCurrentUserId();
+    
+    if (!userId) {
+      console.error('❌ No user logged in, cannot add supplier');
+      throw new Error('User not authenticated');
+    }
+
+    const newSupplierData = {
+      user_id: userId,
+      name: supplierData.name,
+      phone: supplierData.phone,
+      mobile: supplierData.mobile,
+      email: supplierData.email,
+      products: supplierData.products || [],
+      address: supplierData.address,
+      notes: supplierData.notes,
+      country: supplierData.country,
+      is_whitelisted: supplierData.is_whitelisted || false,
+      contact: supplierData.contact,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    const { data, error } = await supabase
+      .from('suppliers')
+      .insert(newSupplierData)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    const supplier: Supplier = {
+      id: data.id,
+      name: data.name,
+      phone: data.phone,
+      mobile: data.mobile,
+      email: data.email,
+      products: data.products || [],
+      address: data.address,
+      notes: data.notes,
+      country: data.country,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+      is_whitelisted: data.is_whitelisted,
+      contact: data.contact
+    };
+
+    console.log('✅ Added supplier to Supabase:', supplier.name);
+    return supplier;
+  } catch (error) {
+    console.error('❌ Error adding supplier:', error);
+    throw error;
+  }
+};
+
+export const deleteSupplier = async (id: string): Promise<void> => {
+  try {
+    const userId = await getCurrentUserId();
+    
+    if (!userId) {
+      console.error('❌ No user logged in, cannot delete supplier');
+      throw new Error('User not authenticated');
+    }
+
+    const { error } = await supabase
+      .from('suppliers')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId);
+
+    if (error) throw error;
+    console.log('✅ Deleted supplier from Supabase:', id);
+  } catch (error) {
+    console.error('❌ Error deleting supplier:', error);
+    throw error;
+  }
+};
+
+// ============================================
+// ORDERS
+// ============================================
+
+export const getOrders = async (): Promise<Order[]> => {
+  try {
+    const userId = await getCurrentUserId();
+    
+    if (!userId) {
+      console.warn('⚠️ No user logged in, cannot load orders');
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    const orders: Order[] = (data || []).map(item => ({
+      id: item.id,
+      date: item.order_date || item.created_at,
+      order_date: item.order_date,
+      items: item.items || [],
+      total: item.total,
+      status: item.status,
+      is_recurring: item.is_recurring,
+      recurrence_frequency: item.recurrence_frequency,
+      next_order_date: item.next_order_date,
+      created_at: item.created_at,
+      updated_at: item.updated_at,
+      supplier_id: item.supplier_id,
+      order_number: item.order_number
+    }));
+
+    console.log('📥 Fetched', orders.length, 'orders from Supabase');
+    return orders;
+  } catch (error) {
+    console.error('❌ Error fetching orders:', error);
+    return [];
+  }
+};
+
+export const saveOrders = async (orders: Order[]): Promise<void> => {
+  try {
+    const userId = await getCurrentUserId();
+    
+    if (!userId) {
+      console.error('❌ No user logged in, cannot save orders');
+      throw new Error('User not authenticated');
+    }
+
+    const ordersData = orders.map(order => ({
+      id: order.id,
+      user_id: userId,
+      order_date: order.date || order.order_date,
+      items: order.items || [],
+      total: order.total,
+      status: order.status,
+      is_recurring: order.is_recurring,
+      recurrence_frequency: order.recurrence_frequency,
+      next_order_date: order.next_order_date,
+      supplier_id: order.supplier_id,
+      order_number: order.order_number,
+      updated_at: new Date().toISOString()
+    }));
+
+    const { error } = await supabase
+      .from('orders')
+      .upsert(ordersData, {
+        onConflict: 'id'
+      });
+
+    if (error) throw error;
+    console.log('✅ Saved', orders.length, 'orders to Supabase');
+  } catch (error) {
+    console.error('❌ Error saving orders:', error);
+    throw error;
+  }
+};
+
+export const updateOrder = async (id: string, updates: Partial<Order>): Promise<void> => {
+  try {
+    const userId = await getCurrentUserId();
+    
+    if (!userId) {
+      console.error('❌ No user logged in, cannot update order');
+      throw new Error('User not authenticated');
+    }
+
+    const updateData: Record<string, unknown> = {
+      updated_at: new Date().toISOString()
+    };
+
+    if (updates.supplier_id !== undefined) updateData.supplier_id = updates.supplier_id;
+    if (updates.items !== undefined) updateData.items = updates.items;
+    if (updates.status !== undefined) updateData.status = updates.status;
+    if (updates.total !== undefined) updateData.total = updates.total;
+    if (updates.order_date !== undefined || updates.date !== undefined) {
+      updateData.order_date = updates.order_date || updates.date;
+    }
+    if (updates.is_recurring !== undefined) updateData.is_recurring = updates.is_recurring;
+    if (updates.recurrence_frequency !== undefined) updateData.recurrence_frequency = updates.recurrence_frequency;
+    if (updates.next_order_date !== undefined) updateData.next_order_date = updates.next_order_date;
+    if (updates.order_number !== undefined) updateData.order_number = updates.order_number;
+
+    const { error } = await supabase
+      .from('orders')
+      .update(updateData)
+      .eq('id', id)
+      .eq('user_id', userId);
+
+    if (error) throw error;
+    console.log('✅ Updated order in Supabase:', id);
+  } catch (error) {
+    console.error('❌ Error updating order:', error);
+    throw error;
+  }
+};
+
+export const deleteOrder = async (id: string): Promise<void> => {
+  try {
+    const userId = await getCurrentUserId();
+    
+    if (!userId) {
+      console.error('❌ No user logged in, cannot delete order');
+      throw new Error('User not authenticated');
+    }
+
+    const { error } = await supabase
+      .from('orders')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId);
+
+    if (error) throw error;
+    console.log('✅ Deleted order from Supabase:', id);
+  } catch (error) {
+    console.error('❌ Error deleting order:', error);
+    throw error;
+  }
+};
+
+// ============================================
+// INVOICES - FIXED TO USE CORRECT TABLE NAME
+// ============================================
+
+export const getInvoices = async (): Promise<Invoice[]> => {
+  try {
+    const userId = await getCurrentUserId();
+    
+    if (!userId) {
+      console.warn('⚠️ No user logged in, cannot load invoices');
+      return [];
+    }
+
+    console.log('🔵 Fetching invoices for user:', userId);
+
+    // CRITICAL FIX: Use correct table name 'app_43909_invoices'
+    const { data, error } = await supabase
+      .from('app_43909_invoices')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Supabase error fetching invoices:', error);
+      throw error;
+    }
+
+    // CRITICAL FIX: Filter out invoices without supplier_id (old/invalid invoices)
+    const allInvoices = (data || []).map(item => ({
+      id: item.id,
+      user_id: item.user_id,
+      supplier_id: item.supplier_id,
+      supplierId: item.supplier_id,
+      order_id: item.order_id,
+      invoice_number: item.invoice_number,
+      invoiceNumber: item.invoice_number,
+      date: item.invoice_date,
+      invoice_date: item.invoice_date,
+      amount: item.total_amount || 0,
+      total: item.total_amount || 0,
+      total_amount: item.total_amount || 0,
+      vat_amount: item.vat_amount || 0,
+      vat_breakdown: item.vat_breakdown || [],
+      is_paid: item.is_paid || false,
+      isPaid: item.is_paid || false,
+      payment_date: item.payment_date,
+      supplier_name: item.supplier_name || '',
+      items: item.items || [],
+      notes: item.notes || '',
+      status: item.is_paid ? 'paid' : 'unpaid',
+      issued_at: item.issued_at,
+      created_at: item.created_at,
+      createdAt: item.created_at,
+      updated_at: item.updated_at
+    }));
+
+    // Filter out invalid invoices (missing supplier_id)
+    const validInvoices = allInvoices.filter(invoice => {
+      if (!invoice.supplier_id) {
+        console.warn(`⚠️ Skipping invoice ${invoice.id} - missing supplier_id (old invoice from before migration)`);
+        return false;
+      }
+      return true;
+    });
+
+    const skippedCount = allInvoices.length - validInvoices.length;
+    if (skippedCount > 0) {
+      console.log(`⚠️ Filtered out ${skippedCount} invalid invoice(s) without supplier_id`);
+    }
+
+    console.log('📥 Fetched', validInvoices.length, 'valid invoices from Supabase');
+    return validInvoices;
+  } catch (error) {
+    console.error('❌ Error fetching invoices:', error);
+    return [];
+  }
+};
+
+export const saveInvoices = async (invoices: Invoice[]): Promise<void> => {
+  try {
+    const userId = await getCurrentUserId();
+    
+    if (!userId) {
+      console.error('❌ No user logged in, cannot save invoices');
+      throw new Error('User not authenticated');
+    }
+
+    // CRITICAL FIX: Don't save empty array during deletion
+    if (invoices.length === 0) {
+      console.log('⏸️ Skipping save of empty invoices array');
+      return;
+    }
+
+    console.log('🔵 Saving', invoices.length, 'invoices for user:', userId);
+
+    const invoicesData = invoices.map(invoice => {
+      // CRITICAL FIX: Normalize supplier_id from both possible field names
+      const supplierId = invoice.supplier_id || invoice.supplierId;
+      const invoiceNumber = invoice.invoice_number || invoice.invoiceNumber;
+      const invoiceDate = invoice.date || invoice.invoice_date;
+      
+      // Fix the nullish coalescing issue
+      let isPaid = false;
+      if (invoice.is_paid !== undefined && invoice.is_paid !== null) {
+        isPaid = invoice.is_paid;
+      } else if (invoice.isPaid !== undefined && invoice.isPaid !== null) {
+        isPaid = invoice.isPaid;
+      } else if (invoice.status === 'paid') {
+        isPaid = true;
+      }
+      
+      console.log('🔍 [DEBUG] Processing invoice for save:');
+      console.log('  - invoice.id:', invoice.id);
+      console.log('  - invoice.supplier_id:', invoice.supplier_id);
+      console.log('  - invoice.supplierId:', invoice.supplierId);
+      console.log('  - Normalized supplierId:', supplierId);
+      console.log('  - invoice.invoice_number:', invoice.invoice_number);
+      console.log('  - invoice.invoiceNumber:', invoice.invoiceNumber);
+      console.log('  - Normalized invoiceNumber:', invoiceNumber);
+      console.log('  - invoice.date:', invoice.date);
+      console.log('  - invoice.invoice_date:', invoice.invoice_date);
+      console.log('  - Normalized invoiceDate:', invoiceDate);
+      
+      if (!supplierId) {
+        console.error('❌ Missing supplier_id for invoice:', invoice.id);
+        console.error('   Invoice object:', JSON.stringify(invoice, null, 2));
+        throw new Error(`supplier_id is required for invoice ${invoice.id}`);
+      }
+      if (!invoiceNumber) {
+        console.error('❌ Missing invoice_number for invoice:', invoice.id);
+        throw new Error(`invoice_number is required for invoice ${invoice.id}`);
+      }
+      if (!invoiceDate) {
+        console.error('❌ Missing date for invoice:', invoice.id);
+        throw new Error(`date is required for invoice ${invoice.id}`);
+      }
+
+      const invoiceData = {
+        id: invoice.id,
+        user_id: userId,
+        supplier_id: supplierId,
+        invoice_number: invoiceNumber,
+        supplier_name: invoice.supplier_name || '',
+        invoice_date: invoiceDate,
+        total_amount: invoice.amount || invoice.total || invoice.total_amount || 0,
+        vat_amount: invoice.vat_amount || 0,
+        vat_breakdown: invoice.vat_breakdown || [],
+        is_paid: isPaid,
+        payment_date: invoice.payment_date || null,
+        notes: invoice.notes || '',
+        items: invoice.items || []
+      };
+
+      console.log('📤 [DEBUG] Prepared invoice data for upsert:');
+      console.log('  - id:', invoiceData.id);
+      console.log('  - user_id:', invoiceData.user_id);
+      console.log('  - supplier_id:', invoiceData.supplier_id);
+      console.log('  - invoice_number:', invoiceData.invoice_number);
+      console.log('  - invoice_date:', invoiceData.invoice_date);
+      console.log('  - total_amount:', invoiceData.total_amount);
+      console.log('  - vat_amount:', invoiceData.vat_amount);
+      console.log('  - is_paid:', invoiceData.is_paid);
+      console.log('  - items_count:', invoiceData.items.length);
+      console.log('  - Full data:', JSON.stringify(invoiceData, null, 2));
+      
+      return invoiceData;
+    });
+
+    console.log('📤 [DEBUG] About to call Supabase upsert with', invoicesData.length, 'invoice(s)');
+    console.log('📤 [DEBUG] First invoice data:', JSON.stringify(invoicesData[0], null, 2));
+
+    // CRITICAL FIX: Use correct table name 'app_43909_invoices'
+    const { data, error } = await supabase
+      .from('app_43909_invoices')
+      .upsert(invoicesData, {
+        onConflict: 'id'
+      })
+      .select();
+
+    if (error) {
+      console.error('❌ [DEBUG] Supabase upsert error:', error);
+      console.error('   Error code:', error.code);
+      console.error('   Error message:', error.message);
+      console.error('   Error details:', error.details);
+      console.error('   Error hint:', error.hint);
+      throw error;
+    }
+    
+    console.log('✅ [DEBUG] Supabase upsert successful');
+    console.log('✅ [DEBUG] Returned data:', data);
+    console.log('✅ Saved', invoices.length, 'invoices to Supabase');
+  } catch (error) {
+    console.error('❌ Error saving invoices:', error);
+    throw error;
+  }
+};
+
+export const deleteInvoice = async (id: string): Promise<void> => {
+  try {
+    const userId = await getCurrentUserId();
+    
+    if (!userId) {
+      console.error('❌ No user logged in, cannot delete invoice');
+      throw new Error('User not authenticated');
+    }
+
+    // CRITICAL FIX: Use correct table name 'app_43909_invoices'
+    const { error } = await supabase
+      .from('app_43909_invoices')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId);
+
+    if (error) throw error;
+    console.log('✅ Deleted invoice from Supabase:', id);
+  } catch (error) {
+    console.error('❌ Error deleting invoice:', error);
+    throw error;
+  }
+};

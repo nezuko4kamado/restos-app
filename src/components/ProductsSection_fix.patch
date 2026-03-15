@@ -1,0 +1,32 @@
+--- a/src/components/ProductsSection.tsx
++++ b/src/components/ProductsSection.tsx
+@@ -45,6 +45,7 @@ export default function ProductsSection({
+   const [searchQuery, setSearchQuery] = useState('');
+   const [uploading, setUploading] = useState(false);
+   const [selectedSupplier, setSelectedSupplier] = useState<string>('');
++  const [isProcessingUpload, setIsProcessingUpload] = useState(false);
+ 
+   const { t } = useLanguage();
+ 
+@@ -123,6 +124,13 @@ export default function ProductsSection({
+   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+     const files = Array.from(event.target.files || []);
+     if (files.length === 0) return;
++
++    // PREVENT MULTIPLE SIMULTANEOUS UPLOADS
++    if (isProcessingUpload) {
++      console.warn('⚠️ Upload already in progress, ignoring duplicate call');
++      return;
++    }
++    setIsProcessingUpload(true);
+ 
+     // Validate all files are images
+     const invalidFiles = files.filter(file => !file.type.startsWith('image/'));
+@@ -234,6 +242,7 @@ export default function ProductsSection({
+       toast.error(error instanceof Error ? error.message : (t.errorUploadingInvoice || 'Error uploading invoice'));
+     } finally {
+       setUploading(false);
++      setIsProcessingUpload(false);
+       toast.dismiss(loadingToast);
+       
+       // Reset file input

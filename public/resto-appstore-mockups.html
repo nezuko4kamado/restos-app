@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RESTO - App Store Mockups</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800;900&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .mockup-container {
+            width: 414px;
+            height: 896px;
+            background: white;
+            border-radius: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .gradient-bg-1 {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .gradient-bg-2 {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        
+        .gradient-bg-3 {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+        
+        .gradient-bg-4 {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        }
+        
+        .gradient-bg-5 {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+        
+        .phone-notch {
+            width: 150px;
+            height: 30px;
+            background: black;
+            border-radius: 0 0 20px 20px;
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+        }
+        
+        .app-icon {
+            width: 120px;
+            height: 120px;
+            background: white;
+            border-radius: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 30px rgba(103, 58, 183, 0.4);
+            padding: 10px;
+        }
+        
+        .app-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        
+        .price-alert {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .chart-line {
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 1000;
+            animation: draw 2s ease-out forwards;
+        }
+        
+        @keyframes draw {
+            to { stroke-dashoffset: 0; }
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .whatsapp-btn {
+            background: #25D366;
+            color: white;
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-weight: 600;
+            box-shadow: 0 8px 20px rgba(37,211,102,0.3);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 py-12">
+    <div class="container mx-auto px-4">
+        <div class="text-center mb-12">
+            <h1 class="text-5xl font-black text-gray-900 mb-4">RESTO App Store Mockups</h1>
+            <p class="text-xl text-gray-600">5 schermate professionali per App Store (1242x2688px)</p>
+        </div>
+
+        <!-- Mockup 1: Hero/Copertina -->
+        <div class="mb-16">
+            <div class="flex flex-col items-center">
+                <div id="mockup-1" class="mockup-container gradient-bg-1">
+                    <div class="phone-notch"></div>
+                    <div class="h-full flex flex-col items-center justify-center px-8 pt-12 pb-8">
+                        <div class="app-icon mb-8">
+                            <img src="FullLogo_Transparent.png" alt="RESTO Logo">
+                        </div>
+                        <h1 class="text-5xl font-black text-white text-center mb-4 leading-tight">
+                            Controlla le<br>fatture con<br>una foto
+                        </h1>
+                        <p class="text-2xl text-white/90 text-center mb-12 font-semibold">
+                            Risparmia tempo e denaro
+                        </p>
+                        
+                        <!-- Phone mockup showing invoice scan -->
+                        <div class="bg-white rounded-3xl p-6 shadow-2xl w-full max-w-sm">
+                            <div class="bg-gradient-to-br from-orange-100 to-red-100 rounded-2xl p-6 mb-4">
+                                <div class="flex items-center justify-between mb-4">
+                                    <span class="text-sm font-semibold text-gray-700">Fattura #1234</span>
+                                    <span class="bg-green-500 text-white text-xs px-3 py-1 rounded-full font-bold">✓ Scansionata</span>
+                                </div>
+                                <div class="space-y-2">
+                                    <div class="flex justify-between text-sm">
+                                        <span class="text-gray-600">Pomodori</span>
+                                        <span class="font-bold text-gray-900">€12.50</span>
+                                    </div>
+                                    <div class="flex justify-between text-sm">
+                                        <span class="text-gray-600">Mozzarella</span>
+                                        <span class="font-bold text-gray-900">€8.90</span>
+                                    </div>
+                                    <div class="flex justify-between text-sm">
+                                        <span class="text-gray-600">Basilico</span>
+                                        <span class="font-bold text-gray-900">€3.20</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-center">
+                                <div class="inline-flex items-center gap-2 bg-blue-500 text-white px-6 py-3 rounded-xl font-bold">
+                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
+                                        <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/>
+                                    </svg>
+                                    Scansiona Fattura
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-8 flex gap-2">
+                            <div class="w-2 h-2 bg-white rounded-full"></div>
+                            <div class="w-2 h-2 bg-white/50 rounded-full"></div>
+                            <div class="w-2 h-2 bg-white/50 rounded-full"></div>
+                            <div class="w-2 h-2 bg-white/50 rounded-full"></div>
+                            <div class="w-2 h-2 bg-white/50 rounded-full"></div>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="downloadMockup('mockup-1', 'RESTO-Screenshot-1-Hero')" 
+                        class="mt-6 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-bold shadow-lg transition">
+                    📥 Scarica Schermata 1
+                </button>
+            </div>
+        </div>
+
+        <!-- Mockup 2: Rilevamento prezzi -->
+        <div class="mb-16">
+            <div class="flex flex-col items-center">
+                <div id="mockup-2" class="mockup-container gradient-bg-2">
+                    <div class="phone-notch"></div>
+                    <div class="h-full flex flex-col px-8 pt-16 pb-8">
+                        <div class="text-center mb-8">
+                            <h2 class="text-4xl font-black text-white mb-3 leading-tight">
+                                Scopri subito gli<br>aumenti di prezzo
+                            </h2>
+                            <p class="text-lg text-white/90 font-semibold">
+                                L'AI ti avvisa quando i fornitori<br>aumentano i prezzi
+                            </p>
+                        </div>
+                        
+                        <div class="flex-1 bg-white rounded-3xl p-6 overflow-hidden">
+                            <div class="flex items-center justify-between mb-6">
+                                <h3 class="text-xl font-bold text-gray-900">Avvisi Prezzi</h3>
+                                <span class="bg-red-500 text-white text-sm px-3 py-1 rounded-full font-bold">3 Nuovi</span>
+                            </div>
+                            
+                            <div class="space-y-4">
+                                <!-- Alert 1 -->
+                                <div class="price-alert rounded-2xl p-4 text-white">
+                                    <div class="flex items-start justify-between mb-2">
+                                        <div class="flex-1">
+                                            <h4 class="font-bold text-lg mb-1">Olio Extra Vergine</h4>
+                                            <p class="text-sm opacity-90">Fornitore: Oleificio Rossi</p>
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="text-2xl font-black">↑ 15%</div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between pt-3 border-t border-white/30">
+                                        <div>
+                                            <div class="text-xs opacity-75">Vecchio prezzo</div>
+                                            <div class="font-bold line-through">€12.50</div>
+                                        </div>
+                                        <div class="text-3xl font-black">→</div>
+                                        <div>
+                                            <div class="text-xs opacity-75">Nuovo prezzo</div>
+                                            <div class="font-bold text-2xl">€14.38</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Alert 2 -->
+                                <div class="bg-orange-500 rounded-2xl p-4 text-white">
+                                    <div class="flex items-start justify-between mb-2">
+                                        <div class="flex-1">
+                                            <h4 class="font-bold text-lg mb-1">Parmigiano Reggiano</h4>
+                                            <p class="text-sm opacity-90">Fornitore: Caseificio Bianchi</p>
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="text-2xl font-black">↑ 8%</div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between pt-3 border-t border-white/30">
+                                        <div>
+                                            <div class="text-xs opacity-75">Vecchio prezzo</div>
+                                            <div class="font-bold line-through">€18.90</div>
+                                        </div>
+                                        <div class="text-3xl font-black">→</div>
+                                        <div>
+                                            <div class="text-xs opacity-75">Nuovo prezzo</div>
+                                            <div class="font-bold text-2xl">€20.41</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Alert 3 -->
+                                <div class="bg-yellow-500 rounded-2xl p-4 text-white">
+                                    <div class="flex items-start justify-between mb-2">
+                                        <div class="flex-1">
+                                            <h4 class="font-bold text-lg mb-1">Farina Tipo 00</h4>
+                                            <p class="text-sm opacity-90">Fornitore: Molino Verdi</p>
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="text-2xl font-black">↑ 5%</div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between pt-3 border-t border-white/30">
+                                        <div>
+                                            <div class="text-xs opacity-75">Vecchio prezzo</div>
+                                            <div class="font-bold line-through">€8.50</div>
+                                        </div>
+                                        <div class="text-3xl font-black">→</div>
+                                        <div>
+                                            <div class="text-xs opacity-75">Nuovo prezzo</div>
+                                            <div class="font-bold text-2xl">€8.93</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-6 flex gap-2 justify-center">
+                            <div class="w-2 h-2 bg-white/50 rounded-full"></div>
+                            <div class="w-2 h-2 bg-white rounded-full"></div>
+                            <div class="w-2 h-2 bg-white/50 rounded-full"></div>
+                            <div class="w-2 h-2 bg-white/50 rounded-full"></div>
+                            <div class="w-2 h-2 bg-white/50 rounded-full"></div>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="downloadMockup('mockup-2', 'RESTO-Screenshot-2-PriceAlerts')" 
+                        class="mt-6 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-bold shadow-lg transition">
+                    📥 Scarica Schermata 2
+                </button>
+            </div>
+        </div>
+
+        <!-- Mockup 3: Confronto storico -->
+        <div class="mb-16">
+            <div class="flex flex-col items-center">
+                <div id="mockup-3" class="mockup-container gradient-bg-3">
+                    <div class="phone-notch"></div>
+                    <div class="h-full flex flex-col px-8 pt-16 pb-8">
+                        <div class="text-center mb-8">
+                            <h2 class="text-4xl font-black text-white mb-3 leading-tight">
+                                Confronta i prezzi<br>nel tempo
+                            </h2>
+                            <p class="text-lg text-white/90 font-semibold">
+                                Analizza l'evoluzione dei costi<br>per fornitore e prodotto
+                            </p>
+                        </div>
+                        
+                        <div class="flex-1 bg-white rounded-3xl p-6">
+                            <div class="mb-6">
+                                <h3 class="text-xl font-bold text-gray-900 mb-2">Olio Extra Vergine</h3>
+                                <p class="text-sm text-gray-600">Ultimi 6 mesi</p>
+                            </div>
+                            
+                            <!-- Chart -->
+                            <div class="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-6 mb-6">
+                                <svg width="100%" height="200" viewBox="0 0 300 200">
+                                    <!-- Grid lines -->
+                                    <line x1="0" y1="40" x2="300" y2="40" stroke="#e5e7eb" stroke-width="1"/>
+                                    <line x1="0" y1="80" x2="300" y2="80" stroke="#e5e7eb" stroke-width="1"/>
+                                    <line x1="0" y1="120" x2="300" y2="120" stroke="#e5e7eb" stroke-width="1"/>
+                                    <line x1="0" y1="160" x2="300" y2="160" stroke="#e5e7eb" stroke-width="1"/>
+                                    
+                                    <!-- Price line -->
+                                    <polyline
+                                        points="0,160 50,150 100,145 150,140 200,120 250,100 300,90"
+                                        fill="none"
+                                        stroke="url(#gradient)"
+                                        stroke-width="4"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        class="chart-line"
+                                    />
+                                    
+                                    <!-- Data points -->
+                                    <circle cx="0" cy="160" r="6" fill="#3b82f6"/>
+                                    <circle cx="50" cy="150" r="6" fill="#3b82f6"/>
+                                    <circle cx="100" cy="145" r="6" fill="#3b82f6"/>
+                                    <circle cx="150" cy="140" r="6" fill="#3b82f6"/>
+                                    <circle cx="200" cy="120" r="6" fill="#ef4444"/>
+                                    <circle cx="250" cy="100" r="6" fill="#ef4444"/>
+                                    <circle cx="300" cy="90" r="8" fill="#ef4444"/>
+                                    
+                                    <!-- Gradient definition -->
+                                    <defs>
+                                        <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                            <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+                                            <stop offset="70%" style="stop-color:#3b82f6;stop-opacity:1" />
+                                            <stop offset="100%" style="stop-color:#ef4444;stop-opacity:1" />
+                                        </linearGradient>
+                                    </defs>
+                                    
+                                    <!-- Labels -->
+                                    <text x="0" y="190" font-size="10" fill="#6b7280" text-anchor="middle">Gen</text>
+                                    <text x="50" y="190" font-size="10" fill="#6b7280" text-anchor="middle">Feb</text>
+                                    <text x="100" y="190" font-size="10" fill="#6b7280" text-anchor="middle">Mar</text>
+                                    <text x="150" y="190" font-size="10" fill="#6b7280" text-anchor="middle">Apr</text>
+                                    <text x="200" y="190" font-size="10" fill="#6b7280" text-anchor="middle">Mag</text>
+                                    <text x="250" y="190" font-size="10" fill="#6b7280" text-anchor="middle">Giu</text>
+                                    <text x="300" y="190" font-size="10" fill="#6b7280" text-anchor="middle">Lug</text>
+                                </svg>
+                            </div>
+                            
+                            <!-- Stats -->
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="stat-card">
+                                    <div class="text-xs text-gray-500 mb-1">Prezzo Iniziale</div>
+                                    <div class="text-2xl font-black text-gray-900">€12.50</div>
+                                    <div class="text-xs text-green-600 font-bold mt-1">Gennaio 2024</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="text-xs text-gray-500 mb-1">Prezzo Attuale</div>
+                                    <div class="text-2xl font-black text-red-600">€14.38</div>
+                                    <div class="text-xs text-red-600 font-bold mt-1">↑ 15% (€1.88)</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="text-xs text-gray-500 mb-1">Prezzo Medio</div>
+                                    <div class="text-2xl font-black text-gray-900">€13.12</div>
+                                    <div class="text-xs text-gray-500 mt-1">6 mesi</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="text-xs text-gray-500 mb-1">Variazione</div>
+                                    <div class="text-2xl font-black text-orange-600">+€0.31</div>
+                                    <div class="text-xs text-orange-600 font-bold mt-1">al mese</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-6 flex gap-2 justify-center">
+                            <div class="w-2 h-2 bg-white/50 rounded-full"></div>
+                            <div class="w-2 h-2 bg-white/50 rounded-full"></div>
+                            <div class="w-2 h-2 bg-white rounded-full"></div>
+                            <div class="w-2 h-2 bg-white/50 rounded-full"></div>
+                            <div class="w-2 h-2 bg-white/50 rounded-full"></div>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="downloadMockup('mockup-3', 'RESTO-Screenshot-3-PriceHistory')" 
+                        class="mt-6 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-bold shadow-lg transition">
+                    📥 Scarica Schermata 3
+                </button>
+            </div>
+        </div>
+
+        <!-- Mockup 4: Ordini veloci -->
+        <div class="mb-16">
+            <div class="flex flex-col items-center">
+                <div id="mockup-4" class="mockup-container gradient-bg-4">
+                    <div class="phone-notch"></div>
+                    <div class="h-full flex flex-col px-8 pt-16 pb-8">
+                        <div class="text-center mb-8">
+                            <h2 class="text-4xl font-black text-white mb-3 leading-tight">
+                                Ordina in un click<br>via WhatsApp
+                            </h2>
+                            <p class="text-lg text-white/90 font-semibold">
+                                Invia ordini direttamente<br>ai fornitori
+                            </p>
+                        </div>
+                        
+                        <div class="flex-1 bg-white rounded-3xl p-6">
+                            <div class="mb-6">
+                                <h3 class="text-xl font-bold text-gray-900 mb-1">Nuovo Ordine</h3>
+                                <p class="text-sm text-gray-600">Fornitore: Oleificio Rossi</p>
+                            </div>
+                            
+                            <!-- Product list -->
+                            <div class="space-y-3 mb-6">
+                                <div class="bg-gray-50 rounded-xl p-4">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="font-bold text-gray-900">Olio Extra Vergine</span>
+                                        <span class="text-sm text-gray-500">€14.38/L</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-3">
+                                            <button class="w-8 h-8 bg-gray-200 rounded-lg font-bold">−</button>
+                                            <span class="font-bold text-xl">10</span>
+                                            <button class="w-8 h-8 bg-blue-500 text-white rounded-lg font-bold">+</button>
+                                        </div>
+                                        <span class="font-black text-xl text-gray-900">€143.80</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="bg-gray-50 rounded-xl p-4">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="font-bold text-gray-900">Aceto Balsamico</span>
+                                        <span class="text-sm text-gray-500">€8.50/L</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-3">
+                                            <button class="w-8 h-8 bg-gray-200 rounded-lg font-bold">−</button>
+                                            <span class="font-bold text-xl">5</span>
+                                            <button class="w-8 h-8 bg-blue-500 text-white rounded-lg font-bold">+</button>
+                                        </div>
+                                        <span class="font-black text-xl text-gray-900">€42.50</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="bg-gray-50 rounded-xl p-4">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="font-bold text-gray-900">Olio di Semi</span>
+                                        <span class="text-sm text-gray-500">€6.20/L</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-3">
+                                            <button class="w-8 h-8 bg-gray-200 rounded-lg font-bold">−</button>
+                                            <span class="font-bold text-xl">15</span>
+                                            <button class="w-8 h-8 bg-blue-500 text-white rounded-lg font-bold">+</button>
+                                        </div>
+                                        <span class="font-black text-xl text-gray-900">€93.00</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Total -->
+                            <div class="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl p-4 mb-4">
+                                <div class="flex items-center justify-between text-white">
+                                    <span class="text-lg font-bold">Totale Ordine</span>
+                                    <span class="text-3xl font-black">€279.30</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Action buttons -->
+                            <div class="space-y-3">
+                                <button class="whatsapp-btn w-full flex items-center justify-center gap-3">
+                                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                                    </svg>
+                                    <span>Invia via WhatsApp</span>
+                                </button>
+                                
+                                <button class="w-full bg-gray-200 text-gray-700 py-4 rounded-xl font-bold flex items-center justify-center gap-3">
+                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/>
+                                        <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/>
+                                    </svg>
+                                    <span>Invia via Email</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-6 flex gap-2 justify-center">
+                            <div class="w-2 h-2 bg-white/50 rounded-full"></div>
+                            <div class="w-2 h-2 bg-white/50 rounded-full"></div>
+                            <div class="w-2 h-2 bg-white/50 rounded-full"></div>
+                            <div class="w-2 h-2 bg-white rounded-full"></div>
+                            <div class="w-2 h-2 bg-white/50 rounded-full"></div>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="downloadMockup('mockup-4', 'RESTO-Screenshot-4-QuickOrders')" 
+                        class="mt-6 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-bold shadow-lg transition">
+                    📥 Scarica Schermata 4
+                </button>
+            </div>
+        </div>
+
+        <!-- Mockup 5: Dashboard completa -->
+        <div class="mb-16">
+            <div class="flex flex-col items-center">
+                <div id="mockup-5" class="mockup-container gradient-bg-5">
+                    <div class="phone-notch"></div>
+                    <div class="h-full flex flex-col px-8 pt-16 pb-8">
+                        <div class="text-center mb-8">
+                            <h2 class="text-4xl font-black text-white mb-3 leading-tight">
+                                Tutto sotto<br>controllo
+                            </h2>
+                            <p class="text-lg text-white/90 font-semibold">
+                                Fatture, ordini, statistiche<br>in un'unica app
+                            </p>
+                        </div>
+                        
+                        <div class="flex-1 bg-white rounded-3xl p-6 overflow-y-auto">
+                            <!-- KPI Cards -->
+                            <div class="grid grid-cols-2 gap-3 mb-6">
+                                <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-4 text-white">
+                                    <div class="text-xs opacity-80 mb-1">Fatture Mese</div>
+                                    <div class="text-3xl font-black">24</div>
+                                    <div class="text-xs mt-2 opacity-90">↑ 12% vs mese scorso</div>
+                                </div>
+                                <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-4 text-white">
+                                    <div class="text-xs opacity-80 mb-1">Spesa Totale</div>
+                                    <div class="text-3xl font-black">€8.4K</div>
+                                    <div class="text-xs mt-2 opacity-90">↓ 5% risparmio</div>
+                                </div>
+                                <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-4 text-white">
+                                    <div class="text-xs opacity-80 mb-1">Fornitori</div>
+                                    <div class="text-3xl font-black">12</div>
+                                    <div class="text-xs mt-2 opacity-90">8 attivi questo mese</div>
+                                </div>
+                                <div class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-4 text-white">
+                                    <div class="text-xs opacity-80 mb-1">Prodotti</div>
+                                    <div class="text-3xl font-black">156</div>
+                                    <div class="text-xs mt-2 opacity-90">+8 questo mese</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Mini chart -->
+                            <div class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-4 mb-6">
+                                <h4 class="text-sm font-bold text-gray-700 mb-3">Andamento Spese</h4>
+                                <svg width="100%" height="80" viewBox="0 0 300 80">
+                                    <polyline
+                                        points="0,60 50,45 100,50 150,35 200,40 250,25 300,30"
+                                        fill="none"
+                                        stroke="#3b82f6"
+                                        stroke-width="3"
+                                        stroke-linecap="round"
+                                    />
+                                    <polyline
+                                        points="0,60 50,45 100,50 150,35 200,40 250,25 300,30"
+                                        fill="url(#chartGradient)"
+                                        opacity="0.2"
+                                    />
+                                    <defs>
+                                        <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                            <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+                                            <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:0" />
+                                        </linearGradient>
+                                    </defs>
+                                </svg>
+                            </div>
+                            
+                            <!-- Recent invoices -->
+                            <div>
+                                <h4 class="text-sm font-bold text-gray-700 mb-3">Fatture Recenti</h4>
+                                <div class="space-y-2">
+                                    <div class="flex items-center justify-between bg-gray-50 rounded-xl p-3">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center text-white font-bold">
+                                                OR
+                                            </div>
+                                            <div>
+                                                <div class="font-bold text-sm text-gray-900">Oleificio Rossi</div>
+                                                <div class="text-xs text-gray-500">15 Lug 2024</div>
+                                            </div>
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="font-black text-gray-900">€342.50</div>
+                                            <div class="text-xs text-green-600 font-bold">Pagata</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="flex items-center justify-between bg-gray-50 rounded-xl p-3">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center text-white font-bold">
+                                                CB
+                                            </div>
+                                            <div>
+                                                <div class="font-bold text-sm text-gray-900">Caseificio Bianchi</div>
+                                                <div class="text-xs text-gray-500">14 Lug 2024</div>
+                                            </div>
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="font-black text-gray-900">€189.20</div>
+                                            <div class="text-xs text-orange-600 font-bold">In attesa</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="flex items-center justify-between bg-gray-50 rounded-xl p-3">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center text-white font-bold">
+                                                MV
+                                            </div>
+                                            <div>
+                                                <div class="font-bold text-sm text-gray-900">Molino Verdi</div>
+                                                <div class="text-xs text-gray-500">12 Lug 2024</div>
+                                            </div>
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="font-black text-gray-900">€156.80</div>
+                                            <div class="text-xs text-green-600 font-bold">Pagata</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-6 flex gap-2 justify-center">
+                            <div class="w-2 h-2 bg-white/50 rounded-full"></div>
+                            <div class="w-2 h-2 bg-white/50 rounded-full"></div>
+                            <div class="w-2 h-2 bg-white/50 rounded-full"></div>
+                            <div class="w-2 h-2 bg-white/50 rounded-full"></div>
+                            <div class="w-2 h-2 bg-white rounded-full"></div>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="downloadMockup('mockup-5', 'RESTO-Screenshot-5-Dashboard')" 
+                        class="mt-6 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-bold shadow-lg transition">
+                    📥 Scarica Schermata 5
+                </button>
+            </div>
+        </div>
+
+        <!-- Download All Button -->
+        <div class="text-center mt-12">
+            <button onclick="downloadAllMockups()" 
+                    class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-12 py-4 rounded-xl font-black text-xl shadow-2xl transition transform hover:scale-105">
+                📥 Scarica Tutte le 5 Schermate
+            </button>
+            <p class="text-gray-600 mt-4">Le immagini saranno scaricate in formato PNG (1242x2688px)</p>
+        </div>
+    </div>
+
+    <script>
+        async function downloadMockup(elementId, filename) {
+            const element = document.getElementById(elementId);
+            const canvas = await html2canvas(element, {
+                scale: 3, // 3x scale for 1242px width (414 * 3)
+                backgroundColor: null,
+                logging: false,
+                useCORS: true
+            });
+            
+            const link = document.createElement('a');
+            link.download = `${filename}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        async function downloadAllMockups() {
+            const mockups = [
+                { id: 'mockup-1', name: 'RESTO-Screenshot-1-Hero' },
+                { id: 'mockup-2', name: 'RESTO-Screenshot-2-PriceAlerts' },
+                { id: 'mockup-3', name: 'RESTO-Screenshot-3-PriceHistory' },
+                { id: 'mockup-4', name: 'RESTO-Screenshot-4-QuickOrders' },
+                { id: 'mockup-5', name: 'RESTO-Screenshot-5-Dashboard' }
+            ];
+
+            for (let i = 0; i < mockups.length; i++) {
+                await downloadMockup(mockups[i].id, mockups[i].name);
+                // Small delay between downloads
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            
+            alert('✅ Tutte le 5 schermate sono state scaricate!');
+        }
+    </script>
+</body>
+</html>

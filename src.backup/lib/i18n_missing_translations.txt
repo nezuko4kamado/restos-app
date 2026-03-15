@@ -1,0 +1,204 @@
+MISSING TRANSLATIONS TO ADD TO i18n.ts
+
+1. Add to Translations interface (after line 296):
+
+  // Payment Section - Additional translations
+  unlimitedProductsSuppliers: string;
+  fullAccessToAllFeatures: string;
+  advancedStatistics: string;
+  paymentCompleted: string;
+  paymentCancelled: string;
+  paymentError: string;
+  stripeNotConfigured: string;
+  portalError: string;
+  portalNotConfigured: string;
+  subscriptionActiveTitle: string;
+  subscriptionActiveMessage: string;
+  redirecting: string;
+  manageSubscriptionButton: string;
+  manageSubscriptionInfo: string;
+  stripePortalFeatures: string;
+  viewPaymentHistory: string;
+  updatePaymentMethod: string;
+  downloadReceipts: string;
+  cancelSubscription: string;
+  paymentServiceConfiguring: string;
+  paymentServiceConfiguringMessage: string;
+  contactSupportToActivate: string;
+  supportChatComing: string;
+  chatWithSupport: string;
+  securePaymentInfo: string;
+
+2. Add to Italian translations (it) - after line 588:
+
+    // Payment Section - Additional translations
+    unlimitedProductsSuppliers: 'Prodotti e fornitori illimitati',
+    fullAccessToAllFeatures: 'Accesso completo a tutte le funzionalità',
+    advancedStatistics: 'Statistiche avanzate',
+    paymentCompleted: 'Pagamento completato con successo!',
+    paymentCancelled: 'Pagamento annullato',
+    paymentError: 'Errore durante il pagamento',
+    stripeNotConfigured: 'Servizio di pagamento non configurato',
+    portalError: 'Errore durante l\'apertura del portale',
+    portalNotConfigured: 'Portale non configurato',
+    subscriptionActiveTitle: 'Abbonamento Attivo',
+    subscriptionActiveMessage: 'Il tuo abbonamento è attivo e tutte le funzionalità sono disponibili.',
+    redirecting: 'Reindirizzamento in corso...',
+    manageSubscriptionButton: 'Gestisci Abbonamento',
+    manageSubscriptionInfo: 'Verrai reindirizzato al portale sicuro di Stripe per gestire il tuo abbonamento.',
+    stripePortalFeatures: 'Nel portale Stripe puoi:',
+    viewPaymentHistory: 'Visualizzare lo storico dei pagamenti',
+    updatePaymentMethod: 'Aggiornare il metodo di pagamento',
+    downloadReceipts: 'Scaricare le ricevute',
+    cancelSubscription: 'Annullare l\'abbonamento',
+    paymentServiceConfiguring: 'Servizio di Pagamento in Configurazione',
+    paymentServiceConfiguringMessage: 'Il sistema di pagamento è attualmente in fase di configurazione. Per attivare il tuo abbonamento, contatta il supporto.',
+    contactSupportToActivate: 'Contatta il supporto per attivare il tuo abbonamento:',
+    supportChatComing: 'Chat di supporto disponibile a breve',
+    chatWithSupport: 'Chatta con il supporto',
+    securePaymentInfo: 'Verrai reindirizzato a Stripe per completare il pagamento in modo sicuro. I tuoi dati sono protetti.',
+
+3. Add to English translations (en) - after line 880:
+
+    // Payment Section - Additional translations
+    unlimitedProductsSuppliers: 'Unlimited products and suppliers',
+    fullAccessToAllFeatures: 'Full access to all features',
+    advancedStatistics: 'Advanced statistics',
+    paymentCompleted: 'Payment completed successfully!',
+    paymentCancelled: 'Payment cancelled',
+    paymentError: 'Error during payment',
+    stripeNotConfigured: 'Payment service not configured',
+    portalError: 'Error opening portal',
+    portalNotConfigured: 'Portal not configured',
+    subscriptionActiveTitle: 'Active Subscription',
+    subscriptionActiveMessage: 'Your subscription is active and all features are available.',
+    redirecting: 'Redirecting...',
+    manageSubscriptionButton: 'Manage Subscription',
+    manageSubscriptionInfo: 'You will be redirected to Stripe\'s secure portal to manage your subscription.',
+    stripePortalFeatures: 'In the Stripe portal you can:',
+    viewPaymentHistory: 'View payment history',
+    updatePaymentMethod: 'Update payment method',
+    downloadReceipts: 'Download receipts',
+    cancelSubscription: 'Cancel subscription',
+    paymentServiceConfiguring: 'Payment Service Configuring',
+    paymentServiceConfiguringMessage: 'The payment system is currently being configured. To activate your subscription, contact support.',
+    contactSupportToActivate: 'Contact support to activate your subscription:',
+    supportChatComing: 'Support chat coming soon',
+    chatWithSupport: 'Chat with support',
+    securePaymentInfo: 'You will be redirected to Stripe to complete payment securely. Your data is protected.',
+
+4. Add to Spanish translations (es) - after line 1135:
+
+    // Payment Section - Additional translations
+    unlimitedProductsSuppliers: 'Productos y proveedores ilimitados',
+    fullAccessToAllFeatures: 'Acceso completo a todas las funciones',
+    advancedStatistics: 'Estadísticas avanzadas',
+    paymentCompleted: '¡Pago completado con éxito!',
+    paymentCancelled: 'Pago cancelado',
+    paymentError: 'Error durante el pago',
+    stripeNotConfigured: 'Servicio de pago no configurado',
+    portalError: 'Error al abrir el portal',
+    portalNotConfigured: 'Portal no configurado',
+    subscriptionActiveTitle: 'Suscripción Activa',
+    subscriptionActiveMessage: 'Tu suscripción está activa y todas las funciones están disponibles.',
+    redirecting: 'Redirigiendo...',
+    manageSubscriptionButton: 'Gestionar Suscripción',
+    manageSubscriptionInfo: 'Serás redirigido al portal seguro de Stripe para gestionar tu suscripción.',
+    stripePortalFeatures: 'En el portal de Stripe puedes:',
+    viewPaymentHistory: 'Ver historial de pagos',
+    updatePaymentMethod: 'Actualizar método de pago',
+    downloadReceipts: 'Descargar recibos',
+    cancelSubscription: 'Cancelar suscripción',
+    paymentServiceConfiguring: 'Servicio de Pago en Configuración',
+    paymentServiceConfiguringMessage: 'El sistema de pago está actualmente en configuración. Para activar tu suscripción, contacta con soporte.',
+    contactSupportToActivate: 'Contacta con soporte para activar tu suscripción:',
+    supportChatComing: 'Chat de soporte disponible pronto',
+    chatWithSupport: 'Chatear con soporte',
+    securePaymentInfo: 'Serás redirigido a Stripe para completar el pago de forma segura. Tus datos están protegidos.',
+
+5. Add to French translations (fr) - after line 1386:
+
+    // Payment Section - Additional translations
+    unlimitedProductsSuppliers: 'Produits et fournisseurs illimités',
+    fullAccessToAllFeatures: 'Accès complet à toutes les fonctionnalités',
+    advancedStatistics: 'Statistiques avancées',
+    paymentCompleted: 'Paiement effectué avec succès !',
+    paymentCancelled: 'Paiement annulé',
+    paymentError: 'Erreur lors du paiement',
+    stripeNotConfigured: 'Service de paiement non configuré',
+    portalError: 'Erreur lors de l\'ouverture du portail',
+    portalNotConfigured: 'Portail non configuré',
+    subscriptionActiveTitle: 'Abonnement Actif',
+    subscriptionActiveMessage: 'Votre abonnement est actif et toutes les fonctionnalités sont disponibles.',
+    redirecting: 'Redirection en cours...',
+    manageSubscriptionButton: 'Gérer l\'Abonnement',
+    manageSubscriptionInfo: 'Vous serez redirigé vers le portail sécurisé de Stripe pour gérer votre abonnement.',
+    stripePortalFeatures: 'Dans le portail Stripe, vous pouvez :',
+    viewPaymentHistory: 'Voir l\'historique des paiements',
+    updatePaymentMethod: 'Mettre à jour le moyen de paiement',
+    downloadReceipts: 'Télécharger les reçus',
+    cancelSubscription: 'Annuler l\'abonnement',
+    paymentServiceConfiguring: 'Service de Paiement en Configuration',
+    paymentServiceConfiguringMessage: 'Le système de paiement est actuellement en cours de configuration. Pour activer votre abonnement, contactez le support.',
+    contactSupportToActivate: 'Contactez le support pour activer votre abonnement :',
+    supportChatComing: 'Chat de support bientôt disponible',
+    chatWithSupport: 'Discuter avec le support',
+    securePaymentInfo: 'Vous serez redirigé vers Stripe pour effectuer le paiement en toute sécurité. Vos données sont protégées.',
+
+6. Add to German translations (de) - after line 1637:
+
+    // Payment Section - Additional translations
+    unlimitedProductsSuppliers: 'Unbegrenzte Produkte und Lieferanten',
+    fullAccessToAllFeatures: 'Vollzugriff auf alle Funktionen',
+    advancedStatistics: 'Erweiterte Statistiken',
+    paymentCompleted: 'Zahlung erfolgreich abgeschlossen!',
+    paymentCancelled: 'Zahlung abgebrochen',
+    paymentError: 'Fehler bei der Zahlung',
+    stripeNotConfigured: 'Zahlungsdienst nicht konfiguriert',
+    portalError: 'Fehler beim Öffnen des Portals',
+    portalNotConfigured: 'Portal nicht konfiguriert',
+    subscriptionActiveTitle: 'Aktives Abonnement',
+    subscriptionActiveMessage: 'Ihr Abonnement ist aktiv und alle Funktionen sind verfügbar.',
+    redirecting: 'Weiterleitung...',
+    manageSubscriptionButton: 'Abonnement Verwalten',
+    manageSubscriptionInfo: 'Sie werden zum sicheren Portal von Stripe weitergeleitet, um Ihr Abonnement zu verwalten.',
+    stripePortalFeatures: 'Im Stripe-Portal können Sie:',
+    viewPaymentHistory: 'Zahlungsverlauf anzeigen',
+    updatePaymentMethod: 'Zahlungsmethode aktualisieren',
+    downloadReceipts: 'Belege herunterladen',
+    cancelSubscription: 'Abonnement kündigen',
+    paymentServiceConfiguring: 'Zahlungsdienst wird konfiguriert',
+    paymentServiceConfiguringMessage: 'Das Zahlungssystem wird derzeit konfiguriert. Um Ihr Abonnement zu aktivieren, kontaktieren Sie den Support.',
+    contactSupportToActivate: 'Kontaktieren Sie den Support, um Ihr Abonnement zu aktivieren:',
+    supportChatComing: 'Support-Chat bald verfügbar',
+    chatWithSupport: 'Mit Support chatten',
+    securePaymentInfo: 'Sie werden zu Stripe weitergeleitet, um die Zahlung sicher abzuschließen. Ihre Daten sind geschützt.',
+
+7. Add to Lithuanian translations (lt) - after line 1888:
+
+    // Payment Section - Additional translations
+    unlimitedProductsSuppliers: 'Neriboti produktai ir tiekėjai',
+    fullAccessToAllFeatures: 'Visiškas priėjimas prie visų funkcijų',
+    advancedStatistics: 'Išplėstinė statistika',
+    paymentCompleted: 'Mokėjimas sėkmingai atliktas!',
+    paymentCancelled: 'Mokėjimas atšauktas',
+    paymentError: 'Klaida apdorojant mokėjimą',
+    stripeNotConfigured: 'Mokėjimo paslauga nesukonfigūruota',
+    portalError: 'Klaida atidarant portalą',
+    portalNotConfigured: 'Portalas nesukonfigūruotas',
+    subscriptionActiveTitle: 'Aktyvi Prenumerata',
+    subscriptionActiveMessage: 'Jūsų prenumerata aktyvi ir visos funkcijos prieinamos.',
+    redirecting: 'Nukreipiama...',
+    manageSubscriptionButton: 'Valdyti Prenumeratą',
+    manageSubscriptionInfo: 'Būsite nukreipti į saugų Stripe portalą valdyti savo prenumeratą.',
+    stripePortalFeatures: 'Stripe portale galite:',
+    viewPaymentHistory: 'Peržiūrėti mokėjimų istoriją',
+    updatePaymentMethod: 'Atnaujinti mokėjimo būdą',
+    downloadReceipts: 'Atsisiųsti kvitus',
+    cancelSubscription: 'Atšaukti prenumeratą',
+    paymentServiceConfiguring: 'Mokėjimo Paslauga Konfigūruojama',
+    paymentServiceConfiguringMessage: 'Mokėjimo sistema šiuo metu konfigūruojama. Norėdami aktyvuoti prenumeratą, susisiekite su palaikymu.',
+    contactSupportToActivate: 'Susisiekite su palaikymu, kad aktyvuotumėte prenumeratą:',
+    supportChatComing: 'Palaikymo pokalbis netrukus',
+    chatWithSupport: 'Kalbėtis su palaikymu',
+    securePaymentInfo: 'Būsite nukreipti į Stripe, kad saugiai užbaigtumėte mokėjimą. Jūsų duomenys apsaugoti.',

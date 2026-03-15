@@ -1,0 +1,295 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+}
+
+const KLIPPA_API_URL = 'https://dochorizon.klippa.com/api/services/document_capturing/v1/prompt_builder/configurations/resto'
+
+function log(requestId: string, level: string, message: string) {
+  console.log(`[${new Date().toISOString()}] [${requestId}] [${level}] ${message}`)
+}
+
+function extractProducts(klippaData: any, requestId: string): any[] {
+  const lineItems = klippaData.data?.components?.prompt_builder?.line_items || []
+  
+  log(requestId, 'INFO', `📦 Klippa ha restituito ${lineItems.length} line items`)
+  
+  // Log FULL raw data from Klippa for debugging
+  log(requestId, 'DEBUG', `🔍 RAW line_items da Klippa: ${JSON.stringify(lineItems, null, 2)}`)
+  
+  // ✅ IMPROVEMENT 1: NEVER skip products - extract ALL items
+  const products = lineItems
+    .map((item: any, index: number) => {
+      // Log each item BEFORE processing
+      log(requestId, 'DEBUG', `📋 Item ${index} RAW: description="${item.description}", item_price=${item.item_price}, amount=${item.amount}, VAT=${item.Vat}, qty=${item.quantity}`)
+      
+      const description = (item.description || '').trim()
+      
+      // ✅ CRITICAL: Lower threshold from 3 to 1 to avoid skipping products
+      if (description.length < 1) {
+        log(requestId, 'WARNING', `⚠️ Item ${index}: description is empty, using fallback "Prodotto ${index + 1}"`)
+        // Don't skip - use fallback name
+      }
+      
+      const productName = description.length >= 1 ? description : `Prodotto ${index + 1}`
+      
+      // ✅ IMPROVEMENT 2: ALWAYS use item_price as unit_price (NEVER use amount/total)
+      // item_price = prezzo unitario (price per unit/kg)
+      // amount = prezzo totale (item_price × quantity)
+      const unitPrice = parseFloat(item.item_price || 0)
+      const totalAmount = parseFloat(item.amount || 0)
+      const quantity = parseFloat(item.quantity || 1)
+      const discountPercent = parseFloat(item.discount || 0)
+      
+      // ✅ VALIDATION: Check if unit_price makes sense
+      if (unitPrice === 0 && totalAmount > 0 && quantity > 0) {
+        // Fallback: calculate unit_price from total/quantity if item_price is missing
+        const calculatedUnitPrice = totalAmount / quantity
+        log(requestId, 'WARNING', `⚠️ Item ${index} "${productName}": item_price is 0, calculated from amount/quantity = ${calculatedUnitPrice.toFixed(4)}`)
+      }
+      
+      // ✅ CRITICAL: Calculate discounted_price from unit_price (NOT from amount)
+      const discountedPrice = Math.round(unitPrice * (1 - discountPercent / 100) * 10000) / 10000
+      const discountAmount = Math.round((unitPrice - discountedPrice) * 10000) / 10000
+      
+      // ✅ VALIDATION: Log price comparison to detect errors
+      const expectedTotal = discountedPrice * quantity
+      const priceDifference = Math.abs(expectedTotal - totalAmount)
+      if (priceDifference > 0.01) {
+        log(requestId, 'WARNING', `⚠️ Price mismatch for "${productName}": expected ${expectedTotal.toFixed(2)} (${discountedPrice} × ${quantity}), got ${totalAmount.toFixed(2)}`)
+      }
+      
+      const vatRate = parseFloat(item.Vat || 0)
+      
+      const product = {
+        name: productName,
+        line_number: index,
+        quantity: quantity,
+        unit: 'pz',
+        unit_price: unitPrice,              // ✅ ALWAYS from item_price
+        discounted_price: discountedPrice,  // ✅ Calculated from unit_price
+        discount_percent: discountPercent,
+        discount_amount: discountAmount,
+        vat_rate: vatRate,
+        vatRate: vatRate,
+        total_amount: totalAmount,          // ✅ Keep original amount for verification
+        currency: 'EUR',
+        category: '',
+        sku: '',
+        date: ''
+      }
+      
+      // ✅ DETAILED LOGGING for verification
+      log(requestId, 'DEBUG', `✨ Prodotto ${index}:`)
+      log(requestId, 'DEBUG', `   Nome: "${product.name}"`)
+      log(requestId, 'DEBUG', `   Prezzo Unitario: €${product.unit_price} (da item_price)`)
+      log(requestId, 'DEBUG', `   Quantità: ${product.quantity}`)
+      log(requestId, 'DEBUG', `   Prezzo Scontato: €${product.discounted_price}`)
+      log(requestId, 'DEBUG', `   Totale Riga: €${product.total_amount} (da amount)`)
+      log(requestId, 'DEBUG', `   Verifica: ${product.discounted_price} × ${product.quantity} = €${(product.discounted_price * product.quantity).toFixed(2)}`)
+      log(requestId, 'SUCCESS', `✅ "${product.name}" (€${product.unit_price}/unità, qty: ${product.quantity}, IVA ${product.vat_rate}%)`)
+      
+      return product
+    })
+    .filter((p: any) => p !== null)
+  
+  log(requestId, 'SUCCESS', `✅ Estratti ${products.length} prodotti (TUTTI i prodotti dalla fattura)`)
+  
+  // ✅ FINAL VALIDATION: Check total
+  const calculatedTotal = products.reduce((sum, p) => sum + (p.discounted_price * p.quantity), 0)
+  log(requestId, 'INFO', `💰 Totale calcolato dai prodotti: €${calculatedTotal.toFixed(2)}`)
+  
+  return products
+}
+
+function extractSupplier(klippaData: any, requestId: string): any {
+  const pb = klippaData.data?.components?.prompt_builder || {}
+  const addr = pb.company_address || {}
+  
+  // ✅ FIX: Extract phone and email from Klippa response
+  // Klippa stores contact info in multiple possible locations
+  const phone = addr.phone_number || addr.phone || pb.phone_number || pb.phone || ''
+  const email = addr.email || pb.email || ''
+  const vatNumber = addr.vat_number || pb.vat_number || pb.tax_id || ''
+  
+  const name = addr.company_name || 'Unknown Supplier'
+  const address = [
+    addr.street_name,
+    addr.house_number,
+    addr.postal_code,
+    addr.city,
+    addr.country
+  ].filter(Boolean).join(' ')
+  
+  log(requestId, 'INFO', `🏢 Fornitore: ${name}`)
+  log(requestId, 'DEBUG', `📞 Phone: ${phone || '(not found)'}`)
+  log(requestId, 'DEBUG', `📧 Email: ${email || '(not found)'}`)
+  log(requestId, 'DEBUG', `🔢 VAT: ${vatNumber || '(not found)'}`)
+  
+  return {
+    name,
+    address,
+    phone,
+    email,
+    vat_number: vatNumber
+  }
+}
+
+function extractInvoice(klippaData: any, requestId: string): any {
+  const pb = klippaData.data?.components?.prompt_builder || {}
+  const lineItems = pb.line_items || []
+  
+  // ✅ CRITICAL: Search for total in ALL possible locations
+  log(requestId, 'DEBUG', `🔍 [TOTAL SEARCH] Searching for invoice total...`)
+  
+  let totalAmount = 0
+  
+  // Check all possible fields where Klippa might store the total
+  const possibleTotalFields = [
+    'total_amount', 'amount_total', 'invoice_total', 'total', 
+    'grand_total', 'net_total', 'gross_total', 'amount', 'sum'
+  ]
+  
+  for (const field of possibleTotalFields) {
+    if (pb[field] !== undefined && pb[field] !== null) {
+      log(requestId, 'DEBUG', `🔍 [TOTAL SEARCH] Found pb.${field}: ${pb[field]}`)
+      if (totalAmount === 0) {
+        totalAmount = parseFloat(pb[field])
+        log(requestId, 'INFO', `💰 [TOTAL] Using pb.${field} = ${totalAmount}`)
+      }
+    }
+  }
+  
+  // If still not found, calculate from line_items
+  if (totalAmount === 0 && lineItems.length > 0) {
+    log(requestId, 'WARNING', `⚠️ [TOTAL] No total found in prompt_builder fields, calculating from line_items...`)
+    
+    // Sum all line_items amounts
+    const calculatedTotal = lineItems.reduce((sum: number, item: any) => {
+      const amount = parseFloat(item.amount || 0)
+      log(requestId, 'DEBUG', `💰 [CALC] Item "${item.description}": amount=${amount}`)
+      return sum + amount
+    }, 0)
+    
+    log(requestId, 'INFO', `💰 [TOTAL] Calculated from line_items: ${calculatedTotal}`)
+    totalAmount = calculatedTotal
+  }
+  
+  const invoice = {
+    invoice_number: `INV-${Date.now()}`,
+    date: pb.dates?.invoice_date || new Date().toISOString().split('T')[0],
+    total_amount: totalAmount,
+    vat_amount: 0,
+    currency: 'EUR'
+  }
+  
+  log(requestId, 'INFO', `📄 Fattura: ${invoice.invoice_number}, Data: ${invoice.date}, Totale: €${invoice.total_amount}`)
+  
+  if (totalAmount === 0) {
+    log(requestId, 'ERROR', `❌ [TOTAL] Invoice total is 0! This is incorrect.`)
+  }
+  
+  return invoice
+}
+
+serve(async (req: Request) => {
+  const requestId = crypto.randomUUID().substring(0, 8)
+  
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: corsHeaders })
+  }
+
+  log(requestId, 'INFO', '🚀 KLIPPA OCR V2 - IMPROVED ACCURACY (unit_price priority + ALL products extraction)')
+
+  try {
+    const klippaApiKey = Deno.env.get('KLIPPA_API_KEY')
+
+    if (!klippaApiKey) {
+      throw new Error('Missing KLIPPA_API_KEY')
+    }
+
+    let body
+    try {
+      body = await req.json()
+    } catch {
+      throw new Error('Invalid JSON body')
+    }
+
+    if (!body.imageBase64) {
+      throw new Error('Missing imageBase64')
+    }
+
+    const base64Data = body.imageBase64.includes(',') 
+      ? body.imageBase64.split(',')[1] 
+      : body.imageBase64
+
+    const startTime = Date.now()
+
+    log(requestId, 'INFO', '📤 Chiamata a Klippa API...')
+    
+    const ocrResponse = await fetch(KLIPPA_API_URL, {
+      method: 'POST',
+      headers: { 
+        'x-api-key': klippaApiKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        documents: [{ data: base64Data }]
+      })
+    })
+
+    if (!ocrResponse.ok) {
+      const errorText = await ocrResponse.text()
+      log(requestId, 'ERROR', `❌ Klippa error ${ocrResponse.status}: ${errorText}`)
+      throw new Error(`Klippa API failed: ${ocrResponse.status}`)
+    }
+
+    const klippaData = await ocrResponse.json()
+    
+    // ✅ CRITICAL: Log FULL Klippa response for debugging
+    log(requestId, 'DEBUG', `📥 FULL Klippa response: ${JSON.stringify(klippaData, null, 2).substring(0, 2000)}`)
+
+    const products = extractProducts(klippaData, requestId)
+    const supplier = extractSupplier(klippaData, requestId)
+    const invoice = extractInvoice(klippaData, requestId)
+
+    const processingTime = Math.round((Date.now() - startTime) / 1000)
+
+    log(requestId, 'INFO', '✅ Data extraction complete - Improved accuracy applied')
+    log(requestId, 'INFO', `📊 Summary: ${products.length} products, Total: €${invoice.total_amount}`)
+
+    log(requestId, 'SUCCESS', `🎉 Completato in ${processingTime}s`)
+
+    return new Response(JSON.stringify({
+      success: true,
+      data: {
+        requestId,
+        invoice_number: invoice.invoice_number,
+        date: invoice.date,
+        supplier,
+        products,
+        total_amount: invoice.total_amount,
+        currency: invoice.currency,
+        processing_time: processingTime,
+        method: 'klippa_prompt_builder_resto_v2_improved'
+      }
+    }), { 
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+
+  } catch (error: any) {
+    log(requestId, 'ERROR', `💥 Error: ${error.message}`)
+    return new Response(JSON.stringify({ 
+      success: false, 
+      error: error.message,
+      requestId
+    }), { 
+      status: 500, 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+})

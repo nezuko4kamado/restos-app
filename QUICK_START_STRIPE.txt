@@ -1,0 +1,93 @@
+╔══════════════════════════════════════════════════════════════╗
+║         🚀 GUIDA RAPIDA: CONFIGURAZIONE STRIPE              ║
+╚══════════════════════════════════════════════════════════════╝
+
+📚 HAI 3 GUIDE A DISPOSIZIONE:
+
+1. 📖 GUIDA_CONFIGURAZIONE_STRIPE.md
+   → Guida completa passo-passo in italiano
+   → Include screenshots e spiegazioni dettagliate
+   → Perfetta se è la prima volta che configuri Stripe
+
+2. ⚡ COMANDI_STRIPE.md
+   → Riferimento rapido con tutti i comandi
+   → Utile per chi ha già familiarità con Stripe/Supabase
+   → Comandi copy-paste pronti all'uso
+
+3. 📋 .env.example
+   → Template delle variabili d'ambiente
+   → Spiega dove trovare ogni valore
+   → Include note importanti sulla sicurezza
+
+╔══════════════════════════════════════════════════════════════╗
+║                    ⚡ SETUP IN 5 MINUTI                      ║
+╚══════════════════════════════════════════════════════════════╝
+
+STEP 1: Ottieni le Chiavi Stripe
+  → Vai su: https://dashboard.stripe.com/test/apikeys
+  → Copia: Secret Key (sk_test_...)
+  → Copia: Publishable Key (pk_test_...)
+
+STEP 2: Installa e Collega Supabase CLI
+  npm install -g supabase
+  supabase login
+  cd /workspace/shadcn-ui
+  supabase link --project-ref tmxmkvinsvuzbzrjrucw
+
+STEP 3: Configura Secrets
+  supabase secrets set STRIPE_SECRET_KEY=sk_test_TUA_CHIAVE
+
+STEP 4: Deploy Funzioni
+  supabase functions deploy create-checkout-session
+  supabase functions deploy create-portal-session
+  supabase functions deploy stripe-webhook
+
+STEP 5: Configura Webhook in Stripe
+  → Vai su: https://dashboard.stripe.com/test/webhooks
+  → Add endpoint con URL:
+    https://tmxmkvinsvuzbzrjrucw.supabase.co/functions/v1/stripe-webhook
+  → Seleziona eventi (vedi guida completa)
+  → Copia Webhook Secret (whsec_...)
+  → Esegui: supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_TUO_SECRET
+
+STEP 6: Testa!
+  → Apri l'app
+  → Vai in Impostazioni → Pagamento
+  → Clicca "Attiva Abbonamento"
+  → Usa carta test: 4242 4242 4242 4242
+
+╔══════════════════════════════════════════════════════════════╗
+║                    🆘 SERVE AIUTO?                           ║
+╚══════════════════════════════════════════════════════════════╝
+
+❌ Errore "Function not found"
+  → supabase functions list
+  → supabase functions deploy create-checkout-session
+
+❌ Errore "Invalid API Key"
+  → supabase secrets list
+  → supabase secrets set STRIPE_SECRET_KEY=sk_test_...
+
+❌ Webhook non funziona
+  → Verifica URL in Stripe dashboard
+  → Controlla eventi selezionati
+  → supabase functions logs stripe-webhook --follow
+
+📖 Per dettagli completi, apri: GUIDA_CONFIGURAZIONE_STRIPE.md
+
+╔══════════════════════════════════════════════════════════════╗
+║                  ✅ CHECKLIST FINALE                         ║
+╚══════════════════════════════════════════════════════════════╝
+
+□ Account Stripe creato
+□ API Keys copiate
+□ Supabase CLI installato
+□ Secrets configurati (STRIPE_SECRET_KEY)
+□ Funzioni deployate (3/3)
+□ Webhook creato in Stripe
+□ Webhook Secret configurato
+□ Test pagamento completato
+□ Webhook riceve eventi
+
+Quando tutti i checkbox sono ✅, sei pronto! 🎉
+

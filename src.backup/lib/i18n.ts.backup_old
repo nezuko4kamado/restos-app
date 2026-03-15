@@ -1,0 +1,1690 @@
+// Internationalization system for the restaurant management app
+// Supports Italian, English, Spanish, French, German, and Lithuanian
+
+export type Language = 'it' | 'en' | 'es' | 'fr' | 'de' | 'lt';
+
+export interface Translations {
+  // Header
+  appTitle: string;
+  demoMode: string;
+  dataSavedLocally: string;
+  clearData: string;
+  clearDataConfirm: string;
+  dataCleared: string;
+  
+  // Clear Data Dialog
+  clearDataDialogTitle: string;
+  clearDataDialogMessage: string;
+  yes: string;
+  no: string;
+  
+  // Stats
+  products: string;
+  suppliers: string;
+  orders: string;
+  notifications: string;
+  
+  // Tabs
+  dashboard: string;
+  settings: string;
+  priceScanner: string;
+  
+  // Auth
+  login: string;
+  register: string;
+  loginTitle: string;
+  registerTitle: string;
+  loginDescription: string;
+  registerDescription: string;
+  emailPlaceholder: string;
+  passwordPlaceholder: string;
+  confirmPasswordPlaceholder: string;
+  loginButton: string;
+  registerButton: string;
+  noAccount: string;
+  hasAccount: string;
+  dataSyncedCloud: string;
+  enterEmailPassword: string;
+  passwordsDontMatch: string;
+  passwordMinLength: string;
+  emailOrPasswordIncorrect: string;
+  emailAlreadyRegistered: string;
+  registrationComplete: string;
+  authError: string;
+  loading: string;
+  selectLanguage: string;
+  emailConfirmationNotice: string;
+  
+  // Products Section
+  productsList: string;
+  addProduct: string;
+  editProduct: string;
+  deleteProduct: string;
+  productName: string;
+  category: string;
+  supplier: string;
+  price: string;
+  unit: string;
+  lastPrice: string;
+  priceHistory: string;
+  actions: string;
+  noProducts: string;
+  addFirstProduct: string;
+  productAdded: string;
+  productUpdated: string;
+  productDeleted: string;
+  deleteProductConfirm: string;
+  save: string;
+  cancel: string;
+  selectSupplier: string;
+  detectedCategory: string;
+  
+  // Export functionality
+  export: string;
+  exportExcel: string;
+  exportPDF: string;
+  saveInvoiceIn: string;
+  savePDF: string;
+  
+  // Categories
+  beverages: string;
+  meat: string;
+  fish: string;
+  vegetables: string;
+  fruit: string;
+  breadCereals: string;
+  dairy: string;
+  sweets: string;
+  condiments: string;
+  other: string;
+  
+  // Suppliers Section
+  suppliersList: string;
+  addSupplier: string;
+  editSupplier: string;
+  deleteSupplier: string;
+  supplierName: string;
+  contact: string;
+  email: string;
+  phone: string;
+  address: string;
+  notes: string;
+  noSuppliers: string;
+  addFirstSupplier: string;
+  supplierAdded: string;
+  supplierUpdated: string;
+  supplierDeleted: string;
+  deleteSupplierConfirm: string;
+  supplierAlreadyExists: string;
+  
+  // Orders Section
+  ordersList: string;
+  addOrder: string;
+  editOrder: string;
+  deleteOrder: string;
+  orderDate: string;
+  totalAmount: string;
+  status: string;
+  recurring: string;
+  frequency: string;
+  nextOrder: string;
+  noOrders: string;
+  addFirstOrder: string;
+  orderAdded: string;
+  orderUpdated: string;
+  orderDeleted: string;
+  deleteOrderConfirm: string;
+  selectProducts: string;
+  quantity: string;
+  uploadInvoice: string;
+  searchProducts: string;
+  createOrderMode: string;
+  createNewOrder: string;
+  uploadOrderDescription: string;
+  importFromPhoto: string;
+  recognizesHandwriting: string;
+  
+  // New Order Creation Fields
+  productNameLabel: string;
+  productNamePlaceholder: string;
+  supplierLabel: string;
+  selectSupplierPlaceholder: string;
+  supplierNamePlaceholder: string;
+  whatsappPlaceholder: string;
+  emailOptionalPlaceholder: string;
+  create: string;
+  cancelCreation: string;
+  
+  // Supplier Edit in Orders
+  editOrderSupplier: string;
+  selectExistingSupplier: string;
+  createNewSupplier: string;
+  createNewSupplierButton: string;
+  saveChanges: string;
+  groupOrders: string;
+  supplierNameRequired: string;
+  phoneOrEmailRequired: string;
+  supplierCreatedSuccess: string;
+  
+  // Order Status
+  pending: string;
+  completed: string;
+  cancelled: string;
+  
+  // Frequency
+  daily: string;
+  weekly: string;
+  monthly: string;
+  
+  // Settings Section
+  generalSettings: string;
+  configurePreferences: string;
+  country: string;
+  language: string;
+  notificationSettings: string;
+  manageAlertsReminders: string;
+  priceChangeAlerts: string;
+  priceChangeAlertsDesc: string;
+  changeThreshold: string;
+  changeThresholdDesc: string;
+  recurringOrderReminders: string;
+  recurringOrderRemindersDesc: string;
+  reminderAdvance: string;
+  reminderAdvanceDesc: string;
+  days: string;
+  saveSettings: string;
+  settingsSaved: string;
+  settingsInfo: string;
+  
+  // Data Management
+  dataManagement: string;
+  dataManagementDesc: string;
+  clearDataWarning: string;
+  clearDataWarningDesc: string;
+  allProducts: string;
+  allSuppliers: string;
+  allOrders: string;
+  allNotifications: string;
+  allSettings: string;
+  cannotBeUndone: string;
+  
+  // Dashboard
+  analytics: string;
+  viewAnalytics: string;
+  topProducts: string;
+  topSuppliers: string;
+  mainSuppliers: string;
+  priceAlerts30Days: string;
+  recentOrders: string;
+  priceAlerts: string;
+  recurringReminders: string;
+  noData: string;
+  noAlerts: string;
+  noReminders: string;
+  priceIncreased: string;
+  priceDecreased: string;
+  upcomingOrder: string;
+  acknowledge: string;
+  
+  // Payment Section
+  securePayment: string;
+  manageSubscription: string;
+  manageSubscriptionDesc: string;
+  securePaymentDesc: string;
+  paymentProcessedSecurely: string;
+  fullAccessToFeatures: string;
+  perMonth: string;
+  unlimitedProductSupplierManagement: string;
+  invoiceUploadWithOCR: string;
+  advancedStatisticsAnalytics: string;
+  personalizedNotificationsReminders: string;
+  paymentSecurityMessage: string;
+  
+  // New translations
+  managePlan: string;
+  subscription: string;
+  logout: string;
+  connectedAs: string;
+  subscriptionStatus: string;
+  
+  // Subscription Section translations
+  subscriptionActive: string;
+  trialPeriod: string;
+  subscriptionExpired: string;
+  unknownStatus: string;
+  manageYourPlan: string;
+  daysRemaining: string;
+  lastDay: string;
+  type: string;
+  monthlyPlan: string;
+  lifetimeAccess: string;
+  freeTrial: string;
+  active: string;
+  paymentOverdue: string;
+  startDate: string;
+  expiredOn: string;
+  renewal: string;
+  willBeCancelled: string;
+  renewSubscription: string;
+  activatePremium: string;
+  fullAccessMessage: string;
+  unlimitedManagement: string;
+  advancedOCR: string;
+  detailedStats: string;
+  customNotifications: string;
+  noSubscriptionFound: string;
+  activateSubscription: string;
+  
+  // Feature Locked translations
+  featureLockedTitle: string;
+  featureLockedMessage: string;
+  activateSubscriptionButton: string;
+  
+  // Tutorial translations
+  tutorialWelcomeTitle: string;
+  tutorialWelcomeContent: string;
+  tutorialProductsTitle: string;
+  tutorialProductsContent: string;
+  tutorialUploadTitle: string;
+  tutorialUploadContent: string;
+  tutorialAddProductTitle: string;
+  tutorialAddProductContent: string;
+  tutorialSuppliersTitle: string;
+  tutorialSuppliersContent: string;
+  tutorialOrdersTitle: string;
+  tutorialOrdersContent: string;
+  tutorialCompleteTitle: string;
+  tutorialCompleteContent: string;
+  tutorialCompleteTip: string;
+  tutorialBack: string;
+  tutorialClose: string;
+  tutorialLast: string;
+  tutorialNext: string;
+  tutorialSkip: string;
+  
+  // Common
+  search: string;
+  filter: string;
+  import: string;
+  error: string;
+  success: string;
+  warning: string;
+  info: string;
+  
+  // Supplier details
+  details: string;
+  statistics: string;
+  invoices: string;
+  invoicesCount: string;
+  totalInvoices: string;
+  totalProducts: string;
+  monthlyAverage: string;
+  totalSpent: string;
+  
+  // Payment Section - Additional translations
+  unlimitedProductsSuppliers: string;
+  fullAccessToAllFeatures: string;
+  advancedStatistics: string;
+  paymentCompleted: string;
+  paymentCancelled: string;
+  paymentError: string;
+  stripeNotConfigured: string;
+  portalError: string;
+  portalNotConfigured: string;
+  subscriptionActiveTitle: string;
+  subscriptionActiveMessage: string;
+  redirecting: string;
+  manageSubscriptionButton: string;
+  manageSubscriptionInfo: string;
+  stripePortalFeatures: string;
+  viewPaymentHistory: string;
+  updatePaymentMethod: string;
+  downloadReceipts: string;
+  cancelSubscription: string;
+  paymentServiceConfiguring: string;
+  paymentServiceConfiguringMessage: string;
+  contactSupportToActivate: string;
+  supportChatComing: string;
+  chatWithSupport: string;
+  securePaymentInfo: string;
+  
+  // Supplier selection
+  searchExisting: string;
+  createNew: string;
+  
+  // Contact Us translations
+  contactUs: string;
+  contactDescription: string;
+  name: string;
+  namePlaceholder: string;
+  subject: string;
+  subjectPlaceholder: string;
+  message: string;
+  messagePlaceholder: string;
+  send: string;
+  sending: string;
+  messageSentSuccess: string;
+  messageSendError: string;
+  nameRequired: string;
+  emailRequired: string;
+  invalidEmail: string;
+  subjectRequired: string;
+  messageRequired: string;
+  note: string;
+  contactNote: string;
+  back: string;
+  
+  // Order Message Templates
+  orderEmailSubject: string;
+  orderMessageGreeting: string;
+  orderMessageClosing: string;
+  createOrder: string;
+  noProductsInOrder: string;
+  searchProduct: string;
+  
+  // New placeholder translations
+  exampleProducts: string;
+  exampleProduct: string;
+  exampleSupplierName: string;
+  copyLastOrder: string;
+  noOrderToCopy: string;
+  testSupabaseConnection: string;
+  testPriceAPIConnection: string;
+  customizeExperience: string;
+  
+  // Price Scanner translations
+  livePriceScanner: string;
+  scanBarcodeDescription: string;
+  productIdentified: string;
+  livePricesFound: string;
+  productFound: string;
+  newScan: string;
+  startScanner: string;
+  requestPermission: string;
+  grantPermission: string;
+  cameraPermissionDenied: string;
+  cameraPermissionDeniedSettings: string;
+  errorCheckingPermission: string;
+  errorRequestingPermission: string;
+  errorSearchingProduct: string;
+  errorStartingScanner: string;
+  source: string;
+  localDatabase: string;
+  supabaseCache: string;
+  priceAPILive: string;
+  openFoodFactsAPI: string;
+  permissionRequired: string;
+  permissionRequiredDescription: string;
+  
+  // OrdersSection Toast Messages
+  orderSaved: string;
+  canRecoverByPressingCopyLast: string;
+  noPreviousOrder: string;
+  cancelledOrderRecovered: string;
+  emptyOrder: string;
+  lastOrderCopied: string;
+  draftSaved: string;
+  errorSaving: string;
+  selectSupplierRequired: string;
+  quantityMustBeGreaterThanZero: string;
+  productNameRequired: string;
+  createNewProductAndAdd: string;
+  editSupplierTitle: string;
+  whatsappPlaceholderShort: string;
+  emailPlaceholderShort: string;
+  
+  // Additional OrdersSection translations
+  searchProductsPlaceholder: string;
+  addProducts: string;
+  searchExistingProducts: string;
+  createNewProduct: string;
+  addToOrder: string;
+  productsAdded: string;
+  
+  // NEW: Month names (12 keys)
+  january: string;
+  february: string;
+  march: string;
+  april: string;
+  may: string;
+  june: string;
+  july: string;
+  august: string;
+  september: string;
+  october: string;
+  november: string;
+  december: string;
+  
+  // NEW: AllInvoicesView translations (6 keys)
+  clickToExpandYearMonth: string;
+  noInvoicesRegistered: string;
+  unknownSupplier: string;
+  confirmDeleteInvoice: string;
+  invoiceDeleted: string;
+  deleteInvoice: string;
+  
+  // NEW: ProductsSection translations (7 keys)
+  vatRatesUpdated: string;
+  exportSuccess: string;
+  exportError: string;
+  areRequired: string;
+  productCreated: string;
+  errorSavingProduct: string;
+  manualEdit: string;
+  
+  // NEW: SuppliersSection translations (2 keys)
+  together: string;
+  supplierDeletedWithInvoices: string;
+  
+  // NEW: SupplierDetail translations (3 keys)
+  invoiceAdded: string;
+  invoiceDetail: string;
+  all: string;
+  
+  // NEW: ProductAutocomplete translation (1 key)
+  searchProductPlaceholder: string;
+  
+  // NEW: SettingsDialog translations (2 keys)
+  modifyTextSize: string;
+  saveAllSettings: string;
+  
+  // NEW: DeleteSupplierDialog translations (5 keys)
+  reassignProducts: string;
+  deleteProducts: string;
+  selectNewSupplier: string;
+  noOtherSuppliers: string;
+  confirmDelete: string;
+  
+  // NEW: InvoiceManagement translation (1 key)
+  manualEntry: string;
+}
+
+const createCompleteTranslations = (baseTranslations: Record<string, string>): Translations => {
+  return baseTranslations as Translations;
+};
+
+// Italian translations (IT)
+const itTranslations = createCompleteTranslations({
+  appTitle: 'RESTO',
+  demoMode: 'Demo Mode',
+  dataSavedLocally: 'Dati salvati localmente nel browser',
+  clearData: 'Cancella Dati',
+  clearDataConfirm: 'Sei sicuro di voler cancellare tutti i dati? Questa azione non può essere annullata.',
+  dataCleared: 'Tutti i dati sono stati cancellati',
+  clearDataDialogTitle: 'Attenzione!',
+  clearDataDialogMessage: 'Sei sicuro di voler cancellare tutti i dati? Questa azione eliminerà permanentemente tutti i prodotti, fornitori, ordini e impostazioni.',
+  yes: 'Sì, Cancella Tutto',
+  no: 'No, Annulla',
+  products: 'Prodotti',
+  suppliers: 'Fornitori',
+  orders: 'Ordini',
+  notifications: 'Notifiche',
+  dashboard: 'Dashboard',
+  settings: 'Impostazioni',
+  priceScanner: 'Scanner Prezzi',
+  login: 'Accedi',
+  register: 'Registrati',
+  loginTitle: 'Accedi',
+  registerTitle: 'Registrati',
+  loginDescription: 'Accedi al tuo account per gestire ordini e fatture',
+  registerDescription: 'Crea un nuovo account per iniziare',
+  emailPlaceholder: 'tuo@email.com',
+  passwordPlaceholder: '••••••••',
+  confirmPasswordPlaceholder: '••••••••',
+  loginButton: 'Accedi',
+  registerButton: 'Registrati',
+  noAccount: 'Non hai un account? Registrati',
+  hasAccount: 'Hai già un account? Accedi',
+  dataSyncedCloud: '💡 Nota: I tuoi dati saranno sincronizzati nel cloud.',
+  enterEmailPassword: 'Inserisci email e password',
+  passwordsDontMatch: 'Le password non corrispondono',
+  passwordMinLength: 'La password deve essere di almeno 6 caratteri',
+  emailOrPasswordIncorrect: 'Email o password non corretti',
+  emailAlreadyRegistered: 'Email già registrata',
+  registrationComplete: 'Registrazione completata! Controlla la tua email.',
+  authError: 'Errore durante l\'autenticazione',
+  loading: 'Caricamento...',
+  selectLanguage: 'Seleziona Lingua',
+  emailConfirmationNotice: 'Controlla la tua email per confermare.',
+  searchExisting: 'Cerca Esistente',
+  createNew: 'Crea Nuovo',
+  contactUs: 'Contattaci',
+  contactDescription: 'Hai domande o suggerimenti? Siamo qui per aiutarti!',
+  name: 'Nome',
+  namePlaceholder: 'Il tuo nome',
+  subject: 'Oggetto',
+  subjectPlaceholder: 'Oggetto del messaggio',
+  message: 'Messaggio',
+  messagePlaceholder: 'Scrivi qui il tuo messaggio...',
+  send: 'Invia Messaggio',
+  sending: 'Invio in corso...',
+  messageSentSuccess: 'Messaggio inviato con successo!',
+  messageSendError: 'Errore durante l\'invio del messaggio. Riprova più tardi.',
+  nameRequired: 'Nome richiesto',
+  emailRequired: 'Email richiesta',
+  invalidEmail: 'Email non valida',
+  subjectRequired: 'Oggetto richiesto',
+  messageRequired: 'Messaggio richiesto',
+  note: 'Nota',
+  contactNote: 'Risponderemo alla tua richiesta il prima possibile. Assicurati di fornire un indirizzo email valido per ricevere la nostra risposta.',
+  back: 'Indietro',
+  productsList: 'Lista Prodotti',
+  addProduct: 'Aggiungi Prodotto',
+  editProduct: 'Modifica Prodotto',
+  deleteProduct: 'Elimina Prodotto',
+  productName: 'Nome Prodotto',
+  category: 'Categoria',
+  supplier: 'Fornitore',
+  price: 'Prezzo',
+  unit: 'Unità',
+  lastPrice: 'Ultimo Prezzo',
+  priceHistory: 'Storico Prezzi',
+  actions: 'Azioni',
+  noProducts: 'Nessun prodotto disponibile',
+  addFirstProduct: 'Aggiungi il tuo primo prodotto',
+  productAdded: 'Prodotto aggiunto',
+  productUpdated: 'Prodotto aggiornato',
+  productDeleted: 'Prodotto eliminato',
+  deleteProductConfirm: 'Eliminare questo prodotto?',
+  save: 'Salva',
+  cancel: 'Annulla',
+  selectSupplier: 'Seleziona Fornitore',
+  detectedCategory: 'Categoria Rilevata',
+  export: 'Esporta',
+  exportExcel: 'Esporta Excel',
+  exportPDF: 'Esporta PDF',
+  savePDF: 'Salva PDF',
+  saveInvoiceIn: 'Salva Fattura in',
+  beverages: 'Bevande',
+  meat: 'Carne',
+  fish: 'Pesce',
+  vegetables: 'Verdure',
+  fruit: 'Frutta',
+  breadCereals: 'Pane e Cereali',
+  dairy: 'Latticini',
+  sweets: 'Dolci',
+  condiments: 'Condimenti',
+  other: 'Altro',
+  suppliersList: 'Lista Fornitori',
+  addSupplier: 'Aggiungi Fornitore',
+  editSupplier: 'Modifica Fornitore',
+  deleteSupplier: 'Elimina Fornitore',
+  supplierName: 'Nome Fornitore',
+  contact: 'Contatto',
+  email: 'Email',
+  phone: 'Telefono',
+  address: 'Indirizzo',
+  notes: 'Note',
+  noSuppliers: 'Nessun fornitore disponibile',
+  addFirstSupplier: 'Aggiungi il tuo primo fornitore',
+  supplierAdded: 'Fornitore aggiunto',
+  supplierUpdated: 'Fornitore aggiornato',
+  supplierDeleted: 'Fornitore eliminato',
+  deleteSupplierConfirm: 'Eliminare questo fornitore?',
+  supplierAlreadyExists: 'Fornitore già esistente',
+  ordersList: 'Lista Ordini',
+  addOrder: 'Aggiungi Ordine',
+  editOrder: 'Modifica Ordine',
+  deleteOrder: 'Elimina Ordine',
+  orderDate: 'Data Ordine',
+  totalAmount: 'Totale',
+  status: 'Stato',
+  recurring: 'Ricorrente',
+  frequency: 'Frequenza',
+  nextOrder: 'Prossimo Ordine',
+  noOrders: 'Nessun ordine disponibile',
+  addFirstOrder: 'Aggiungi il tuo primo ordine',
+  orderAdded: 'Ordine aggiunto',
+  orderUpdated: 'Ordine aggiornato',
+  orderDeleted: 'Ordine eliminato',
+  deleteOrderConfirm: 'Eliminare questo ordine?',
+  selectProducts: 'Seleziona Prodotti',
+  quantity: 'Quantità',
+  uploadInvoice: 'Carica Fattura',
+  searchProducts: 'Cerca Prodotti',
+  createOrderMode: 'Modalità Creazione',
+  createNewOrder: 'Crea Nuovo Ordine',
+  uploadOrderDescription: 'Carica foto ordine',
+  importFromPhoto: 'Importa da Foto',
+  recognizesHandwriting: 'Riconosce anche scrittura a penna',
+  productNameLabel: 'Nome Prodotto',
+  productNamePlaceholder: 'Es: Pomodori, Vino Rosso, Pane...',
+  supplierLabel: 'Fornitore',
+  selectSupplierPlaceholder: 'Seleziona fornitore',
+  supplierNamePlaceholder: 'Nome fornitore',
+  whatsappPlaceholder: 'WhatsApp',
+  emailOptionalPlaceholder: 'Email (opzionale)',
+  create: 'Crea',
+  cancelCreation: 'Annulla',
+  editOrderSupplier: 'Modifica Fornitore',
+  selectExistingSupplier: 'Seleziona fornitore esistente',
+  createNewSupplier: 'Crea nuovo fornitore',
+  createNewSupplierButton: 'Crea Nuovo Fornitore',
+  saveChanges: 'Salva Modifiche',
+  groupOrders: 'Raggruppa ordini',
+  supplierNameRequired: 'Nome fornitore obbligatorio',
+  phoneOrEmailRequired: 'Telefono o email obbligatorio',
+  supplierCreatedSuccess: 'Nuovo fornitore creato con successo',
+  pending: 'In Attesa',
+  completed: 'Completato',
+  cancelled: 'Annullato',
+  daily: 'Giornaliero',
+  weekly: 'Settimanale',
+  monthly: 'Mensile',
+  generalSettings: 'Impostazioni Generali',
+  configurePreferences: 'Configura preferenze',
+  country: 'Paese',
+  language: 'Lingua',
+  notificationSettings: 'Notifiche',
+  manageAlertsReminders: 'Gestisci avvisi',
+  priceChangeAlerts: 'Avvisi Prezzi',
+  priceChangeAlertsDesc: 'Notifiche variazioni prezzi',
+  changeThreshold: 'Soglia (%)',
+  changeThresholdDesc: 'Percentuale minima',
+  recurringOrderReminders: 'Promemoria Ordini',
+  recurringOrderRemindersDesc: 'Promemoria automatici',
+  reminderAdvance: 'Anticipo (giorni)',
+  reminderAdvanceDesc: 'Giorni prima',
+  days: 'giorni',
+  saveSettings: 'Salva',
+  settingsSaved: 'Salvato',
+  settingsInfo: 'Salvato nel browser',
+  dataManagement: 'Gestione Dati',
+  dataManagementDesc: 'Cancella dati',
+  clearDataWarning: 'Cancellerà:',
+  clearDataWarningDesc: 'Non reversibile!',
+  allProducts: 'Tutti i prodotti',
+  allSuppliers: 'Tutti i fornitori',
+  allOrders: 'Tutti gli ordini',
+  allNotifications: 'Tutte le notifiche',
+  allSettings: 'Tutte le impostazioni',
+  cannotBeUndone: '⚠️ Non reversibile!',
+  analytics: 'Analisi',
+  viewAnalytics: 'Visualizza statistiche',
+  topProducts: 'Top Prodotti',
+  topSuppliers: 'Top Fornitori',
+  mainSuppliers: 'Fornitori Principali',
+  priceAlerts30Days: 'Avvisi (30gg)',
+  recentOrders: 'Ordini Recenti',
+  priceAlerts: 'Avvisi Prezzi',
+  recurringReminders: 'Promemoria',
+  noData: 'Nessun dato',
+  noAlerts: 'Nessun avviso',
+  noReminders: 'Nessun promemoria',
+  priceIncreased: 'Prezzo aumentato',
+  priceDecreased: 'Prezzo diminuito',
+  upcomingOrder: 'Ordine in arrivo',
+  acknowledge: 'Conferma',
+  securePayment: 'Pagamento Sicuro',
+  manageSubscription: 'Gestisci Abbonamento',
+  manageSubscriptionDesc: 'Gestisci via Stripe',
+  securePaymentDesc: 'Pagamento sicuro',
+  paymentProcessedSecurely: 'Pagamento sicuro',
+  fullAccessToFeatures: 'Accesso completo',
+  perMonth: 'al mese',
+  unlimitedProductSupplierManagement: 'Gestione illimitata',
+  invoiceUploadWithOCR: 'Caricamento con OCR',
+  advancedStatisticsAnalytics: 'Statistiche avanzate',
+  personalizedNotificationsReminders: 'Notifiche personalizzate',
+  paymentSecurityMessage: 'Pagamenti sicuri via Stripe',
+  managePlan: 'Gestisci Piano',
+  subscription: 'Abbonamento',
+  logout: 'Logout',
+  connectedAs: 'Connesso come',
+  subscriptionStatus: 'Stato',
+  subscriptionActive: 'Attivo',
+  trialPeriod: 'Prova',
+  subscriptionExpired: 'Scaduto',
+  unknownStatus: 'Sconosciuto',
+  manageYourPlan: 'Gestisci piano',
+  daysRemaining: 'giorni rimanenti',
+  lastDay: 'Ultimo giorno',
+  type: 'Tipo',
+  monthlyPlan: 'Mensile',
+  lifetimeAccess: 'A Vita',
+  freeTrial: 'Prova Gratuita',
+  active: 'Attivo',
+  paymentOverdue: 'In Ritardo',
+  startDate: 'Data Inizio',
+  expiredOn: 'Scaduto il',
+  renewal: 'Rinnovo',
+  willBeCancelled: 'Sarà cancellato',
+  renewSubscription: 'Rinnova',
+  activatePremium: 'Attiva Premium',
+  fullAccessMessage: 'Accesso completo!',
+  unlimitedManagement: 'Gestione illimitata',
+  advancedOCR: 'OCR avanzato',
+  detailedStats: 'Statistiche dettagliate',
+  customNotifications: 'Notifiche custom',
+  noSubscriptionFound: 'Nessun abbonamento',
+  activateSubscription: 'Attiva',
+  featureLockedTitle: 'Bloccato',
+  featureLockedMessage: 'Trial scaduto',
+  activateSubscriptionButton: 'Attiva (€9.90/mese)',
+  tutorialWelcomeTitle: '👋 Benvenuto!',
+  tutorialWelcomeContent: 'Guida rapida',
+  tutorialProductsTitle: '📦 Prodotti',
+  tutorialProductsContent: 'Gestisci prodotti',
+  tutorialUploadTitle: '📄 Carica',
+  tutorialUploadContent: 'Carica fatture',
+  tutorialAddProductTitle: '➕ Aggiungi',
+  tutorialAddProductContent: 'Aggiungi manualmente',
+  tutorialSuppliersTitle: '🏢 Fornitori',
+  tutorialSuppliersContent: 'Gestisci fornitori',
+  tutorialOrdersTitle: '📋 Ordini',
+  tutorialOrdersContent: 'Crea ordini',
+  tutorialCompleteTitle: '🎉 Perfetto!',
+  tutorialCompleteContent: 'Sei pronto!',
+  tutorialCompleteTip: '💡 Inizia caricando una fattura',
+  tutorialBack: 'Indietro',
+  tutorialClose: 'Chiudi',
+  tutorialLast: 'Fine',
+  tutorialNext: 'Avanti',
+  tutorialSkip: 'Salta',
+  search: 'Cerca',
+  filter: 'Filtra',
+  import: 'Importa',
+  error: 'Errore',
+  success: 'Successo',
+  warning: 'Attenzione',
+  info: 'Info',
+  details: 'Dettagli',
+  statistics: 'Statistiche',
+  invoices: 'Fatture',
+  invoicesCount: 'fatture',
+  totalInvoices: 'Totale Fatture',
+  totalProducts: 'Totale Prodotti',
+  monthlyAverage: 'Media Mensile',
+  totalSpent: 'Totale Speso',
+  unlimitedProductsSuppliers: 'Illimitati',
+  fullAccessToAllFeatures: 'Accesso completo',
+  advancedStatistics: 'Statistiche avanzate',
+  paymentCompleted: 'Completato',
+  paymentCancelled: 'Annullato',
+  paymentError: 'Errore',
+  stripeNotConfigured: 'Non configurato',
+  portalError: 'Errore portale',
+  portalNotConfigured: 'Portale non configurato',
+  subscriptionActiveTitle: 'Attivo',
+  subscriptionActiveMessage: 'Abbonamento attivo',
+  redirecting: 'Reindirizzamento...',
+  manageSubscriptionButton: 'Gestisci',
+  manageSubscriptionInfo: 'Gestisci via Stripe',
+  stripePortalFeatures: 'Funzionalità portale',
+  viewPaymentHistory: 'Cronologia pagamenti',
+  updatePaymentMethod: 'Aggiorna metodo',
+  downloadReceipts: 'Scarica ricevute',
+  cancelSubscription: 'Annulla abbonamento',
+  paymentServiceConfiguring: 'Configurazione',
+  paymentServiceConfiguringMessage: 'In configurazione',
+  contactSupportToActivate: 'Contatta supporto',
+  supportChatComing: 'Chat in arrivo',
+  chatWithSupport: 'Chat supporto',
+  securePaymentInfo: 'Info pagamento',
+  orderEmailSubject: 'Ordine di questa settimana',
+  orderMessageGreeting: 'Buongiorno, vorrei ordinare:',
+  orderMessageClosing: 'Grazie!',
+  createOrder: 'Crea Ordine',
+  noProductsInOrder: 'Nessun prodotto nell\'ordine',
+  searchProduct: 'Cerca Prodotto',
+  exampleProducts: 'Es: Pomodori, Vino Rosso, Pane...',
+  exampleProduct: 'Es: Ricotta Cannoli',
+  exampleSupplierName: 'Metro Cash & Carry',
+  copyLastOrder: 'Copia ultimo ordine',
+  noOrderToCopy: 'Nessun ordine da copiare',
+  testSupabaseConnection: 'Testa Connessione Supabase',
+  testPriceAPIConnection: 'Testa Connessione PriceAPI',
+  customizeExperience: 'Personalizza la tua esperienza',
+  livePriceScanner: 'Scanner Prezzi Live',
+  scanBarcodeDescription: 'Scansiona il codice a barre di un prodotto per confrontare i prezzi in tempo reale',
+  productIdentified: 'Prodotto Identificato',
+  livePricesFound: 'Prezzi Live Trovati',
+  productFound: 'Prodotto Trovato',
+  newScan: 'Nuova Scansione',
+  startScanner: 'Avvia Scanner',
+  requestPermission: 'Richiedi Permesso',
+  grantPermission: 'Concedi Permesso',
+  cameraPermissionDenied: 'Permesso fotocamera negato. Concedi il permesso per usare lo scanner.',
+  cameraPermissionDeniedSettings: 'Permesso fotocamera negato. Abilita il permesso nelle impostazioni del dispositivo.',
+  errorCheckingPermission: 'Errore nel controllo dei permessi della fotocamera',
+  errorRequestingPermission: 'Errore nella richiesta del permesso della fotocamera',
+  errorSearchingProduct: 'Errore durante la ricerca del prodotto',
+  errorStartingScanner: 'Errore durante l\'avvio dello scanner',
+  source: 'Fonte:',
+  localDatabase: 'Database Locale',
+  supabaseCache: 'Cache Supabase',
+  priceAPILive: 'Price API Live',
+  openFoodFactsAPI: 'Open Food Facts API',
+  permissionRequired: 'Permesso richiesto:',
+  permissionRequiredDescription: 'Per utilizzare lo scanner, devi concedere l\'accesso alla fotocamera.',
+  orderSaved: 'Ordine salvato',
+  canRecoverByPressingCopyLast: 'Puoi recuperarlo premendo "Copia ultimo".',
+  noPreviousOrder: 'Nessun ordine precedente',
+  cancelledOrderRecovered: 'Ordine annullato recuperato!',
+  emptyOrder: 'Ordine vuoto',
+  lastOrderCopied: 'Ultimo ordine copiato!',
+  draftSaved: 'Bozza salvata!',
+  errorSaving: 'Errore nel salvataggio',
+  selectSupplierRequired: 'Seleziona un fornitore',
+  quantityMustBeGreaterThanZero: 'Quantità deve essere maggiore di 0',
+  productNameRequired: 'Nome prodotto obbligatorio',
+  createNewProductAndAdd: 'Crea un nuovo prodotto e aggiungilo all\'ordine',
+  editSupplierTitle: 'Modifica fornitore',
+  whatsappPlaceholderShort: '+34 123 456 789',
+  emailPlaceholderShort: 'fornitore@example.com',
+  searchProductsPlaceholder: 'Cerca prodotti...',
+  addProducts: 'Aggiungi Prodotti',
+  searchExistingProducts: 'Cerca tra i prodotti esistenti',
+  createNewProduct: 'Crea nuovo prodotto',
+  addToOrder: 'Aggiungi all\'ordine',
+  productsAdded: 'Prodotti aggiunti',
+  
+  // NEW: Month names
+  january: 'Gennaio',
+  february: 'Febbraio',
+  march: 'Marzo',
+  april: 'Aprile',
+  may: 'Maggio',
+  june: 'Giugno',
+  july: 'Luglio',
+  august: 'Agosto',
+  september: 'Settembre',
+  october: 'Ottobre',
+  november: 'Novembre',
+  december: 'Dicembre',
+  
+  // NEW: AllInvoicesView
+  clickToExpandYearMonth: 'Clicca per espandere anno/mese',
+  noInvoicesRegistered: 'Nessuna fattura registrata',
+  unknownSupplier: 'Fornitore sconosciuto',
+  confirmDeleteInvoice: 'Sei sicuro di voler eliminare questa fattura?',
+  invoiceDeleted: 'Fattura eliminata',
+  deleteInvoice: 'Elimina Fattura',
+  
+  // NEW: ProductsSection
+  vatRatesUpdated: 'Aliquote IVA aggiornate',
+  exportSuccess: 'Esportazione completata',
+  exportError: 'Errore durante l\'esportazione',
+  areRequired: 'sono obbligatori',
+  productCreated: 'Prodotto creato',
+  errorSavingProduct: 'Errore nel salvataggio del prodotto',
+  manualEdit: 'Modifica manuale',
+  
+  // NEW: SuppliersSection
+  together: 'insieme',
+  supplierDeletedWithInvoices: 'Fornitore eliminato insieme alle fatture',
+  
+  // NEW: SupplierDetail
+  invoiceAdded: 'Fattura aggiunta',
+  invoiceDetail: 'Dettaglio Fattura',
+  all: 'Tutti',
+  
+  // NEW: ProductAutocomplete
+  searchProductPlaceholder: 'Cerca prodotto...',
+  
+  // NEW: SettingsDialog
+  modifyTextSize: 'Modifica dimensione testo',
+  saveAllSettings: 'Salva tutte le impostazioni',
+  
+  // NEW: DeleteSupplierDialog
+  reassignProducts: 'Riassegna prodotti',
+  deleteProducts: 'Elimina prodotti',
+  selectNewSupplier: 'Seleziona nuovo fornitore',
+  noOtherSuppliers: 'Nessun altro fornitore disponibile',
+  confirmDelete: 'Conferma Eliminazione',
+  
+  // NEW: InvoiceManagement
+  manualEntry: 'Inserimento manuale',
+});
+
+// English translations (EN)
+const enTranslations = createCompleteTranslations({
+  ...itTranslations,
+  products: 'Products',
+  suppliers: 'Suppliers',
+  orders: 'Orders',
+  notifications: 'Notifications',
+  dashboard: 'Dashboard',
+  settings: 'Settings',
+  priceScanner: 'Price Scanner',
+  logout: 'Logout',
+  clearData: 'Clear Data',
+  connectedAs: 'Connected as',
+  priceAlerts30Days: 'Alerts (30d)',
+  priceAlerts: 'Price Alerts',
+  noSuppliers: 'No suppliers available',
+  noAlerts: 'No alerts',
+  addProduct: 'Add Product',
+  export: 'Export',
+  uploadInvoice: 'Upload Invoice',
+  productName: 'Product Name',
+  productNamePlaceholder: 'e.g., Tomatoes, Red Wine, Bread...',
+  supplier: 'Supplier',
+  orderEmailSubject: 'Order for this week',
+  orderMessageGreeting: 'Hello, I would like to order:',
+  orderMessageClosing: 'Thank you!',
+  exampleProducts: 'E.g.: Tomatoes, Red Wine, Bread...',
+  exampleProduct: 'E.g.: Ricotta Cannoli',
+  exampleSupplierName: 'Metro Cash & Carry',
+  copyLastOrder: 'Copy last order',
+  noOrderToCopy: 'No order to copy',
+  editSupplier: 'Edit Supplier',
+  testSupabaseConnection: 'Test Supabase Connection',
+  testPriceAPIConnection: 'Test PriceAPI Connection',
+  customizeExperience: 'Customize your experience',
+  livePriceScanner: 'Live Price Scanner',
+  scanBarcodeDescription: 'Scan a product barcode to compare prices in real time',
+  productIdentified: 'Product Identified',
+  livePricesFound: 'Live Prices Found',
+  productFound: 'Product Found',
+  newScan: 'New Scan',
+  startScanner: 'Start Scanner',
+  back: 'Back',
+  requestPermission: 'Request Permission',
+  grantPermission: 'Grant Permission',
+  cameraPermissionDenied: 'Camera permission denied. Grant permission to use the scanner.',
+  cameraPermissionDeniedSettings: 'Camera permission denied. Enable permission in device settings.',
+  errorCheckingPermission: 'Error checking camera permissions',
+  errorRequestingPermission: 'Error requesting camera permission',
+  errorSearchingProduct: 'Error searching for product',
+  errorStartingScanner: 'Error starting scanner',
+  source: 'Source:',
+  localDatabase: 'Local Database',
+  supabaseCache: 'Supabase Cache',
+  priceAPILive: 'Price API Live',
+  openFoodFactsAPI: 'Open Food Facts API',
+  permissionRequired: 'Permission required:',
+  permissionRequiredDescription: 'To use the scanner, you must grant camera access.',
+  orderSaved: 'Order saved',
+  canRecoverByPressingCopyLast: 'You can recover it by pressing "Copy last".',
+  noPreviousOrder: 'No previous order',
+  cancelledOrderRecovered: 'Cancelled order recovered!',
+  emptyOrder: 'Empty order',
+  lastOrderCopied: 'Last order copied!',
+  draftSaved: 'Draft saved!',
+  errorSaving: 'Error saving',
+  selectSupplierRequired: 'Select a supplier',
+  quantityMustBeGreaterThanZero: 'Quantity must be greater than 0',
+  productNameRequired: 'Product name required',
+  createNewProductAndAdd: 'Create a new product and add it to the order',
+  editSupplierTitle: 'Edit supplier',
+  whatsappPlaceholderShort: '+34 123 456 789',
+  emailPlaceholderShort: 'supplier@example.com',
+  searchProductsPlaceholder: 'Search products...',
+  addProducts: 'Add Products',
+  searchExistingProducts: 'Search existing products',
+  createNewProduct: 'Create new product',
+  addToOrder: 'Add to order',
+  productsAdded: 'Products added',
+  
+  // NEW: Month names
+  january: 'January',
+  february: 'February',
+  march: 'March',
+  april: 'April',
+  may: 'May',
+  june: 'June',
+  july: 'July',
+  august: 'August',
+  september: 'September',
+  october: 'October',
+  november: 'November',
+  december: 'December',
+  
+  // NEW: AllInvoicesView
+  clickToExpandYearMonth: 'Click to expand year/month',
+  noInvoicesRegistered: 'No invoices registered',
+  unknownSupplier: 'Unknown supplier',
+  confirmDeleteInvoice: 'Are you sure you want to delete this invoice?',
+  invoiceDeleted: 'Invoice deleted',
+  deleteInvoice: 'Delete Invoice',
+  
+  // NEW: ProductsSection
+  vatRatesUpdated: 'VAT rates updated',
+  exportSuccess: 'Export completed',
+  exportError: 'Error during export',
+  areRequired: 'are required',
+  productCreated: 'Product created',
+  errorSavingProduct: 'Error saving product',
+  manualEdit: 'Manual edit',
+  
+  // NEW: SuppliersSection
+  together: 'together',
+  supplierDeletedWithInvoices: 'Supplier deleted along with invoices',
+  
+  // NEW: SupplierDetail
+  invoiceAdded: 'Invoice added',
+  invoiceDetail: 'Invoice Detail',
+  all: 'All',
+  
+  // NEW: ProductAutocomplete
+  searchProductPlaceholder: 'Search product...',
+  
+  // NEW: SettingsDialog
+  modifyTextSize: 'Modify text size',
+  saveAllSettings: 'Save all settings',
+  
+  // NEW: DeleteSupplierDialog
+  reassignProducts: 'Reassign products',
+  deleteProducts: 'Delete products',
+  selectNewSupplier: 'Select new supplier',
+  noOtherSuppliers: 'No other suppliers available',
+  confirmDelete: 'Confirm Delete',
+  
+  // NEW: InvoiceManagement
+  manualEntry: 'Manual entry',
+});
+
+// Spanish translations (ES)
+const esTranslations = createCompleteTranslations({
+  ...itTranslations,
+  products: 'Productos',
+  suppliers: 'Proveedores',
+  orders: 'Pedidos',
+  notifications: 'Notificaciones',
+  dashboard: 'Panel',
+  settings: 'Configuración',
+  priceScanner: 'Escáner de Precios',
+  logout: 'Cerrar Sesión',
+  clearData: 'Borrar Datos',
+  connectedAs: 'Conectado como',
+  priceAlerts30Days: 'Avisos (30d)',
+  priceAlerts: 'Alertas de Precios',
+  noSuppliers: 'No hay proveedores disponibles',
+  noAlerts: 'Sin avisos',
+  addProduct: 'Añadir Producto',
+  export: 'Exportar',
+  uploadInvoice: 'Cargar Factura',
+  productName: 'Nombre del Producto',
+  productNamePlaceholder: 'Ej: Tomates, Vino Tinto, Pan...',
+  supplier: 'Proveedor',
+  orderEmailSubject: 'Pedido de esta semana',
+  orderMessageGreeting: 'Buenos días, me gustaría pedir:',
+  orderMessageClosing: 'Gracias!',
+  exampleProducts: 'Ej: Tomates, Vino Tinto, Pan...',
+  exampleProduct: 'Ej: Ricotta Cannoli',
+  exampleSupplierName: 'Metro Cash & Carry',
+  copyLastOrder: 'Copiar último pedido',
+  noOrderToCopy: 'No hay pedido para copiar',
+  editSupplier: 'Editar Proveedor',
+  testSupabaseConnection: 'Probar Conexión Supabase',
+  testPriceAPIConnection: 'Probar Conexión PriceAPI',
+  customizeExperience: 'Personaliza tu experiencia',
+  livePriceScanner: 'Escáner de Precios en Vivo',
+  scanBarcodeDescription: 'Escanea el código de barras de un producto para comparar precios en tiempo real',
+  productIdentified: 'Producto Identificado',
+  livePricesFound: 'Precios en Vivo Encontrados',
+  productFound: 'Producto Encontrado',
+  newScan: 'Nueva Escaneo',
+  startScanner: 'Iniciar Escáner',
+  back: 'Atrás',
+  requestPermission: 'Solicitar Permiso',
+  grantPermission: 'Conceder Permiso',
+  cameraPermissionDenied: 'Permiso de cámara denegado. Concede permiso para usar el escáner.',
+  cameraPermissionDeniedSettings: 'Permiso de cámara denegado. Habilita el permiso en la configuración del dispositivo.',
+  errorCheckingPermission: 'Error al verificar permisos de cámara',
+  errorRequestingPermission: 'Error al solicitar permiso de cámara',
+  errorSearchingProduct: 'Error al buscar el producto',
+  errorStartingScanner: 'Error al iniciar el escáner',
+  source: 'Fuente:',
+  localDatabase: 'Base de Datos Local',
+  supabaseCache: 'Caché Supabase',
+  priceAPILive: 'Price API en Vivo',
+  openFoodFactsAPI: 'Open Food Facts API',
+  permissionRequired: 'Permiso requerido:',
+  permissionRequiredDescription: 'Para usar el escáner, debes conceder acceso a la cámara.',
+  orderSaved: 'Pedido guardado',
+  canRecoverByPressingCopyLast: 'Puedes recuperarlo presionando "Copiar último".',
+  noPreviousOrder: 'Sin pedido anterior',
+  cancelledOrderRecovered: '¡Pedido cancelado recuperado!',
+  emptyOrder: 'Pedido vacío',
+  lastOrderCopied: '¡Último pedido copiado!',
+  draftSaved: '¡Borrador guardado!',
+  errorSaving: 'Error al guardar',
+  selectSupplierRequired: 'Selecciona un proveedor',
+  quantityMustBeGreaterThanZero: 'La cantidad debe ser mayor que 0',
+  productNameRequired: 'Nombre de producto requerido',
+  createNewProductAndAdd: 'Crear un nuevo producto y agregarlo al pedido',
+  editSupplierTitle: 'Editar proveedor',
+  whatsappPlaceholderShort: '+34 123 456 789',
+  emailPlaceholderShort: 'proveedor@example.com',
+  searchProductsPlaceholder: 'Buscar productos...',
+  addProducts: 'Agregar Productos',
+  searchExistingProducts: 'Buscar productos existentes',
+  createNewProduct: 'Crear nuevo producto',
+  addToOrder: 'Agregar al pedido',
+  productsAdded: 'Productos agregados',
+  
+  // NEW: Month names
+  january: 'Enero',
+  february: 'Febrero',
+  march: 'Marzo',
+  april: 'Abril',
+  may: 'Mayo',
+  june: 'Junio',
+  july: 'Julio',
+  august: 'Agosto',
+  september: 'Septiembre',
+  october: 'Octubre',
+  november: 'Noviembre',
+  december: 'Diciembre',
+  
+  // NEW: AllInvoicesView
+  clickToExpandYearMonth: 'Haz clic para expandir año/mes',
+  noInvoicesRegistered: 'No hay facturas registradas',
+  unknownSupplier: 'Proveedor desconocido',
+  confirmDeleteInvoice: '¿Estás seguro de que quieres eliminar esta factura?',
+  invoiceDeleted: 'Factura eliminada',
+  deleteInvoice: 'Eliminar Factura',
+  
+  // NEW: ProductsSection
+  vatRatesUpdated: 'Tasas de IVA actualizadas',
+  exportSuccess: 'Exportación completada',
+  exportError: 'Error durante la exportación',
+  areRequired: 'son obligatorios',
+  productCreated: 'Producto creado',
+  errorSavingProduct: 'Error al guardar el producto',
+  manualEdit: 'Edición manual',
+  
+  // NEW: SuppliersSection
+  together: 'juntos',
+  supplierDeletedWithInvoices: 'Proveedor eliminado junto con las facturas',
+  
+  // NEW: SupplierDetail
+  invoiceAdded: 'Factura agregada',
+  invoiceDetail: 'Detalle de Factura',
+  all: 'Todos',
+  
+  // NEW: ProductAutocomplete
+  searchProductPlaceholder: 'Buscar producto...',
+  
+  // NEW: SettingsDialog
+  modifyTextSize: 'Modificar tamaño de texto',
+  saveAllSettings: 'Guardar todas las configuraciones',
+  
+  // NEW: DeleteSupplierDialog
+  reassignProducts: 'Reasignar productos',
+  deleteProducts: 'Eliminar productos',
+  selectNewSupplier: 'Seleccionar nuevo proveedor',
+  noOtherSuppliers: 'No hay otros proveedores disponibles',
+  confirmDelete: 'Confirmar Eliminación',
+  
+  // NEW: InvoiceManagement
+  manualEntry: 'Entrada manual',
+});
+
+// French translations (FR)
+const frTranslations = createCompleteTranslations({
+  ...itTranslations,
+  products: 'Produits',
+  suppliers: 'Fournisseurs',
+  orders: 'Commandes',
+  notifications: 'Notifications',
+  dashboard: 'Tableau de bord',
+  settings: 'Paramètres',
+  priceScanner: 'Scanner de Prix',
+  logout: 'Déconnexion',
+  clearData: 'Effacer les Données',
+  connectedAs: 'Connecté en tant que',
+  priceAlerts30Days: 'Alertes (30j)',
+  priceAlerts: 'Alertes de Prix',
+  noSuppliers: 'Aucun fournisseur disponible',
+  noAlerts: 'Aucune alerte',
+  addProduct: 'Ajouter Produit',
+  export: 'Exporter',
+  uploadInvoice: 'Charger Facture',
+  productName: 'Nom du Produit',
+  productNamePlaceholder: 'Ex: Tomates, Vin Rouge, Pain...',
+  supplier: 'Fournisseur',
+  orderEmailSubject: 'Commande de cette semaine',
+  orderMessageGreeting: 'Bonjour, je voudrais commander:',
+  orderMessageClosing: 'Merci!',
+  exampleProducts: 'Ex: Tomates, Vin Rouge, Pain...',
+  exampleProduct: 'Ex: Ricotta Cannoli',
+  exampleSupplierName: 'Metro Cash & Carry',
+  copyLastOrder: 'Copier la dernière commande',
+  noOrderToCopy: 'Aucune commande à copier',
+  editSupplier: 'Modifier Fournisseur',
+  testSupabaseConnection: 'Tester Connexion Supabase',
+  testPriceAPIConnection: 'Tester Connexion PriceAPI',
+  customizeExperience: 'Personnalisez votre expérience',
+  livePriceScanner: 'Scanner de Prix en Direct',
+  scanBarcodeDescription: 'Scannez le code-barres d\'un produit pour comparer les prix en temps réel',
+  productIdentified: 'Produit Identifié',
+  livePricesFound: 'Prix en Direct Trouvés',
+  productFound: 'Produit Trouvé',
+  newScan: 'Nouveau Scan',
+  startScanner: 'Démarrer Scanner',
+  back: 'Retour',
+  requestPermission: 'Demander Permission',
+  grantPermission: 'Accorder Permission',
+  cameraPermissionDenied: 'Permission de caméra refusée. Accordez la permission d\'utiliser le scanner.',
+  cameraPermissionDeniedSettings: 'Permission de caméra refusée. Activez la permission dans les paramètres de l\'appareil.',
+  errorCheckingPermission: 'Erreur lors de la vérification des permissions de caméra',
+  errorRequestingPermission: 'Erreur lors de la demande de permission de caméra',
+  errorSearchingProduct: 'Erreur lors de la recherche du produit',
+  errorStartingScanner: 'Erreur lors du démarrage du scanner',
+  source: 'Source:',
+  localDatabase: 'Base de Données Locale',
+  supabaseCache: 'Cache Supabase',
+  priceAPILive: 'Price API en Direct',
+  openFoodFactsAPI: 'Open Food Facts API',
+  permissionRequired: 'Permission requise:',
+  permissionRequiredDescription: 'Pour utiliser le scanner, vous devez accorder l\'accès à la caméra.',
+  orderSaved: 'Commande sauvegardée',
+  canRecoverByPressingCopyLast: 'Vous pouvez le récupérer en appuyant sur "Copier dernier".',
+  noPreviousOrder: 'Aucune commande précédente',
+  cancelledOrderRecovered: 'Commande annulée récupérée!',
+  emptyOrder: 'Commande vide',
+  lastOrderCopied: 'Dernière commande copiée!',
+  draftSaved: 'Brouillon sauvegardé!',
+  errorSaving: 'Erreur de sauvegarde',
+  selectSupplierRequired: 'Sélectionnez un fournisseur',
+  quantityMustBeGreaterThanZero: 'La quantité doit être supérieure à 0',
+  productNameRequired: 'Nom du produit requis',
+  createNewProductAndAdd: 'Créer un nouveau produit et l\'ajouter à la commande',
+  editSupplierTitle: 'Modifier fournisseur',
+  whatsappPlaceholderShort: '+34 123 456 789',
+  emailPlaceholderShort: 'fournisseur@example.com',
+  searchProductsPlaceholder: 'Rechercher des produits...',
+  addProducts: 'Ajouter Produits',
+  searchExistingProducts: 'Rechercher des produits existants',
+  createNewProduct: 'Créer nouveau produit',
+  addToOrder: 'Ajouter à la commande',
+  productsAdded: 'Produits ajoutés',
+  
+  // NEW: Month names
+  january: 'Janvier',
+  february: 'Février',
+  march: 'Mars',
+  april: 'Avril',
+  may: 'Mai',
+  june: 'Juin',
+  july: 'Juillet',
+  august: 'Août',
+  september: 'Septembre',
+  october: 'Octobre',
+  november: 'Novembre',
+  december: 'Décembre',
+  
+  // NEW: AllInvoicesView
+  clickToExpandYearMonth: 'Cliquez pour développer année/mois',
+  noInvoicesRegistered: 'Aucune facture enregistrée',
+  unknownSupplier: 'Fournisseur inconnu',
+  confirmDeleteInvoice: 'Êtes-vous sûr de vouloir supprimer cette facture?',
+  invoiceDeleted: 'Facture supprimée',
+  deleteInvoice: 'Supprimer Facture',
+  
+  // NEW: ProductsSection
+  vatRatesUpdated: 'Taux de TVA mis à jour',
+  exportSuccess: 'Exportation terminée',
+  exportError: 'Erreur lors de l\'exportation',
+  areRequired: 'sont requis',
+  productCreated: 'Produit créé',
+  errorSavingProduct: 'Erreur lors de l\'enregistrement du produit',
+  manualEdit: 'Édition manuelle',
+  
+  // NEW: SuppliersSection
+  together: 'ensemble',
+  supplierDeletedWithInvoices: 'Fournisseur supprimé avec les factures',
+  
+  // NEW: SupplierDetail
+  invoiceAdded: 'Facture ajoutée',
+  invoiceDetail: 'Détail de Facture',
+  all: 'Tous',
+  
+  // NEW: ProductAutocomplete
+  searchProductPlaceholder: 'Rechercher produit...',
+  
+  // NEW: SettingsDialog
+  modifyTextSize: 'Modifier la taille du texte',
+  saveAllSettings: 'Enregistrer tous les paramètres',
+  
+  // NEW: DeleteSupplierDialog
+  reassignProducts: 'Réaffecter les produits',
+  deleteProducts: 'Supprimer les produits',
+  selectNewSupplier: 'Sélectionner nouveau fournisseur',
+  noOtherSuppliers: 'Aucun autre fournisseur disponible',
+  confirmDelete: 'Confirmer la Suppression',
+  
+  // NEW: InvoiceManagement
+  manualEntry: 'Saisie manuelle',
+});
+
+// German translations (DE)
+const deTranslations = createCompleteTranslations({
+  ...itTranslations,
+  products: 'Produkte',
+  suppliers: 'Lieferanten',
+  orders: 'Bestellungen',
+  notifications: 'Benachrichtigungen',
+  dashboard: 'Dashboard',
+  settings: 'Einstellungen',
+  priceScanner: 'Preisscanner',
+  logout: 'Abmelden',
+  clearData: 'Daten Löschen',
+  connectedAs: 'Verbunden als',
+  priceAlerts30Days: 'Warnungen (30T)',
+  priceAlerts: 'Preiswarnungen',
+  noSuppliers: 'Keine Lieferanten verfügbar',
+  noAlerts: 'Keine Warnungen',
+  addProduct: 'Produkt Hinzufügen',
+  export: 'Exportieren',
+  uploadInvoice: 'Rechnung Hochladen',
+  productName: 'Produktname',
+  productNamePlaceholder: 'Z.B.: Tomaten, Rotwein, Brot...',
+  supplier: 'Lieferant',
+  orderEmailSubject: 'Bestellung dieser Woche',
+  orderMessageGreeting: 'Guten Tag, ich möchte bestellen:',
+  orderMessageClosing: 'Danke!',
+  exampleProducts: 'Z.B.: Tomaten, Rotwein, Brot...',
+  exampleProduct: 'Z.B.: Ricotta Cannoli',
+  exampleSupplierName: 'Metro Cash & Carry',
+  copyLastOrder: 'Letzte Bestellung kopieren',
+  noOrderToCopy: 'Keine Bestellung zum Kopieren',
+  editSupplier: 'Lieferant Bearbeiten',
+  testSupabaseConnection: 'Supabase-Verbindung Testen',
+  testPriceAPIConnection: 'PriceAPI-Verbindung Testen',
+  customizeExperience: 'Passen Sie Ihre Erfahrung an',
+  livePriceScanner: 'Live-Preisscanner',
+  scanBarcodeDescription: 'Scannen Sie einen Produktbarcode, um Preise in Echtzeit zu vergleichen',
+  productIdentified: 'Produkt Identifiziert',
+  livePricesFound: 'Live-Preise Gefunden',
+  productFound: 'Produkt Gefunden',
+  newScan: 'Neuer Scan',
+  startScanner: 'Scanner Starten',
+  back: 'Zurück',
+  requestPermission: 'Berechtigung Anfordern',
+  grantPermission: 'Berechtigung Erteilen',
+  cameraPermissionDenied: 'Kameraberechtigung verweigert. Erteilen Sie die Berechtigung, um den Scanner zu verwenden.',
+  cameraPermissionDeniedSettings: 'Kameraberechtigung verweigert. Aktivieren Sie die Berechtigung in den Geräteeinstellungen.',
+  errorCheckingPermission: 'Fehler beim Überprüfen der Kameraberechtigungen',
+  errorRequestingPermission: 'Fehler beim Anfordern der Kameraberechtigung',
+  errorSearchingProduct: 'Fehler beim Suchen des Produkts',
+  errorStartingScanner: 'Fehler beim Starten des Scanners',
+  source: 'Quelle:',
+  localDatabase: 'Lokale Datenbank',
+  supabaseCache: 'Supabase-Cache',
+  priceAPILive: 'Price API Live',
+  openFoodFactsAPI: 'Open Food Facts API',
+  permissionRequired: 'Berechtigung erforderlich:',
+  permissionRequiredDescription: 'Um den Scanner zu verwenden, müssen Sie den Kamerazugriff gewähren.',
+  orderSaved: 'Bestellung gespeichert',
+  canRecoverByPressingCopyLast: 'Sie können es wiederherstellen, indem Sie "Letzte kopieren" drücken.',
+  noPreviousOrder: 'Keine vorherige Bestellung',
+  cancelledOrderRecovered: 'Stornierte Bestellung wiederhergestellt!',
+  emptyOrder: 'Leere Bestellung',
+  lastOrderCopied: 'Letzte Bestellung kopiert!',
+  draftSaved: 'Entwurf gespeichert!',
+  errorSaving: 'Fehler beim Speichern',
+  selectSupplierRequired: 'Wählen Sie einen Lieferanten',
+  quantityMustBeGreaterThanZero: 'Menge muss größer als 0 sein',
+  productNameRequired: 'Produktname erforderlich',
+  createNewProductAndAdd: 'Neues Produkt erstellen und zur Bestellung hinzufügen',
+  editSupplierTitle: 'Lieferant bearbeiten',
+  whatsappPlaceholderShort: '+34 123 456 789',
+  emailPlaceholderShort: 'lieferant@example.com',
+  searchProductsPlaceholder: 'Produkte suchen...',
+  addProducts: 'Produkte Hinzufügen',
+  searchExistingProducts: 'Vorhandene Produkte suchen',
+  createNewProduct: 'Neues Produkt erstellen',
+  addToOrder: 'Zur Bestellung hinzufügen',
+  productsAdded: 'Produkte hinzugefügt',
+  
+  // NEW: Month names
+  january: 'Januar',
+  february: 'Februar',
+  march: 'März',
+  april: 'April',
+  may: 'Mai',
+  june: 'Juni',
+  july: 'Juli',
+  august: 'August',
+  september: 'September',
+  october: 'Oktober',
+  november: 'November',
+  december: 'Dezember',
+  
+  // NEW: AllInvoicesView
+  clickToExpandYearMonth: 'Klicken Sie, um Jahr/Monat zu erweitern',
+  noInvoicesRegistered: 'Keine Rechnungen registriert',
+  unknownSupplier: 'Unbekannter Lieferant',
+  confirmDeleteInvoice: 'Sind Sie sicher, dass Sie diese Rechnung löschen möchten?',
+  invoiceDeleted: 'Rechnung gelöscht',
+  deleteInvoice: 'Rechnung Löschen',
+  
+  // NEW: ProductsSection
+  vatRatesUpdated: 'MwSt-Sätze aktualisiert',
+  exportSuccess: 'Export abgeschlossen',
+  exportError: 'Fehler beim Export',
+  areRequired: 'sind erforderlich',
+  productCreated: 'Produkt erstellt',
+  errorSavingProduct: 'Fehler beim Speichern des Produkts',
+  manualEdit: 'Manuelle Bearbeitung',
+  
+  // NEW: SuppliersSection
+  together: 'zusammen',
+  supplierDeletedWithInvoices: 'Lieferant zusammen mit Rechnungen gelöscht',
+  
+  // NEW: SupplierDetail
+  invoiceAdded: 'Rechnung hinzugefügt',
+  invoiceDetail: 'Rechnungsdetail',
+  all: 'Alle',
+  
+  // NEW: ProductAutocomplete
+  searchProductPlaceholder: 'Produkt suchen...',
+  
+  // NEW: SettingsDialog
+  modifyTextSize: 'Textgröße ändern',
+  saveAllSettings: 'Alle Einstellungen speichern',
+  
+  // NEW: DeleteSupplierDialog
+  reassignProducts: 'Produkte neu zuweisen',
+  deleteProducts: 'Produkte löschen',
+  selectNewSupplier: 'Neuen Lieferanten auswählen',
+  noOtherSuppliers: 'Keine anderen Lieferanten verfügbar',
+  confirmDelete: 'Löschen Bestätigen',
+  
+  // NEW: InvoiceManagement
+  manualEntry: 'Manuelle Eingabe',
+});
+
+// Lithuanian translations (LT)
+const ltTranslations = createCompleteTranslations({
+  ...itTranslations,
+  products: 'Produktai',
+  suppliers: 'Tiekėjai',
+  orders: 'Užsakymai',
+  notifications: 'Pranešimai',
+  dashboard: 'Prietaisų skydelis',
+  settings: 'Nustatymai',
+  priceScanner: 'Kainų Skeneris',
+  logout: 'Atsijungti',
+  clearData: 'Išvalyti Duomenis',
+  connectedAs: 'Prisijungęs kaip',
+  priceAlerts30Days: 'Įspėjimai (30d.)',
+  priceAlerts: 'Kainų Įspėjimai',
+  noSuppliers: 'Nėra tiekėjų',
+  noAlerts: 'Nėra įspėjimų',
+  addProduct: 'Pridėti Produktą',
+  export: 'Eksportuoti',
+  uploadInvoice: 'Įkelti Sąskaitą Faktūrą',
+  productName: 'Produkto Pavadinimas',
+  productNamePlaceholder: 'Pvz.: Pomidorai, Raudonas Vynas, Duona...',
+  supplier: 'Tiekėjas',
+  orderEmailSubject: 'Šios savaitės užsakymas',
+  orderMessageGreeting: 'Laba diena, norėčiau užsakyti:',
+  orderMessageClosing: 'Ačiū!',
+  exampleProducts: 'Pvz.: Pomidorai, Raudonas Vynas, Duona...',
+  exampleProduct: 'Pvz.: Ricotta Cannoli',
+  exampleSupplierName: 'Metro Cash & Carry',
+  copyLastOrder: 'Kopijuoti paskutinį užsakymą',
+  noOrderToCopy: 'Nėra užsakymo kopijuoti',
+  editSupplier: 'Redaguoti Tiekėją',
+  testSupabaseConnection: 'Testuoti Supabase Ryšį',
+  testPriceAPIConnection: 'Testuoti PriceAPI Ryšį',
+  customizeExperience: 'Pritaikykite savo patirtį',
+  livePriceScanner: 'Tiesioginių Kainų Skeneris',
+  scanBarcodeDescription: 'Nuskaitykite produkto brūkšninį kodą, kad palygintumėte kainas realiuoju laiku',
+  productIdentified: 'Produktas Identifikuotas',
+  livePricesFound: 'Rasti Tiesioginiai Kainos',
+  productFound: 'Produktas Rastas',
+  newScan: 'Naujas Skenavimas',
+  startScanner: 'Pradėti Skenerį',
+  back: 'Atgal',
+  requestPermission: 'Prašyti Leidimo',
+  grantPermission: 'Suteikti Leidimą',
+  cameraPermissionDenied: 'Kameros leidimas atmestas. Suteikite leidimą naudoti skenerį.',
+  cameraPermissionDeniedSettings: 'Kameros leidimas atmestas. Įjunkite leidimą įrenginio nustatymuose.',
+  errorCheckingPermission: 'Klaida tikrinant kameros leidimus',
+  errorRequestingPermission: 'Klaida prašant kameros leidimo',
+  errorSearchingProduct: 'Klaida ieškant produkto',
+  errorStartingScanner: 'Klaida paleidžiant skenerį',
+  source: 'Šaltinis:',
+  localDatabase: 'Vietinė Duomenų Bazė',
+  supabaseCache: 'Supabase Talpykla',
+  priceAPILive: 'Price API Tiesiogiai',
+  openFoodFactsAPI: 'Open Food Facts API',
+  permissionRequired: 'Reikalingas leidimas:',
+  permissionRequiredDescription: 'Norėdami naudoti skenerį, turite suteikti prieigą prie kameros.',
+  orderSaved: 'Užsakymas išsaugotas',
+  canRecoverByPressingCopyLast: 'Galite jį atkurti paspaudę "Kopijuoti paskutinį".',
+  noPreviousOrder: 'Nėra ankstesnio užsakymo',
+  cancelledOrderRecovered: 'Atšauktas užsakymas atkurtas!',
+  emptyOrder: 'Tuščias užsakymas',
+  lastOrderCopied: 'Paskutinis užsakymas nukopijuotas!',
+  draftSaved: 'Juodraštis išsaugotas!',
+  errorSaving: 'Klaida išsaugant',
+  selectSupplierRequired: 'Pasirinkite tiekėją',
+  quantityMustBeGreaterThanZero: 'Kiekis turi būti didesnis nei 0',
+  productNameRequired: 'Reikalingas produkto pavadinimas',
+  createNewProductAndAdd: 'Sukurti naują produktą ir pridėti jį prie užsakymo',
+  editSupplierTitle: 'Redaguoti tiekėją',
+  whatsappPlaceholderShort: '+34 123 456 789',
+  emailPlaceholderShort: 'tiekejas@example.com',
+  searchProductsPlaceholder: 'Ieškoti produktų...',
+  addProducts: 'Pridėti Produktus',
+  searchExistingProducts: 'Ieškoti esamų produktų',
+  createNewProduct: 'Sukurti naują produktą',
+  addToOrder: 'Pridėti prie užsakymo',
+  productsAdded: 'Produktai pridėti',
+  
+  // NEW: Month names
+  january: 'Sausis',
+  february: 'Vasaris',
+  march: 'Kovas',
+  april: 'Balandis',
+  may: 'Gegužė',
+  june: 'Birželis',
+  july: 'Liepa',
+  august: 'Rugpjūtis',
+  september: 'Rugsėjis',
+  october: 'Spalis',
+  november: 'Lapkritis',
+  december: 'Gruodis',
+  
+  // NEW: AllInvoicesView
+  clickToExpandYearMonth: 'Spustelėkite, kad išplėstumėte metus/mėnesį',
+  noInvoicesRegistered: 'Nėra užregistruotų sąskaitų faktūrų',
+  unknownSupplier: 'Nežinomas tiekėjas',
+  confirmDeleteInvoice: 'Ar tikrai norite ištrinti šią sąskaitą faktūrą?',
+  invoiceDeleted: 'Sąskaita faktūra ištrinta',
+  deleteInvoice: 'Ištrinti Sąskaitą Faktūrą',
+  
+  // NEW: ProductsSection
+  vatRatesUpdated: 'PVM tarifai atnaujinti',
+  exportSuccess: 'Eksportavimas baigtas',
+  exportError: 'Klaida eksportuojant',
+  areRequired: 'yra privalomi',
+  productCreated: 'Produktas sukurtas',
+  errorSavingProduct: 'Klaida išsaugant produktą',
+  manualEdit: 'Rankinis redagavimas',
+  
+  // NEW: SuppliersSection
+  together: 'kartu',
+  supplierDeletedWithInvoices: 'Tiekėjas ištrintas kartu su sąskaitomis faktūromis',
+  
+  // NEW: SupplierDetail
+  invoiceAdded: 'Sąskaita faktūra pridėta',
+  invoiceDetail: 'Sąskaitos Faktūros Detalės',
+  all: 'Visi',
+  
+  // NEW: ProductAutocomplete
+  searchProductPlaceholder: 'Ieškoti produkto...',
+  
+  // NEW: SettingsDialog
+  modifyTextSize: 'Keisti teksto dydį',
+  saveAllSettings: 'Išsaugoti visus nustatymus',
+  
+  // NEW: DeleteSupplierDialog
+  reassignProducts: 'Perkelti produktus',
+  deleteProducts: 'Ištrinti produktus',
+  selectNewSupplier: 'Pasirinkti naują tiekėją',
+  noOtherSuppliers: 'Nėra kitų tiekėjų',
+  confirmDelete: 'Patvirtinti Ištrynimą',
+  
+  // NEW: InvoiceManagement
+  manualEntry: 'Rankinis įvedimas',
+});
+
+export const translations: Record<Language, Translations> = {
+  it: itTranslations,
+  en: enTranslations,
+  es: esTranslations,
+  fr: frTranslations,
+  de: deTranslations,
+  lt: ltTranslations,
+};
+
+export function detectBrowserLanguage(): Language {
+  const browserLang = navigator.language || navigator.languages?.[0] || 'it';
+  const primaryLang = browserLang.split('-')[0].toLowerCase();
+  const supportedLanguages: Language[] = ['it', 'en', 'es', 'fr', 'de', 'lt'];
+  
+  if (supportedLanguages.includes(primaryLang as Language)) {
+    return primaryLang as Language;
+  }
+  
+  return 'it';
+}
+
+export function getLanguage(): Language {
+  const savedLang = localStorage.getItem('language');
+  
+  if (savedLang && ['it', 'en', 'es', 'fr', 'de', 'lt'].includes(savedLang)) {
+    return savedLang as Language;
+  }
+  
+  const detectedLang = detectBrowserLanguage();
+  localStorage.setItem('language', detectedLang);
+  
+  return detectedLang;
+}
+
+export function setLanguage(lang: Language): void {
+  localStorage.setItem('language', lang);
+}
+
+export function getAvailableLanguages() {
+  return [
+    { code: 'it' as Language, name: 'Italiano', flag: '🇮🇹' },
+    { code: 'en' as Language, name: 'English', flag: '🇬🇧' },
+    { code: 'es' as Language, name: 'Español', flag: '🇪🇸' },
+    { code: 'fr' as Language, name: 'Français', flag: '🇫🇷' },
+    { code: 'de' as Language, name: 'Deutsch', flag: '🇩🇪' },
+    { code: 'lt' as Language, name: 'Lietuvių', flag: '🇱🇹' },
+  ];
+}
+
+export function useTranslations(language: Language): Translations {
+  return translations[language] || translations.it;
+}
+
+export const languageOptions = [
+  { value: 'it' as Language, label: '🇮🇹 Italiano', flag: '🇮🇹' },
+  { value: 'en' as Language, label: '🇬🇧 English', flag: '🇬🇧' },
+  { value: 'es' as Language, label: '🇪🇸 Español', flag: '🇪🇸' },
+  { value: 'fr' as Language, label: '🇫🇷 Français', flag: '🇫🇷' },
+  { value: 'de' as Language, label: '🇩🇪 Deutsch', flag: '🇩🇪' },
+  { value: 'lt' as Language, label: '🇱🇹 Lietuvių', flag: '🇱🇹' },
+];

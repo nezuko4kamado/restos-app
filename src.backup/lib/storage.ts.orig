@@ -1,0 +1,780 @@
+import { Product, Supplier, Order, Invoice, PriceHistory } from '@/types';
+import { supabase, isSupabaseConfigured, getCurrentUser } from './supabase';
+
+// Use the same keys as Index.tsx for consistency
+const PRODUCTS_KEY = 'restaurant_products';
+const SUPPLIERS_KEY = 'restaurant_suppliers';
+const ORDERS_KEY = 'restaurant_orders';
+const INVOICES_KEY = 'restaurant_invoices';
+
+// Storage mode detection
+export const getStorageMode = (): 'supabase' | 'localStorage' => {
+  const mode = isSupabaseConfigured() ? 'supabase' : 'localStorage';
+  console.log('🔍 Storage mode:', mode);
+  return mode;
+};
+
+// Helper to get current user ID
+const getUserId = async (): Promise<string | null> => {
+  const user = await getCurrentUser();
+  console.log('👤 Current user ID:', user?.id || 'NOT LOGGED IN');
+  return user?.id || null;
+};
+
+// Database types
+interface DbProduct {
+  id: string;
+  user_id: string;
+  name: string;
+  code?: string;
+  category: string;
+  unit: string;
+  supplier_id: string;
+  price: number;
+  vat_rate: number;
+  discount_percent: number;
+  price_history: PriceHistory[];
+  created_at: string;
+  updated_at: string;
+}
+
+interface DbSupplier {
+  id: string;
+  user_id: string;
+  name: string;
+  contact: string;
+  email?: string;
+  phone: string;
+  address?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface DbOrder {
+  id: string;
+  user_id: string;
+  supplier_id: string;
+  status: string;
+  total: number;
+  notes: string;
+  items: unknown;
+  order_date: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Helper to map Product to database format
+const mapProductToDb = (product: Product, userId: string): Partial<DbProduct> => {
+  const dbProduct: Partial<DbProduct> = {
+    id: product.id,
+    user_id: userId,
+    name: product.name,
+    category: product.category || 'general',
+    unit: product.unit || 'kg',
+    supplier_id: product.supplier_id || product.supplierId || '',
+    price: product.price,
+    vat_rate: product.vatRate || 0,
+    discount_percent: product.discountPercent || product.discount || 0,
+    price_history: product.priceHistory || [],
+    created_at: product.created_at || new Date().toISOString(),
+    updated_at: product.updated_at || new Date().toISOString()
+  };
+
+  // Only add code if it exists
+  if (product.id) {
+    dbProduct.code = product.id;
+  }
+
+  console.log('🔍 Mapping product to DB:', {
+    name: product.name,
+    user_id: userId,
+    has_unit: !!dbProduct.unit,
+    has_category: !!dbProduct.category,
+    has_supplier_id: !!dbProduct.supplier_id,
+    has_code: !!dbProduct.code
+  });
+
+  return dbProduct;
+};
+
+// Helper to map database format to Product
+const mapDbToProduct = (dbProduct: DbProduct): Product => {
+  return {
+    id: dbProduct.id,
+    name: dbProduct.name,
+    price: parseFloat(String(dbProduct.price)),
+    category: dbProduct.category,
+    unit: dbProduct.unit,
+    supplier_id: dbProduct.supplier_id,
+    supplierId: dbProduct.supplier_id,
+    vatRate: parseFloat(String(dbProduct.vat_rate || 0)),
+    discountPercent: parseFloat(String(dbProduct.discount_percent || 0)),
+    discount: parseFloat(String(dbProduct.discount_percent || 0)),
+    priceHistory: dbProduct.price_history || [],
+    created_at: dbProduct.created_at,
+    updated_at: dbProduct.updated_at
+  };
+};
+
+// Helper to map Supplier to database format
+const mapSupplierToDb = (supplier: Supplier, userId: string): DbSupplier => {
+  return {
+    id: supplier.id,
+    user_id: userId,
+    name: supplier.name,
+    contact: supplier.phone,
+    email: supplier.email,
+    phone: supplier.phone,
+    address: supplier.address,
+    created_at: supplier.created_at || new Date().toISOString(),
+    updated_at: supplier.updated_at || new Date().toISOString()
+  };
+};
+
+// Helper to map database format to Supplier
+const mapDbToSupplier = (dbSupplier: DbSupplier): Supplier => {
+  return {
+    id: dbSupplier.id,
+    name: dbSupplier.name,
+    phone: dbSupplier.phone || dbSupplier.contact || '',
+    email: dbSupplier.email,
+    address: dbSupplier.address,
+    products: [],
+    created_at: dbSupplier.created_at,
+    updated_at: dbSupplier.updated_at
+  };
+};
+
+// Helper to map Order to database format
+const mapOrderToDb = (order: Order, userId: string): DbOrder => {
+  return {
+    id: order.id,
+    user_id: userId,
+    supplier_id: order.items[0]?.supplierId || '',
+    status: order.status,
+    total: order.total,
+    notes: '',
+    items: order.items,
+    order_date: order.date,
+    created_at: order.created_at || new Date().toISOString(),
+    updated_at: order.updated_at || new Date().toISOString()
+  };
+};
+
+// Helper to map database format to Order
+const mapDbToOrder = (dbOrder: DbOrder): Order => {
+  return {
+    id: dbOrder.id,
+    date: dbOrder.order_date,
+    items: (dbOrder.items as Order['items']) || [],
+    total: parseFloat(String(dbOrder.total)),
+    status: dbOrder.status as Order['status'],
+    created_at: dbOrder.created_at,
+    updated_at: dbOrder.updated_at
+  };
+};
+
+// Products - Supabase
+const getProductsFromSupabase = async (): Promise<Product[]> => {
+  const userId = await getUserId();
+  if (!userId) {
+    console.warn('⚠️ No user logged in, returning empty products');
+    return [];
+  }
+
+  console.log('📥 Fetching products from Supabase for user:', userId);
+
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('❌ Error fetching products:', error);
+    return [];
+  }
+
+  console.log('✅ Fetched', data?.length || 0, 'products from Supabase');
+  
+  // Log first 3 products for debugging
+  if (data && data.length > 0) {
+    console.log('📦 First 3 products:', data.slice(0, 3).map(p => ({
+      name: p.name,
+      user_id: p.user_id,
+      supplier_id: p.supplier_id
+    })));
+  }
+  
+  return (data || []).map(mapDbToProduct);
+};
+
+const saveProductToSupabase = async (product: Product): Promise<void> => {
+  const userId = await getUserId();
+  if (!userId) {
+    console.error('❌ Cannot save product: User not authenticated');
+    throw new Error('User not authenticated');
+  }
+
+  console.log('💾 Attempting to save product:', product.name);
+  console.log('👤 User ID:', userId);
+  
+  const dbProduct = mapProductToDb(product, userId);
+  
+  console.log('📤 Sending to Supabase:', {
+    id: dbProduct.id,
+    name: dbProduct.name,
+    user_id: dbProduct.user_id,
+    supplier_id: dbProduct.supplier_id,
+    category: dbProduct.category,
+    unit: dbProduct.unit,
+    code: dbProduct.code
+  });
+  
+  const { data, error } = await supabase
+    .from('products')
+    .upsert(dbProduct)
+    .select();
+
+  if (error) {
+    console.error('❌ Supabase error details:', {
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code
+    });
+    throw error;
+  }
+
+  console.log('✅ Product saved successfully to Supabase:', data);
+};
+
+const deleteProductFromSupabase = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from('products')
+    .delete()
+    .eq('id', id);
+
+  if (error) throw error;
+};
+
+// Products - localStorage
+const getProductsFromLocalStorage = (): Product[] => {
+  const data = localStorage.getItem(PRODUCTS_KEY);
+  const products = data ? JSON.parse(data) : [];
+  console.log('📥 Fetched', products.length, 'products from localStorage');
+  return products;
+};
+
+const saveProductsToLocalStorage = (products: Product[]): void => {
+  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
+  console.log('✅ Products saved to localStorage:', products.length);
+};
+
+// Products - Unified API
+export const getProducts = async (): Promise<Product[]> => {
+  const mode = getStorageMode();
+  console.log('📦 Getting products using mode:', mode);
+  
+  if (mode === 'supabase') {
+    return await getProductsFromSupabase();
+  }
+  return getProductsFromLocalStorage();
+};
+
+export const saveProducts = async (products: Product[]): Promise<void> => {
+  const mode = getStorageMode();
+  console.log('💾 Saving', products.length, 'products using mode:', mode);
+  
+  if (mode === 'supabase') {
+    const userId = await getUserId();
+    if (!userId) throw new Error('User not authenticated');
+
+    console.log('💾 Saving products to Supabase...', products.length);
+
+    // Use upsert for each product instead of delete-then-insert
+    for (const product of products) {
+      try {
+        await saveProductToSupabase(product);
+      } catch (error) {
+        console.error('❌ Error saving product:', product.name);
+        console.error('❌ Full error:', error);
+        throw error;
+      }
+    }
+
+    console.log('✅ All products saved to Supabase successfully!');
+  } else {
+    saveProductsToLocalStorage(products);
+  }
+};
+
+export const addProduct = async (product: Omit<Product, 'id'>): Promise<Product> => {
+  const newProduct: Product = {
+    ...product,
+    id: crypto.randomUUID(),
+  };
+
+  const mode = getStorageMode();
+  console.log('➕ Adding product:', newProduct.name, 'using mode:', mode);
+  console.log('📋 Product details:', {
+    name: newProduct.name,
+    supplier_id: newProduct.supplier_id || newProduct.supplierId,
+    category: newProduct.category,
+    unit: newProduct.unit,
+    price: newProduct.price
+  });
+
+  if (mode === 'supabase') {
+    await saveProductToSupabase(newProduct);
+    console.log('✅ Product added to Supabase successfully');
+  } else {
+    const products = getProductsFromLocalStorage();
+    products.push(newProduct);
+    saveProductsToLocalStorage(products);
+    console.log('✅ Product added to localStorage:', newProduct.name);
+  }
+
+  return newProduct;
+};
+
+export const updateProduct = async (id: string, updates: Partial<Product>): Promise<void> => {
+  if (getStorageMode() === 'supabase') {
+    const userId = await getUserId();
+    if (!userId) throw new Error('User not authenticated');
+
+    // Get the existing product first
+    const products = await getProducts();
+    const existingProduct = products.find(p => p.id === id);
+    if (!existingProduct) throw new Error('Product not found');
+
+    // Merge updates with existing product
+    const updatedProduct = { ...existingProduct, ...updates };
+    const dbProduct = mapProductToDb(updatedProduct, userId);
+
+    const { error } = await supabase
+      .from('products')
+      .update(dbProduct)
+      .eq('id', id);
+    
+    if (error) throw error;
+  } else {
+    const products = getProductsFromLocalStorage();
+    const index = products.findIndex((p) => p.id === id);
+    if (index !== -1) {
+      products[index] = { ...products[index], ...updates };
+      saveProductsToLocalStorage(products);
+    }
+  }
+};
+
+export const deleteProduct = async (id: string): Promise<void> => {
+  if (getStorageMode() === 'supabase') {
+    await deleteProductFromSupabase(id);
+  } else {
+    const products = getProductsFromLocalStorage();
+    const filtered = products.filter((p) => p.id !== id);
+    saveProductsToLocalStorage(filtered);
+  }
+};
+
+export const updatePrice = async (
+  id: string,
+  newPrice: number,
+  source: string,
+  invoiceId?: string
+): Promise<void> => {
+  const products = await getProducts();
+  const product = products.find((p) => p.id === id);
+  
+  if (!product) {
+    throw new Error('Product not found');
+  }
+
+  const oldPrice = product.price;
+  const changePercent = ((newPrice - oldPrice) / oldPrice) * 100;
+
+  const historyEntry: PriceHistory = {
+    price: oldPrice,
+    date: new Date().toISOString(),
+    change_percent: parseFloat(changePercent.toFixed(2)),
+    source,
+    invoice_id: invoiceId,
+  };
+
+  const priceHistory = product.priceHistory || [];
+  priceHistory.push(historyEntry);
+
+  await updateProduct(id, {
+    price: newPrice,
+    priceHistory: priceHistory,
+  });
+};
+
+// Suppliers - Supabase
+const getSuppliersFromSupabase = async (): Promise<Supplier[]> => {
+  const userId = await getUserId();
+  if (!userId) return [];
+
+  const { data, error } = await supabase
+    .from('suppliers')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('❌ Error fetching suppliers:', error);
+    return [];
+  }
+
+  console.log('✅ Fetched', data?.length || 0, 'suppliers from Supabase');
+  return (data || []).map(mapDbToSupplier);
+};
+
+// Suppliers - localStorage
+const getSuppliersFromLocalStorage = (): Supplier[] => {
+  const data = localStorage.getItem(SUPPLIERS_KEY);
+  return data ? JSON.parse(data) : [];
+};
+
+const saveSuppliersToLocalStorage = (suppliers: Supplier[]): void => {
+  localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(suppliers));
+};
+
+// Suppliers - Unified API
+export const getSuppliers = async (): Promise<Supplier[]> => {
+  if (getStorageMode() === 'supabase') {
+    return await getSuppliersFromSupabase();
+  }
+  return getSuppliersFromLocalStorage();
+};
+
+export const saveSuppliers = async (suppliers: Supplier[]): Promise<void> => {
+  if (getStorageMode() === 'supabase') {
+    const userId = await getUserId();
+    if (!userId) throw new Error('User not authenticated');
+
+    console.log('💾 Saving suppliers to Supabase...', suppliers.length);
+
+    // Use upsert for each supplier
+    for (const supplier of suppliers) {
+      try {
+        const dbSupplier = mapSupplierToDb(supplier, userId);
+        const { error } = await supabase
+          .from('suppliers')
+          .upsert(dbSupplier);
+        
+        if (error) throw error;
+      } catch (error) {
+        console.error('❌ Error saving supplier:', supplier.name, error);
+        throw error;
+      }
+    }
+
+    console.log('✅ Suppliers saved to Supabase successfully!');
+  } else {
+    saveSuppliersToLocalStorage(suppliers);
+  }
+};
+
+export const addSupplier = async (supplier: Omit<Supplier, 'id'>): Promise<Supplier> => {
+  const newSupplier: Supplier = {
+    ...supplier,
+    id: crypto.randomUUID(),
+  };
+
+  if (getStorageMode() === 'supabase') {
+    const userId = await getUserId();
+    if (!userId) throw new Error('User not authenticated');
+
+    const dbSupplier = mapSupplierToDb(newSupplier, userId);
+    const { error } = await supabase
+      .from('suppliers')
+      .insert(dbSupplier);
+    
+    if (error) throw error;
+  } else {
+    const suppliers = getSuppliersFromLocalStorage();
+    suppliers.push(newSupplier);
+    saveSuppliersToLocalStorage(suppliers);
+  }
+
+  return newSupplier;
+};
+
+export const updateSupplier = async (id: string, updates: Partial<Supplier>): Promise<void> => {
+  if (getStorageMode() === 'supabase') {
+    const userId = await getUserId();
+    if (!userId) throw new Error('User not authenticated');
+
+    const suppliers = await getSuppliers();
+    const existingSupplier = suppliers.find(s => s.id === id);
+    if (!existingSupplier) throw new Error('Supplier not found');
+
+    const updatedSupplier = { ...existingSupplier, ...updates };
+    const dbSupplier = mapSupplierToDb(updatedSupplier, userId);
+
+    const { error } = await supabase
+      .from('suppliers')
+      .update(dbSupplier)
+      .eq('id', id);
+    
+    if (error) throw error;
+  } else {
+    const suppliers = getSuppliersFromLocalStorage();
+    const index = suppliers.findIndex((s) => s.id === id);
+    if (index !== -1) {
+      suppliers[index] = { ...suppliers[index], ...updates };
+      saveSuppliersToLocalStorage(suppliers);
+    }
+  }
+};
+
+export const deleteSupplier = async (id: string): Promise<void> => {
+  if (getStorageMode() === 'supabase') {
+    const { error } = await supabase
+      .from('suppliers')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+  } else {
+    const suppliers = getSuppliersFromLocalStorage();
+    const filtered = suppliers.filter((s) => s.id !== id);
+    saveSuppliersToLocalStorage(suppliers);
+  }
+};
+
+// Orders - Supabase
+const getOrdersFromSupabase = async (): Promise<Order[]> => {
+  const userId = await getUserId();
+  if (!userId) return [];
+
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('❌ Error fetching orders:', error);
+    return [];
+  }
+
+  return (data || []).map(mapDbToOrder);
+};
+
+// Orders - localStorage
+const getOrdersFromLocalStorage = (): Order[] => {
+  const data = localStorage.getItem(ORDERS_KEY);
+  return data ? JSON.parse(data) : [];
+};
+
+const saveOrdersToLocalStorage = (orders: Order[]): void => {
+  localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+};
+
+// Orders - Unified API
+export const getOrders = async (): Promise<Order[]> => {
+  if (getStorageMode() === 'supabase') {
+    return await getOrdersFromSupabase();
+  }
+  return getOrdersFromLocalStorage();
+};
+
+export const saveOrders = async (orders: Order[]): Promise<void> => {
+  if (getStorageMode() === 'supabase') {
+    const userId = await getUserId();
+    if (!userId) throw new Error('User not authenticated');
+
+    console.log('💾 Saving orders to Supabase...', orders.length);
+
+    // Use upsert for each order
+    for (const order of orders) {
+      try {
+        const dbOrder = mapOrderToDb(order, userId);
+        const { error } = await supabase
+          .from('orders')
+          .upsert(dbOrder);
+        
+        if (error) throw error;
+      } catch (error) {
+        console.error('❌ Error saving order:', order.id, error);
+        throw error;
+      }
+    }
+
+    console.log('✅ Orders saved to Supabase successfully!');
+  } else {
+    saveOrdersToLocalStorage(orders);
+  }
+};
+
+export const addOrder = async (order: Omit<Order, 'id'>): Promise<Order> => {
+  const newOrder: Order = {
+    ...order,
+    id: crypto.randomUUID(),
+  };
+
+  if (getStorageMode() === 'supabase') {
+    const userId = await getUserId();
+    if (!userId) throw new Error('User not authenticated');
+
+    const dbOrder = mapOrderToDb(newOrder, userId);
+    const { error } = await supabase
+      .from('orders')
+      .insert(dbOrder);
+    
+    if (error) throw error;
+  } else {
+    const orders = getOrdersFromLocalStorage();
+    orders.push(newOrder);
+    saveOrdersToLocalStorage(orders);
+  }
+
+  return newOrder;
+};
+
+export const updateOrder = async (id: string, updates: Partial<Order>): Promise<void> => {
+  if (getStorageMode() === 'supabase') {
+    const userId = await getUserId();
+    if (!userId) throw new Error('User not authenticated');
+
+    const orders = await getOrders();
+    const existingOrder = orders.find(o => o.id === id);
+    if (!existingOrder) throw new Error('Order not found');
+
+    const updatedOrder = { ...existingOrder, ...updates };
+    const dbOrder = mapOrderToDb(updatedOrder, userId);
+
+    const { error } = await supabase
+      .from('orders')
+      .update(dbOrder)
+      .eq('id', id);
+    
+    if (error) throw error;
+  } else {
+    const orders = getOrdersFromLocalStorage();
+    const index = orders.findIndex((o) => o.id === id);
+    if (index !== -1) {
+      orders[index] = { ...orders[index], ...updates };
+      saveOrdersToLocalStorage(orders);
+    }
+  }
+};
+
+export const deleteOrder = async (id: string): Promise<void> => {
+  if (getStorageMode() === 'supabase') {
+    const { error } = await supabase
+      .from('orders')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+  } else {
+    const orders = getOrdersFromLocalStorage();
+    const filtered = orders.filter((o) => o.id !== id);
+    saveOrdersToLocalStorage(orders);
+  }
+};
+
+// Invoices - localStorage only for now
+const getInvoicesFromLocalStorage = (): Invoice[] => {
+  const data = localStorage.getItem(INVOICES_KEY);
+  return data ? JSON.parse(data) : [];
+};
+
+const saveInvoicesToLocalStorage = (invoices: Invoice[]): void => {
+  localStorage.setItem(INVOICES_KEY, JSON.stringify(invoices));
+};
+
+export const getInvoices = async (): Promise<Invoice[]> => {
+  return getInvoicesFromLocalStorage();
+};
+
+export const saveInvoices = async (invoices: Invoice[]): Promise<void> => {
+  saveInvoicesToLocalStorage(invoices);
+};
+
+export const addInvoice = async (invoice: Omit<Invoice, 'id'>): Promise<Invoice> => {
+  const newInvoice: Invoice = {
+    ...invoice,
+    id: crypto.randomUUID(),
+  };
+
+  const invoices = getInvoicesFromLocalStorage();
+  invoices.push(newInvoice);
+  saveInvoicesToLocalStorage(invoices);
+
+  return newInvoice;
+};
+
+export const updateInvoice = async (id: string, updates: Partial<Invoice>): Promise<void> => {
+  const invoices = getInvoicesFromLocalStorage();
+  const index = invoices.findIndex((i) => i.id === id);
+  if (index !== -1) {
+    invoices[index] = { ...invoices[index], ...updates };
+    saveInvoicesToLocalStorage(invoices);
+  }
+};
+
+export const deleteInvoice = async (id: string): Promise<void> => {
+  const invoices = getInvoicesFromLocalStorage();
+  const filtered = invoices.filter((i) => i.id !== id);
+  saveInvoicesToLocalStorage(filtered);
+};
+
+// Check if invoice already exists by number and date
+export const findDuplicateInvoice = async (invoiceNumber: string, date: string): Promise<Invoice | null> => {
+  const invoices = await getInvoices();
+  return invoices.find(
+    (inv) => inv.invoiceNumber === invoiceNumber && inv.date === date
+  ) || null;
+};
+
+// Get price history for a product
+export const getPriceHistory = async (productId: string): Promise<PriceHistory[]> => {
+  const products = await getProducts();
+  const product = products.find((p) => p.id === productId);
+  return product?.priceHistory || [];
+};
+
+// Storage object for compatibility with existing code
+export const storage = {
+  products: {
+    getAll: async (): Promise<Product[]> => {
+      return await getProducts();
+    },
+    save: async (products: Product[]): Promise<void> => {
+      await saveProducts(products);
+    },
+    delete: async (id: string): Promise<void> => {
+      await deleteProduct(id);
+    },
+    updatePrice: async (id: string, newPrice: number, source: string, invoiceId?: string): Promise<void> => {
+      return await updatePrice(id, newPrice, source, invoiceId);
+    }
+  },
+  suppliers: {
+    getAll: async (): Promise<Supplier[]> => {
+      return await getSuppliers();
+    },
+    save: async (suppliers: Supplier[]): Promise<void> => {
+      await saveSuppliers(suppliers);
+    },
+    delete: async (id: string): Promise<void> => {
+      await deleteSupplier(id);
+    }
+  },
+  orders: {
+    getAll: async (): Promise<Order[]> => {
+      return await getOrders();
+    },
+    save: async (orders: Order[]): Promise<void> => {
+      await saveOrders(orders);
+    },
+    delete: async (id: string): Promise<void> => {
+      await deleteOrder(id);
+    }
+  }
+};

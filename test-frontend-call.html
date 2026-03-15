@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Frontend Call</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Test Supabase Edge Function Call</h1>
+    <button onclick="testCall()">Test Call</button>
+    <div id="result"></div>
+    
+    <script>
+        const supabase = window.supabase.createClient(
+            'https://tmxmkvinsvuzbzrjrucw.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRteG1rdmluc3Z1emJ6cmpydWN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI5Mzc4ODIsImV4cCI6MjA3ODUxMzg4Mn0.bz5siYBfM4UVV6cerbHPzmII7DnDLP3ynH2OV2Ts3So'
+        );
+        
+        async function testCall() {
+            const result = document.getElementById('result');
+            result.innerHTML = 'Testing...';
+            
+            try {
+                console.log('🧪 Testing Edge Function call...');
+                const { data, error } = await supabase.functions.invoke('mindee_ocr_processor', {
+                    body: {
+                        imageBase64: 'dGVzdA==',
+                        mode: 'products',
+                        filename: 'test.jpg'
+                    }
+                });
+                
+                if (error) {
+                    console.error('❌ Error:', error);
+                    result.innerHTML = `<pre style="color: red;">ERROR: ${JSON.stringify(error, null, 2)}</pre>`;
+                } else {
+                    console.log('✅ Success:', data);
+                    result.innerHTML = `<pre style="color: green;">SUCCESS: ${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (err) {
+                console.error('❌ Exception:', err);
+                result.innerHTML = `<pre style="color: red;">EXCEPTION: ${err.message}</pre>`;
+            }
+        }
+    </script>
+</body>
+</html>

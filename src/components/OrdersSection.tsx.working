@@ -1,0 +1,1779 @@
+import { useState, useRef, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Plus, Trash2, Mail, Calendar, Upload, Search, Check, X, MessageCircle, Minus, Edit2, Lock, Rocket, FileDown, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
+import type { Order, Product, Supplier } from '@/types';
+import { useTranslations, type Language } from '@/lib/i18n';
+import { generateOrderPDF } from '@/lib/pdf-generator';
+import { extractDataFromImage } from '@/lib/ocrService';
+import { useSubscription } from '@/hooks/useSubscription';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+interface OrdersSectionProps {
+  orders: Order[];
+  setOrders: React.Dispatch<React.SetStateAction<Order[]>>;
+  products: Product[];
+  setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
+  suppliers: Supplier[];
+  setSuppliers: React.Dispatch<React.SetStateAction<Supplier[]>>;
+  language: Language;
+}
+
+interface OrderItem {
+  product_id: string;
+  quantity: number;
+  price: number;
+}
+
+interface GroupedItems {
+  [supplier_id: string]: OrderItem[];
+}
+
+/**
+ * WHITELIST FORNITORI SPECIALI
+ * 
+ * Questa whitelist garantisce che certe variazioni di nomi fornitori siano SEMPRE matchate
+ * come lo stesso fornitore, indipendentemente da differenze in telefono, email o indirizzo.
+ * 
+ * Casi d'uso:
+ * - Stessa azienda con nomi legali diversi: "CBG" vs "Comercial CBG"
+ * - Aziende rebrandizzate che devono mantenere storico
+ * - Problemi noti di qualità dati con fornitori specifici
+ * 
+ * Per aggiungere un nuovo gruppo whitelist:
+ * 1. Scegli una chiave unica (di solito il nome più corto/semplice)
+ * 2. Elenca tutte le variazioni del nome (saranno normalizzate automaticamente)
+ * 3. Tutte le variazioni nello stesso array faranno match tra loro
+ * 
+ * Esempio:
+ * 'xyz': ['xyz', 'azienda xyz', 'xyz s.r.l.', 'xyz spa']
+ */
+const SUPPLIER_WHITELIST: { [key: string]: string[] } = {
+  'cbg': ['cbg', 'comercial cbg', 'commercial cbg'],
+  // Aggiungi altri casi speciali qui se necessario
+  // 'abc': ['abc', 'fornitore abc', 'azienda abc'],
+};
+
+export default function OrdersSection({ orders, setOrders, products, setProducts, suppliers, setSuppliers, language }: OrdersSectionProps) {
+  const t = useTranslations(language);
+  const { canUploadData, createCheckoutSession } = useSubscription();
+  const [isCreatingOrder, setIsCreatingOrder] = useState(false);
+  const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [quantity, setQuantity] = useState(1);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [editingProductName, setEditingProductName] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  
+  // NEW: Temporary products from OCR (only for current order display, NOT added to global products)
+  const [temporaryOcrProducts, setTemporaryOcrProducts] = useState<Product[]>([]);
+
+  // NEW: State for editing supplier info
+  const [editingSupplierId, setEditingSupplierId] = useState<string | null>(null);
+  const [editingSupplierName, setEditingSupplierName] = useState('');
+  const [editingSupplierMobile, setEditingSupplierMobile] = useState('');
+  const [editingSupplierEmail, setEditingSupplierEmail] = useState('');
+
+  // NEW: State for manual product creation
+  const [isCreatingNewProduct, setIsCreatingNewProduct] = useState(false);
+  const [newProductName, setNewProductName] = useState('');
+  const [newProductSupplier, setNewProductSupplier] = useState('');
+  const [isCreatingNewSupplier, setIsCreatingNewSupplier] = useState(false);
+  const [newSupplierName, setNewSupplierName] = useState('');
+  const [newSupplierMobile, setNewSupplierMobile] = useState('');
+  const [newSupplierEmail, setNewSupplierEmail] = useState('');
+
+  // Merge global products with temporary OCR products for display in order section
+  const allProductsForDisplay = [...products, ...temporaryOcrProducts];
+
+  // Filter products based on search term only (no supplier filter)
+  const filteredProducts = products.filter((p) => {
+    if (!searchTerm) return false;
+    return p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+           (p.code && p.code.toLowerCase().includes(searchTerm.toLowerCase()));
+  });
+
+  // Group order items by supplier (using merged products list)
+  const groupedItems: GroupedItems = orderItems.reduce((acc, item) => {
+    const product = allProductsForDisplay.find((p) => p.id === item.product_id);
+    if (product) {
+      const supplierId = product.supplier_id;
+      if (!acc[supplierId]) {
+        acc[supplierId] = [];
+      }
+      acc[supplierId].push(item);
+    }
+    return acc;
+  }, {} as GroupedItems);
+
+  const handleStartNewOrder = () => {
+    if (!canUploadData) {
+      toast.error(
+        language === 'it' ? 'Abbonamento richiesto per creare ordini' :
+        language === 'en' ? 'Subscription required to create orders' :
+        language === 'es' ? 'Se requiere suscripción para crear pedidos' :
+        language === 'fr' ? 'Abonnement requis pour créer des commandes' :
+        language === 'lt' ? 'Reikalinga prenumerata norint kurti užsakymus' :
+        'Abonnement erforderlich, um Bestellungen zu erstellen'
+      );
+      return;
+    }
+    
+    setIsCreatingOrder(true);
+    setOrderItems([]);
+    setSearchTerm('');
+    setSelectedProduct(null);
+    setQuantity(1);
+    setTemporaryOcrProducts([]); // Clear temporary OCR products when starting new order
+    setIsCreatingNewProduct(false);
+    setNewProductName('');
+    setNewProductSupplier('');
+  };
+
+  const handleSelectProduct = (product: Product) => {
+    setSelectedProduct(product);
+    setSearchTerm('');
+    setIsCreatingNewProduct(false);
+  };
+
+  // NEW: Handle creating new product manually
+  const handleStartCreateNewProduct = () => {
+    setIsCreatingNewProduct(true);
+    setSelectedProduct(null);
+    setSearchTerm('');
+    setNewProductName('');
+    setNewProductSupplier(suppliers[0]?.id || '');
+  };
+
+  const handleCancelCreateNewProduct = () => {
+    setIsCreatingNewProduct(false);
+    setNewProductName('');
+    setNewProductSupplier('');
+    setIsCreatingNewSupplier(false);
+    setNewSupplierName('');
+    setNewSupplierMobile('');
+    setNewSupplierEmail('');
+  };
+
+  // NEW: Handle creating new supplier
+  const handleCreateNewSupplier = () => {
+    if (!newSupplierName.trim()) {
+      toast.error('Nome fornitore obbligatorio');
+      return;
+    }
+
+    const newSupplier: Supplier = {
+      id: crypto.randomUUID(),
+      name: newSupplierName.trim(),
+      phone: newSupplierMobile.trim(),
+      mobile: newSupplierMobile.trim(),
+      email: newSupplierEmail.trim(),
+      products: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    setSuppliers((prev) => [...prev, newSupplier]);
+    setNewProductSupplier(newSupplier.id);
+    setIsCreatingNewSupplier(false);
+    setNewSupplierName('');
+    setNewSupplierMobile('');
+    setNewSupplierEmail('');
+    toast.success(`Fornitore creato: ${newSupplier.name}`);
+  };
+
+  const handleAddProduct = () => {
+    // NEW: Handle manual product creation
+    if (isCreatingNewProduct) {
+      if (!newProductName.trim()) {
+        toast.error('Nome prodotto obbligatorio');
+        return;
+      }
+
+      if (!newProductSupplier) {
+        toast.error('Seleziona un fornitore');
+        return;
+      }
+
+      if (quantity <= 0) {
+        toast.error('Quantità deve essere maggiore di 0');
+        return;
+      }
+
+      // Create new product
+      const newProduct: Product = {
+        id: crypto.randomUUID(),
+        name: newProductName.trim(),
+        category: 'other',
+        supplier_id: newProductSupplier,
+        price: 0,
+        unit: 'pz',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      // Add to temporary products (for current order only)
+      setTemporaryOcrProducts((prev) => [...prev, newProduct]);
+
+      // Add to order items
+      const newItem: OrderItem = {
+        product_id: newProduct.id,
+        quantity,
+        price: 0,
+      };
+
+      setOrderItems([...orderItems, newItem]);
+      
+      const supplier = suppliers.find((s) => s.id === newProductSupplier);
+      toast.success(`${newProduct.name} aggiunto (${supplier?.name || t.supplier})`);
+      
+      // Reset form
+      setNewProductName('');
+      setQuantity(1);
+      searchInputRef.current?.focus();
+      return;
+    }
+
+    // Original logic for existing products
+    if (!selectedProduct) {
+      toast.error(t.error);
+      return;
+    }
+
+    if (quantity < 0) {
+      toast.error(t.error);
+      return;
+    }
+
+    const newItem: OrderItem = {
+      product_id: selectedProduct.id,
+      quantity,
+      price: selectedProduct.price,
+    };
+
+    setOrderItems([...orderItems, newItem]);
+    setSelectedProduct(null);
+    setQuantity(1);
+    
+    const supplier = suppliers.find((s) => s.id === selectedProduct.supplier_id);
+    toast.success(`${selectedProduct.name} ${t.productsAdded} (${supplier?.name || t.supplier})`);
+    searchInputRef.current?.focus();
+  };
+
+  const handleUpdateQuantity = (index: number, newQuantity: number) => {
+    if (newQuantity < 0) {
+      toast.error(t.error);
+      return;
+    }
+
+    if (newQuantity === 0) {
+      handleRemoveItem(index);
+      return;
+    }
+
+    const updatedItems = [...orderItems];
+    updatedItems[index] = { ...updatedItems[index], quantity: newQuantity };
+    setOrderItems(updatedItems);
+  };
+
+  const handleRemoveItem = (index: number) => {
+    const updatedItems = orderItems.filter((_, i) => i !== index);
+    setOrderItems(updatedItems);
+    toast.success(t.productDeleted);
+  };
+
+  // NEW: Handle editing product name
+  const handleStartEditProductName = (productId: string, currentName: string) => {
+    setEditingProductId(productId);
+    setEditingProductName(currentName);
+  };
+
+  const handleSaveProductName = (productId: string) => {
+    if (!editingProductName.trim()) {
+      toast.error(t.error);
+      return;
+    }
+
+    // Update product name in products list
+    setProducts((prev) =>
+      prev.map((p) =>
+        p.id === productId
+          ? { ...p, name: editingProductName.trim(), updated_at: new Date().toISOString() }
+          : p
+      )
+    );
+    
+    // Also update in temporary OCR products if it exists there
+    setTemporaryOcrProducts((prev) =>
+      prev.map((p) =>
+        p.id === productId
+          ? { ...p, name: editingProductName.trim(), updated_at: new Date().toISOString() }
+          : p
+      )
+    );
+
+    setEditingProductId(null);
+    setEditingProductName('');
+    toast.success(t.productUpdated);
+  };
+
+  const handleCancelEditProductName = () => {
+    setEditingProductId(null);
+    setEditingProductName('');
+  };
+
+  // NEW: Handle editing supplier info
+  const handleStartEditSupplier = (supplierId: string) => {
+    const supplier = suppliers.find((s) => s.id === supplierId);
+    if (supplier) {
+      setEditingSupplierId(supplierId);
+      setEditingSupplierName(supplier.name);
+      setEditingSupplierMobile(supplier.mobile || '');
+      setEditingSupplierEmail(supplier.email || '');
+    }
+  };
+
+  const handleSaveSupplier = () => {
+    if (!editingSupplierId) return;
+    
+    if (!editingSupplierName.trim()) {
+      toast.error(t.error);
+      return;
+    }
+
+    // Update supplier in suppliers list
+    setSuppliers((prev) =>
+      prev.map((s) =>
+        s.id === editingSupplierId
+          ? { 
+              ...s, 
+              name: editingSupplierName.trim(),
+              mobile: editingSupplierMobile.trim(),
+              email: editingSupplierEmail.trim(),
+              updated_at: new Date().toISOString() 
+            }
+          : s
+      )
+    );
+
+    setEditingSupplierId(null);
+    setEditingSupplierName('');
+    setEditingSupplierMobile('');
+    setEditingSupplierEmail('');
+    toast.success(t.supplierUpdated);
+  };
+
+  const handleCancelEditSupplier = () => {
+    setEditingSupplierId(null);
+    setEditingSupplierName('');
+    setEditingSupplierMobile('');
+    setEditingSupplierEmail('');
+  };
+
+  const handleCancelOrder = () => {
+    setIsCreatingOrder(false);
+    setOrderItems([]);
+    setSearchTerm('');
+    setSelectedProduct(null);
+    setQuantity(1);
+    setTemporaryOcrProducts([]); // Clear temporary OCR products when canceling
+    setIsCreatingNewProduct(false);
+    setNewProductName('');
+    setNewProductSupplier('');
+  };
+
+  // NEW: Handle saving order as PDF
+  const handleSavePDF = async () => {
+    if (orderItems.length === 0) {
+      toast.error(t.noProductsInOrder);
+      return;
+    }
+
+    try {
+      await generateOrderPDF({
+        orderItems,
+        products: allProductsForDisplay,
+        suppliers
+      }, language);
+      toast.success(t.success);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error(t.error);
+    }
+  };
+
+  // Handle upgrade button click
+  const handleUpgradeClick = async () => {
+    try {
+      await createCheckoutSession();
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message === 'STRIPE_NOT_CONFIGURED') {
+          toast.error(t.error);
+        } else {
+          toast.error(error.message);
+        }
+      }
+    }
+  };
+
+  // ENHANCED: Helper function to normalize text with business prefixes and legal suffixes removal
+  const normalizeText = (text: string): string => {
+    let normalized = text.toLowerCase().trim();
+    
+    // Remove business prefixes (comercial, fornitore, etc.)
+    const businessPrefixes = [
+      'comercial', 'commercial', 'fornitore', 'azienda', 'ditta', 'impresa',
+      'societa', 'società', 'company', 'supplier', 'vendor'
+    ];
+    
+    // Remove legal suffixes (s.r.l., s.p.a., etc.)
+    const legalSuffixes = [
+      's\\.r\\.l\\.?', 'srl', 's\\.p\\.a\\.?', 'spa', 's\\.n\\.c\\.?', 'snc',
+      's\\.a\\.s\\.?', 'sas', 's\\.s\\.?', 'ss', 'ltd', 'llc', 'inc',
+      's\\.l\\.?', 'sl', 's\\.a\\.?', 'sa'
+    ];
+    
+    // Remove Italian articles
+    const articles = ['il', 'lo', 'la', 'i', 'gli', 'le', 'un', 'una', 'uno'];
+    
+    // Combine all words to remove
+    const wordsToRemove = [...businessPrefixes, ...legalSuffixes, ...articles];
+    
+    // Remove each word as a whole word (not substring)
+    wordsToRemove.forEach((word) => {
+      const regex = new RegExp(`\\b${word}\\b`, 'gi');
+      normalized = normalized.replace(regex, '');
+    });
+    
+    // Remove punctuation
+    normalized = normalized.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, '');
+    
+    // Replace multiple spaces with single space
+    normalized = normalized.replace(/\s+/g, ' ').trim();
+    
+    return normalized;
+  };
+
+  // Helper function to normalize supplier name
+  const normalizeSupplierName = (name: string): string => {
+    // Remove common business suffixes
+    const suffixes = ['S.r.l.', 'S.p.A.', 'Ltd', 'LLC', 'Inc', 'Commercial', 'Comercial', 'S.L.', 'S.A.'];
+    let normalized = name.trim();
+    
+    suffixes.forEach((suffix) => {
+      const regex = new RegExp(`\\b${suffix}\\b`, 'gi');
+      normalized = normalized.replace(regex, '').trim();
+    });
+    
+    return normalized;
+  };
+
+  // NEW: Helper function to normalize phone number
+  const normalizePhoneNumber = (phone: string): string => {
+    if (!phone) return '';
+    // Remove all non-numeric characters
+    return phone.replace(/\D/g, '');
+  };
+
+  // NEW: Helper function to get last N digits of phone number
+  const getLastNDigits = (phone: string, n: number): string => {
+    const normalized = normalizePhoneNumber(phone);
+    return normalized.slice(-n);
+  };
+
+  // NEW: Helper function to detect if text is likely an acronym
+  const isLikelyAcronym = (text: string): boolean => {
+    const trimmed = text.trim();
+    // Acronym if: all uppercase, 2-5 characters, no spaces
+    return /^[A-Z]{2,5}$/.test(trimmed) && !trimmed.includes(' ');
+  };
+
+  /**
+   * Helper function to check if two supplier names are in the same whitelist group
+   * This ensures certain supplier name variations are ALWAYS matched as the same supplier,
+   * regardless of differences in phone, email, or address data.
+   */
+  const areInSameWhitelistGroup = (name1: string, name2: string): boolean => {
+    const normalized1 = normalizeText(name1);
+    const normalized2 = normalizeText(name2);
+    
+    for (const [key, aliases] of Object.entries(SUPPLIER_WHITELIST)) {
+      const normalizedAliases = aliases.map(alias => normalizeText(alias));
+      
+      if (normalizedAliases.includes(normalized1) && normalizedAliases.includes(normalized2)) {
+        console.log(`✅ WHITELIST MATCH: "${name1}" e "${name2}" sono nello stesso gruppo whitelist (${key})`);
+        return true;
+      }
+    }
+    
+    return false;
+  };
+
+  // Calculate Levenshtein distance for fuzzy matching
+  const levenshteinDistance = (str1: string, str2: string): number => {
+    const len1 = str1.length;
+    const len2 = str2.length;
+    const matrix: number[][] = [];
+
+    // Initialize matrix
+    for (let i = 0; i <= len1; i++) {
+      matrix[i] = [i];
+    }
+    for (let j = 0; j <= len2; j++) {
+      matrix[0][j] = j;
+    }
+
+    // Fill matrix
+    for (let i = 1; i <= len1; i++) {
+      for (let j = 1; j <= len2; j++) {
+        const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j] + 1,      // deletion
+          matrix[i][j - 1] + 1,      // insertion
+          matrix[i - 1][j - 1] + cost // substitution
+        );
+      }
+    }
+
+    return matrix[len1][len2];
+  };
+
+  // Calculate similarity percentage
+  const calculateSimilarity = (str1: string, str2: string): number => {
+    const distance = levenshteinDistance(str1, str2);
+    const maxLength = Math.max(str1.length, str2.length);
+    if (maxLength === 0) return 100;
+    return ((maxLength - distance) / maxLength) * 100;
+  };
+
+  // ENHANCED: Helper function to find matching supplier with WHITELIST as highest priority
+  const findMatchingSupplier = (supplierName: string, supplierPhone?: string): Supplier | null => {
+    if (!supplierName) return null;
+    
+    console.log('🔍 Ricerca fornitore corrispondente:', supplierName);
+    console.log('🎯 ORDINE PRIORITÀ MATCHING:');
+    console.log('  0. Whitelist check (casi speciali - PRIORITÀ MASSIMA)');
+    console.log('  1. Numero telefono (ultimi 5 numeri)');
+    console.log('  2. Nome fuzzy match (normalizzazione + similarità)');
+    console.log('🎯 È acronimo?', isLikelyAcronym(supplierName));
+    if (supplierPhone) {
+      console.log('📞 Telefono OCR:', supplierPhone);
+    }
+    
+    // PRIORITÀ 0: Controlla whitelist PER PRIMA (priorità massima)
+    for (const supplier of suppliers) {
+      if (areInSameWhitelistGroup(supplierName, supplier.name)) {
+        console.log('✅ WHITELIST MATCH (PRIORITÀ 0): Uso fornitore esistente:', supplier.name);
+        console.log('   Ignoro differenze in telefono, email o indirizzo');
+        return supplier;
+      }
+    }
+    console.log('⚪ Nessun whitelist match trovato, continuo con priorità 1 (telefono)');
+    
+    // PRIORITÀ 1: Phone number matching
+    if (supplierPhone) {
+      const ocrPhoneLast5 = getLastNDigits(supplierPhone, 5);
+      
+      if (ocrPhoneLast5.length === 5) {
+        for (const supplier of suppliers) {
+          if (supplier.phone) {
+            const supplierPhoneLast5 = getLastNDigits(supplier.phone, 5);
+            
+            if (supplierPhoneLast5 === ocrPhoneLast5) {
+              console.log(`✅ PHONE MATCH (PRIORITÀ 1): Ultimi 5 numeri corrispondono con fornitore esistente: "${supplier.name}"`);
+              console.log(`   OCR phone: ${supplierPhone} (last 5: ${ocrPhoneLast5})`);
+              console.log(`   Existing phone: ${supplier.phone} (last 5: ${supplierPhoneLast5})`);
+              return supplier;
+            }
+          }
+        }
+        console.log('📞 Nessun match trovato per ultimi 5 numeri:', ocrPhoneLast5);
+      }
+    }
+    console.log('⚪ Nessun phone match trovato, continuo con priorità 2 (nome fuzzy)');
+    
+    // PRIORITÀ 2: Fuzzy name matching
+    const normalizedSearchName = normalizeText(normalizeSupplierName(supplierName));
+    console.log(`🔍 Nomi originali: "${supplierName}"`);
+    console.log(`📝 Dopo normalizzazione: "${normalizedSearchName}"`);
+    
+    // Priority 1: Exact match after normalization
+    for (const supplier of suppliers) {
+      const normalizedSupplierName = normalizeText(normalizeSupplierName(supplier.name));
+      if (normalizedSupplierName === normalizedSearchName) {
+        console.log(`✅ EXACT NAME MATCH (PRIORITÀ 2a): "${supplierName}" matches existing "${supplier.name}"`);
+        return supplier;
+      }
+    }
+    
+    // Priority 2: ENHANCED Containment match with acronym support
+    for (const supplier of suppliers) {
+      const normalizedSupplierName = normalizeText(normalizeSupplierName(supplier.name));
+      const minLength = Math.min(normalizedSearchName.length, normalizedSupplierName.length);
+      const maxLength = Math.max(normalizedSearchName.length, normalizedSupplierName.length);
+      
+      // More tolerant threshold for short names/acronyms (≤5 chars)
+      const threshold = minLength <= 5 ? 0.5 : 0.8;
+      
+      if (minLength / maxLength >= threshold) {
+        if (normalizedSupplierName.includes(normalizedSearchName) || normalizedSearchName.includes(normalizedSupplierName)) {
+          console.log(`✅ CONTAINMENT NAME MATCH (PRIORITÀ 2b): "${supplierName}" matches existing "${supplier.name}" (${Math.round(minLength / maxLength * 100)}% length ratio, threshold: ${threshold * 100}%)`);
+          return supplier;
+        }
+      }
+    }
+    
+    // Priority 3: Fuzzy match using Levenshtein distance (≥85% similarity)
+    let bestMatch: Supplier | null = null;
+    let bestSimilarity = 0;
+    
+    for (const supplier of suppliers) {
+      const normalizedSupplierName = normalizeText(normalizeSupplierName(supplier.name));
+      const similarity = calculateSimilarity(normalizedSearchName, normalizedSupplierName);
+      
+      if (similarity >= 85 && similarity > bestSimilarity) {
+        bestMatch = supplier;
+        bestSimilarity = similarity;
+      }
+    }
+    
+    if (bestMatch) {
+      console.log(`✅ FUZZY NAME MATCH (PRIORITÀ 2c): "${supplierName}" matches existing "${bestMatch.name}" (${Math.round(bestSimilarity)}% similarity)`);
+      return bestMatch;
+    }
+    
+    console.log(`✨ NEW SUPPLIER: Nessun match trovato, creazione nuovo fornitore`);
+    return null;
+  };
+
+  // ENHANCED: Find similar product using intelligent fuzzy matching with improved containment logic
+  const findSimilarProduct = (name: string, productList: Product[]): Product | null => {
+    const normalizedSearchName = normalizeText(name);
+    
+    console.log(`🔍 Searching for similar product: "${name}" (normalized: "${normalizedSearchName}")`);
+    console.log('🎯 È acronimo?', isLikelyAcronym(name));
+    
+    // Priority 1: Exact match after normalization
+    for (const product of productList) {
+      const normalizedProductName = normalizeText(product.name);
+      if (normalizedProductName === normalizedSearchName) {
+        console.log(`✅ EXACT MATCH: "${name}" matches existing "${product.name}"`);
+        return product;
+      }
+    }
+    
+    // Priority 2: ENHANCED Containment match with acronym support
+    for (const product of productList) {
+      const normalizedProductName = normalizeText(product.name);
+      const minLength = Math.min(normalizedSearchName.length, normalizedProductName.length);
+      const maxLength = Math.max(normalizedSearchName.length, normalizedProductName.length);
+      
+      // More tolerant threshold for short names/acronyms (≤5 chars)
+      const threshold = minLength <= 5 ? 0.5 : 0.8;
+      
+      if (minLength / maxLength >= threshold) {
+        if (normalizedProductName.includes(normalizedSearchName) || normalizedSearchName.includes(normalizedProductName)) {
+          console.log(`✅ CONTAINMENT MATCH: "${name}" matches existing "${product.name}" (${Math.round(minLength / maxLength * 100)}% length ratio, threshold: ${threshold * 100}%)`);
+          return product;
+        }
+      }
+    }
+    
+    // Priority 3: Fuzzy match using Levenshtein distance (≥85% similarity)
+    let bestMatch: Product | null = null;
+    let bestSimilarity = 0;
+    
+    for (const product of productList) {
+      const normalizedProductName = normalizeText(product.name);
+      const similarity = calculateSimilarity(normalizedSearchName, normalizedProductName);
+      
+      if (similarity >= 85 && similarity > bestSimilarity) {
+        bestMatch = product;
+        bestSimilarity = similarity;
+      }
+    }
+    
+    if (bestMatch) {
+      console.log(`✅ FUZZY MATCH: "${name}" matches existing "${bestMatch.name}" (${Math.round(bestSimilarity)}% similarity)`);
+      return bestMatch;
+    }
+    
+    console.log(`❌ NO MATCH FOUND: "${name}" - will create new product`);
+    return null;
+  };
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error(t.error);
+      event.target.value = '';
+      return;
+    }
+
+    setIsProcessing(true);
+    toast.info(t.loading);
+
+    try {
+      const extractedData = await extractDataFromImage(file, 'order');
+
+      if (!extractedData?.orderItems || extractedData.orderItems.length === 0) {
+        toast.error(t.error);
+        setIsProcessing(false);
+        event.target.value = '';
+        return;
+      }
+
+      // DEBUG: Log OCR results
+      console.log('🔍 OCR RESULTS:', {
+        totalItemsExtracted: extractedData.orderItems.length,
+        supplier: extractedData.supplier,
+        items: extractedData.orderItems.map(item => ({ 
+          name: item.name, 
+          quantity: item.quantity, 
+          unit: item.unit,
+          price: item.price 
+        }))
+      });
+
+      // VALIDATION: Filter out invalid items
+      const validItems = extractedData.orderItems.filter(item => 
+        item.name && item.name.trim().length > 0
+      );
+      console.log(`✅ Valid items: ${validItems.length} / ${extractedData.orderItems.length}`);
+
+      if (validItems.length === 0) {
+        toast.error(t.error);
+        setIsProcessing(false);
+        event.target.value = '';
+        return;
+      }
+
+      // Check for duplicates in OCR results
+      const uniqueNames = new Set(validItems.map(i => i.name.toLowerCase().trim()));
+      console.log(`🔄 Unique products in OCR: ${uniqueNames.size} / ${validItems.length}`);
+
+      const newItems: OrderItem[] = [];
+      const newProductsCreated: string[] = [];
+      const matchedProducts: string[] = [];
+      const skippedItems: string[] = [];
+      let unitsRecognized = 0;
+      
+      // NEW: Try to recognize supplier from the image with phone matching
+      let recognizedSupplier: Supplier | null = null;
+      
+      if (extractedData.supplier) {
+        console.log('🔍 Fornitore riconosciuto dall\'immagine:', extractedData.supplier);
+        
+        // Extract supplier phone if available (check if supplier is object or string)
+        const supplierName = typeof extractedData.supplier === 'string' 
+          ? extractedData.supplier 
+          : extractedData.supplier.name;
+        const supplierPhone = typeof extractedData.supplier === 'object' 
+          ? extractedData.supplier.phone 
+          : undefined;
+        
+        // Try to find matching supplier in database (with WHITELIST, phone and name matching)
+        recognizedSupplier = findMatchingSupplier(supplierName, supplierPhone);
+        
+        if (recognizedSupplier) {
+          console.log('✅ Fornitore trovato nel database:', recognizedSupplier.name);
+          toast.success(`${t.supplier}: ${recognizedSupplier.name}`);
+        } else {
+          console.log('⚠️ Fornitore non trovato, creazione nuovo fornitore');
+          
+          // Create new supplier with all available data
+          const newSupplier: Supplier = {
+            id: crypto.randomUUID(),
+            name: normalizeSupplierName(supplierName),
+            phone: supplierPhone || '',
+            email: typeof extractedData.supplier === 'object' ? extractedData.supplier.email || '' : '',
+            address: typeof extractedData.supplier === 'object' ? extractedData.supplier.address || '' : '',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+          
+          setSuppliers((prev) => [...prev, newSupplier]);
+          recognizedSupplier = newSupplier;
+          
+          let toastMessage = `${t.supplierAdded}: ${newSupplier.name}`;
+          if (supplierPhone) {
+            toastMessage += ` (${t.phone}: ${supplierPhone})`;
+          }
+          toast.success(toastMessage);
+        }
+      }
+      
+      // Use recognized supplier or fall back to first available supplier
+      const defaultSupplierId = recognizedSupplier?.id || suppliers[0]?.id || 'unknown';
+      
+      // CRITICAL FIX: Create a local array to track newly created products in this session
+      // These products will be stored in temporaryOcrProducts state for display ONLY in order section
+      const localNewProducts: Product[] = [];
+      
+      // Process each valid item
+      for (let index = 0; index < validItems.length; index++) {
+        const item = validItems[index];
+        
+        console.log(`📦 Processing item ${index + 1}/${validItems.length}:`, {
+          name: item.name,
+          quantity: item.quantity,
+          unit: item.unit,
+          price: item.price
+        });
+
+        // NEW: Use intelligent fuzzy matching to find similar products
+        let existingProduct = findSimilarProduct(item.name, products);
+        
+        // Also check in temporary OCR products
+        if (!existingProduct) {
+          existingProduct = findSimilarProduct(item.name, temporaryOcrProducts);
+        }
+        
+        // Also check in locally created products (current batch)
+        if (!existingProduct) {
+          existingProduct = findSimilarProduct(item.name, localNewProducts);
+        }
+
+        if (!existingProduct) {
+          // NEW: Use extracted unit or default to 'pz'
+          const productUnit = item.unit || 'pz';
+          
+          const newProduct: Product = {
+            id: crypto.randomUUID(),
+            name: item.name,
+            category: 'other',
+            supplier_id: defaultSupplierId,
+            price: item.price || 0,
+            unit: productUnit,
+            vatRate: item.vatRate,
+            discountPercent: item.discountPercent,
+            price_history: [{ price: item.price || 0, date: new Date().toISOString() }],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+          
+          // Add to local array immediately (for current order only)
+          localNewProducts.push(newProduct);
+          existingProduct = newProduct;
+          newProductsCreated.push(item.name);
+          
+          console.log(`✨ NEW PRODUCT: "${item.name}" (no similar match found)`);
+          
+          // Count units recognized
+          if (item.unit) {
+            unitsRecognized++;
+            console.log(`✅ Unità riconosciuta per "${item.name}": ${item.unit}`);
+          }
+        } else {
+          matchedProducts.push(`"${item.name}" → "${existingProduct.name}"`);
+          console.log(`♻️ Using existing product: "${item.name}" with ID: ${existingProduct.id}`);
+          
+          // Update existing product unit if new unit is recognized
+          if (item.unit && item.unit !== existingProduct.unit) {
+            console.log(`🔄 Aggiornamento unità per "${item.name}": ${existingProduct.unit} → ${item.unit}`);
+            
+            // Update in the products state
+            setProducts((prev) =>
+              prev.map((p) =>
+                p.id === existingProduct!.id
+                  ? { ...p, unit: item.unit, updated_at: new Date().toISOString() }
+                  : p
+              )
+            );
+            
+            // Also update in temporary OCR products if it exists there
+            setTemporaryOcrProducts((prev) =>
+              prev.map((p) =>
+                p.id === existingProduct!.id
+                  ? { ...p, unit: item.unit, updated_at: new Date().toISOString() }
+                  : p
+              )
+            );
+            
+            // Also update in local array if it exists there
+            const localIndex = localNewProducts.findIndex(p => p.id === existingProduct!.id);
+            if (localIndex !== -1) {
+              localNewProducts[localIndex].unit = item.unit;
+            }
+            
+            unitsRecognized++;
+          }
+        }
+
+        // Add to order items
+        newItems.push({
+          product_id: existingProduct.id,
+          quantity: item.quantity || 1,
+          price: item.price || 0,
+        });
+        
+        console.log(`✅ Added to newItems array: "${item.name}" (total: ${newItems.length})`);
+      }
+
+      // BUG FIX: Add localNewProducts to TEMPORARY state (for order display only)
+      // NOT to global products list (to avoid duplicates in Products section)
+      if (localNewProducts.length > 0) {
+        console.log(`💾 Saving ${localNewProducts.length} OCR products to TEMPORARY state (order display only)`);
+        setTemporaryOcrProducts((prev) => [...prev, ...localNewProducts]);
+      }
+
+      // DEBUG: Final results
+      console.log('📊 FINAL RESULTS:', {
+        newItemsCount: newItems.length,
+        newProductsCreated: newProductsCreated.length,
+        matchedProducts: matchedProducts.length,
+        currentOrderItems: orderItems.length,
+        totalAfterAdd: orderItems.length + newItems.length,
+        skippedItems: skippedItems.length
+      });
+
+      // Update order items
+      setOrderItems([...orderItems, ...newItems]);
+
+      // IMPROVED FEEDBACK: More detailed message
+      let message = `${t.productsAdded}: ${extractedData.orderItems.length}\n`;
+      message += `• ${newItems.length} ${t.productsAdded}`;
+      
+      if (matchedProducts.length > 0) {
+        message += `\n• ${matchedProducts.length} ${t.productsAdded}`;
+      }
+      
+      if (newProductsCreated.length > 0) {
+        message += `\n• ${newProductsCreated.length} ${t.productsAdded}`;
+      }
+      
+      if (unitsRecognized > 0) {
+        message += `\n• ${unitsRecognized} ${t.unit}`;
+      }
+      
+      const skipped = validItems.length - newItems.length;
+      if (skipped > 0) {
+        message += `\n• ${skipped} ${t.productsAdded}`;
+      }
+      
+      if (recognizedSupplier) {
+        message += `\n• ${t.supplier}: ${recognizedSupplier.name}`;
+      }
+      
+      toast.success(message);
+    } catch (error) {
+      console.error('❌ Error processing image:', error);
+      toast.error(t.error);
+    } finally {
+      setIsProcessing(false);
+      event.target.value = '';
+    }
+  };
+
+  // FIXED: Function to send WhatsApp for saved orders - ALWAYS use mobile number
+  const handleSendWhatsAppSavedOrder = (order: Order) => {
+    const supplier = suppliers.find((s) => s.id === order.supplier_id);
+    
+    // FIXED: Prioritize mobile number, fallback to phone if mobile is not available
+    const phoneNumber = supplier?.mobile || supplier?.phone;
+    
+    if (!phoneNumber) {
+      toast.error(t.error);
+      return;
+    }
+
+    // FIXED: Add predefined text at the beginning
+    let message = `Buenos dias esto el pedido de esta semana\n\n`;
+    
+    order.items.forEach((item) => {
+      const product = products.find((p) => p.id === item.product_id);
+      if (product) {
+        // FIXED: Remove "pz" from display, show unit only if not "pz"
+        const unitDisplay = product.unit && product.unit.toLowerCase() !== 'pz' ? ` ${product.unit}` : '';
+        message += `• ${item.quantity}${unitDisplay} - ${product.name}\n`;
+      }
+    });
+
+    message += `\nGrazie!`;
+
+    const cleanPhoneNumber = phoneNumber.replace(/[^0-9]/g, '');
+    const whatsappUrl = `https://wa.me/${cleanPhoneNumber}?text=${encodeURIComponent(message)}`;
+    
+    window.open(whatsappUrl, '_blank');
+    toast.success(t.success);
+  };
+
+  // FIXED: Function to send Email for saved orders (with predefined text, no prices, no "pz")
+  const handleSendEmailSavedOrder = (order: Order) => {
+    const supplier = suppliers.find((s) => s.id === order.supplier_id);
+    if (!supplier?.email) {
+      toast.error(t.error);
+      return;
+    }
+
+    // FIXED: Add predefined text at the beginning
+    let body = `Buenos dias esto el pedido de esta semana\n\n`;
+    
+    order.items.forEach((item) => {
+      const product = products.find((p) => p.id === item.product_id);
+      if (product) {
+        // FIXED: Remove "pz" from display, show unit only if not "pz"
+        const unitDisplay = product.unit && product.unit.toLowerCase() !== 'pz' ? ` ${product.unit}` : '';
+        body += `• ${item.quantity}${unitDisplay} - ${product.name}\n`;
+      }
+    });
+
+    body += `\nGrazie!`;
+
+    const subject = `Pedido de esta semana - ${new Date(order.order_date).toLocaleDateString()}`;
+    const mailtoUrl = `mailto:${supplier.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    
+    window.open(mailtoUrl, '_blank');
+    toast.success(t.success);
+  };
+
+  // FIXED: Function to send WhatsApp for new orders - ALWAYS use mobile number
+  const handleSendWhatsApp = (supplierId: string) => {
+    const supplier = suppliers.find((s) => s.id === supplierId);
+    
+    // FIXED: Prioritize mobile number, fallback to phone if mobile is not available
+    const phoneNumber = supplier?.mobile || supplier?.phone;
+    
+    if (!phoneNumber) {
+      toast.error(t.error);
+      return;
+    }
+
+    const items = groupedItems[supplierId] || [];
+    // FIXED: Add predefined text at the beginning
+    let message = `Buenos dias esto el pedido de esta semana\n\n`;
+    
+    items.forEach((item) => {
+      const product = allProductsForDisplay.find((p) => p.id === item.product_id);
+      if (product) {
+        const code = product.code ? ` (${product.code})` : '';
+        // FIXED: Remove "pz" from display, show unit only if not "pz"
+        const unitDisplay = product.unit && product.unit.toLowerCase() !== 'pz' ? ` ${product.unit}` : '';
+        message += `• ${item.quantity}${unitDisplay} - ${product.name}${code}\n`;
+      }
+    });
+
+    message += `\nGrazie!`;
+
+    const cleanPhoneNumber = phoneNumber.replace(/[^0-9]/g, '');
+    const whatsappUrl = `https://wa.me/${cleanPhoneNumber}?text=${encodeURIComponent(message)}`;
+    
+    window.open(whatsappUrl, '_blank');
+    toast.success(t.success);
+  };
+
+  const handleSendEmail = (supplierId: string) => {
+    const supplier = suppliers.find((s) => s.id === supplierId);
+    if (!supplier?.email) {
+      toast.error(t.error);
+      return;
+    }
+
+    const items = groupedItems[supplierId] || [];
+    // FIXED: Add predefined text at the beginning
+    let body = `Buenos dias esto el pedido de esta semana\n\n`;
+    
+    items.forEach((item) => {
+      const product = allProductsForDisplay.find((p) => p.id === item.product_id);
+      if (product) {
+        const code = product.code ? ` (${product.code})` : '';
+        // FIXED: Remove "pz" from display, show unit only if not "pz"
+        const unitDisplay = product.unit && product.unit.toLowerCase() !== 'pz' ? ` ${product.unit}` : '';
+        body += `• ${item.quantity}${unitDisplay} - ${product.name}${code}\n`;
+      }
+    });
+
+    body += `\nGrazie!`;
+
+    const subject = `Pedido de esta semana - ${new Date().toLocaleDateString()}`;
+    const mailtoUrl = `mailto:${supplier.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    
+    window.open(mailtoUrl, '_blank');
+    toast.success(t.success);
+  };
+
+  const handleDeleteOrder = (id: string) => {
+    setOrders(orders.filter((o) => o.id !== id));
+    toast.success(t.orderDeleted);
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      pending: { label: t.pending, className: 'bg-gradient-to-r from-yellow-400 to-orange-400 text-white border-0' },
+      confirmed: { label: t.pending, className: 'bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0' },
+      delivered: { label: t.completed, className: 'bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0' },
+      cancelled: { label: t.cancelled, className: 'bg-gradient-to-r from-red-500 to-red-600 text-white border-0' },
+    };
+
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+    return <Badge className={config.className}>{config.label}</Badge>;
+  };
+
+  return (
+    <Card className="backdrop-blur-xl bg-white/80 border-white/20 shadow-xl w-full max-w-full overflow-hidden">
+      <CardHeader className="px-4 sm:px-6">
+        <CardTitle className="text-xl sm:text-2xl bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+          {t.orders}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-4 sm:px-6">
+        {/* Access Warning Alert - Show if no valid subscription */}
+        {!canUploadData && (
+          <Alert className="border-orange-200 bg-orange-50 mb-4">
+            <AlertCircle className="h-5 w-5 text-orange-600" />
+            <AlertDescription className="text-orange-800 ml-2">
+              <strong>
+                {language === 'it' ? 'Abbonamento Richiesto:' :
+                 language === 'en' ? 'Subscription Required:' :
+                 language === 'es' ? 'Suscripción Requerida:' :
+                 language === 'fr' ? 'Abonnement Requis:' :
+                 language === 'lt' ? 'Reikalinga Prenumerata:' :
+                 'Abonnement Erforderlich:'}
+              </strong>{' '}
+              {language === 'it' ? 'Per creare ordini e caricare fatture, è necessario un abbonamento attivo.' :
+               language === 'en' ? 'To create orders and upload invoices, an active subscription is required.' :
+               language === 'es' ? 'Para crear pedidos y cargar facturas, se requiere una suscripción activa.' :
+               language === 'fr' ? 'Pour créer des commandes et télécharger des factures, un abonnement actif est requis.' :
+               language === 'lt' ? 'Norėdami kurti užsakymus ir įkelti sąskaitas faktūras, reikalinga aktyvi prenumerata.' :
+               'Um Bestellungen zu erstellen und Rechnungen hochzuladen, ist ein aktives Abonnement erforderlich.'}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {!isCreatingOrder ? (
+          <div className="space-y-4">
+            <Button 
+              onClick={handleStartNewOrder}
+              disabled={!canUploadData}
+              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg h-11 sm:h-10 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {!canUploadData && <Lock className="h-4 w-4 mr-2" />}
+              <Plus className="h-4 w-4 mr-2" />
+              {t.createNewOrder}
+            </Button>
+
+            {orders.map((order) => {
+              const supplier = suppliers.find((s) => s.id === order.supplier_id);
+              return (
+                <div 
+                  key={order.id} 
+                  className="group p-4 sm:p-6 border-2 border-slate-200 rounded-2xl hover:border-purple-300 bg-white hover:shadow-xl transition-all"
+                >
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 sm:gap-4 mb-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-2">
+                        <h3 className="font-bold text-lg sm:text-xl text-slate-800 truncate">{supplier?.name || t.supplier}</h3>
+                        {getStatusBadge(order.status)}
+                      </div>
+                      <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-600">
+                        <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                        <span>{new Date(order.order_date).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSendWhatsAppSavedOrder(order)}
+                        className="border-green-500 text-green-600 hover:bg-green-50 h-9 sm:h-8 text-xs sm:text-sm flex-1 sm:flex-none min-w-[44px]"
+                        title={t.uploadInvoice}
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSendEmailSavedOrder(order)}
+                        className="border-blue-500 text-blue-600 hover:bg-blue-50 h-9 sm:h-8 text-xs sm:text-sm flex-1 sm:flex-none min-w-[44px]"
+                        title={t.uploadInvoice}
+                      >
+                        <Mail className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleDeleteOrder(order.id)}
+                        className="hover:bg-red-100 hover:text-red-600 h-9 sm:h-8 min-w-[44px]"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* FIXED: Removed prices from saved order display, hide "pz" unit */}
+                  <div className="space-y-2 mb-4">
+                    {order.items.map((item, index) => {
+                      const product = products.find((p) => p.id === item.product_id);
+                      // FIXED: Don't show "pz" unit
+                      const unitDisplay = product?.unit && product.unit.toLowerCase() !== 'pz' ? ` ${product.unit}` : '';
+                      return (
+                        <div key={index} className="flex justify-between items-center text-xs sm:text-sm p-2 bg-slate-50 rounded-lg">
+                          <span className="text-slate-700 truncate pr-2">
+                            {item.quantity}{unitDisplay} - {product?.name}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+
+            {orders.length === 0 && (
+              <div className="text-center py-12 sm:py-16">
+                <p className="text-slate-600 text-base sm:text-lg">{t.addFirstOrder}</p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-4 sm:space-y-6">
+            <div className="p-4 sm:p-6 border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl space-y-4">
+              <h3 className="text-base sm:text-lg font-semibold text-slate-800">{t.createOrder}</h3>
+
+              <div className="border-t-2 border-purple-200 pt-4">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  id="invoice-upload"
+                  disabled={isProcessing || !canUploadData}
+                />
+                <label htmlFor="invoice-upload">
+                  <Button
+                    type="button"
+                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 h-11 sm:h-10 text-sm sm:text-base"
+                    disabled={isProcessing || !canUploadData}
+                    asChild
+                  >
+                    <span>
+                      <Upload className="h-4 w-4 mr-2 flex-shrink-0" />
+                      <span className="truncate">{isProcessing ? t.loading : t.importFromPhoto}</span>
+                    </span>
+                  </Button>
+                </label>
+                <p className="text-xs text-slate-500 mt-2 text-center px-2">
+                  {t.uploadOrderDescription}
+                </p>
+                
+                {!canUploadData && (
+                  <div className="mt-4 p-4 sm:p-6 bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-300 rounded-2xl shadow-lg">
+                    <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
+                      <div className="flex-shrink-0 mx-auto sm:mx-0">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-red-100 flex items-center justify-center">
+                          <Lock className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" />
+                        </div>
+                      </div>
+                      <div className="flex-1 text-center sm:text-left">
+                        <h4 className="text-base sm:text-lg font-bold text-red-900 mb-2">{t.featureLockedTitle}</h4>
+                        <p className="text-xs sm:text-sm text-red-800 mb-4">
+                          {t.featureLockedMessage}
+                        </p>
+                        <Button
+                          onClick={handleUpgradeClick}
+                          className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold shadow-lg hover:shadow-xl transition-all hover:scale-105 h-11 sm:h-10 text-sm sm:text-base"
+                        >
+                          <Rocket className="h-4 w-4 sm:h-5 sm:w-5 mr-2 flex-shrink-0" />
+                          <span className="truncate">{t.activateSubscriptionButton}</span>
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t-2 border-purple-200 pt-4 space-y-3">
+                <h4 className="font-semibold text-slate-800 text-sm sm:text-base">{t.addProducts}</h4>
+                
+                {/* NEW: Toggle between search existing and create new */}
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={!isCreatingNewProduct ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setIsCreatingNewProduct(false);
+                      setSelectedProduct(null);
+                    }}
+                    className="flex-1 h-9"
+                    disabled={!canUploadData}
+                  >
+                    {t.searchExisting}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={isCreatingNewProduct ? "default" : "outline"}
+                    size="sm"
+                    onClick={handleStartCreateNewProduct}
+                    className="flex-1 h-9"
+                    disabled={!canUploadData}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    {t.createNew}
+                  </Button>
+                </div>
+
+                {!isCreatingNewProduct ? (
+                  // EXISTING: Search for existing products
+                  <div>
+                    <Label className="text-slate-700 text-sm">{t.products}</Label>
+                    <div className="relative">
+                      <Input
+                        ref={searchInputRef}
+                        type="text"
+                        placeholder={t.searchProduct}
+                        value={searchTerm}
+                        onChange={(e) => {
+                          setSearchTerm(e.target.value);
+                        }}
+                        className="mt-2 border-2 focus:border-purple-500 rounded-xl pr-10 h-11 sm:h-10 text-sm sm:text-base"
+                        disabled={!canUploadData}
+                      />
+                      <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400 mt-1" />
+                    </div>
+                    
+                    {searchTerm && filteredProducts.length > 0 && (
+                      <div className="mt-2 border-2 border-purple-200 rounded-xl bg-white shadow-lg max-h-60 overflow-y-auto">
+                        {filteredProducts.map((product) => {
+                          const supplier = suppliers.find((s) => s.id === product.supplier_id);
+                          const isSelected = selectedProduct?.id === product.id;
+                          return (
+                            <div
+                              key={product.id}
+                              className={`p-3 cursor-pointer hover:bg-purple-50 transition-colors ${
+                                isSelected ? 'bg-purple-100 border-l-4 border-purple-600' : ''
+                              }`}
+                              onClick={() => handleSelectProduct(product)}
+                            >
+                              <div className="flex justify-between items-center gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-slate-800 text-sm truncate">{product.name}</p>
+                                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                    {product.code && (
+                                      <p className="text-xs text-slate-500 truncate">{t.productName}: {product.code}</p>
+                                    )}
+                                    <Badge variant="outline" className="text-xs truncate max-w-[120px]">
+                                      {supplier?.name || t.supplier}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    
+                    {selectedProduct && (
+                      <div className="mt-2 p-3 bg-purple-100 border-2 border-purple-300 rounded-xl">
+                        <p className="text-xs sm:text-sm font-medium text-purple-900">
+                          {t.products}: <span className="font-bold truncate block sm:inline">{selectedProduct.name}</span>
+                        </p>
+                        <p className="text-xs text-purple-700 mt-1">
+                          {t.quantity}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  // NEW: Create new product form
+                  <div className="space-y-3 p-3 bg-white rounded-lg border-2 border-purple-300">
+                    <div>
+                      <Label className="text-xs text-slate-600">{t.productNameLabel}</Label>
+                      <Input
+                        type="text"
+                        value={newProductName}
+                        onChange={(e) => setNewProductName(e.target.value)}
+                        placeholder="Es: Ricotta Cannoli"
+                        className="h-9 text-sm mt-1"
+                        disabled={!canUploadData}
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-xs text-slate-600">{t.supplierLabel}</Label>
+                      {!isCreatingNewSupplier ? (
+                        <div className="flex gap-2 mt-1">
+                          <Select value={newProductSupplier} onValueChange={setNewProductSupplier} disabled={!canUploadData}>
+                            <SelectTrigger className="h-9 text-sm flex-1">
+                              <SelectValue placeholder={t.selectSupplierPlaceholder} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {suppliers.map((supplier) => (
+                                <SelectItem key={supplier.id} value={supplier.id}>
+                                  {supplier.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setIsCreatingNewSupplier(true)}
+                            className="h-9 px-3 flex-shrink-0"
+                            disabled={!canUploadData}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="space-y-2 mt-1 p-2 bg-slate-50 rounded-lg border border-slate-200">
+                          <Input
+                            type="text"
+                            value={newSupplierName}
+                            onChange={(e) => setNewSupplierName(e.target.value)}
+                            placeholder={t.supplierNamePlaceholder}
+                            className="h-8 text-sm"
+                            disabled={!canUploadData}
+                          />
+                          <Input
+                            type="text"
+                            value={newSupplierMobile}
+                            onChange={(e) => setNewSupplierMobile(e.target.value)}
+                            placeholder={t.whatsappPlaceholder}
+                            className="h-8 text-sm"
+                            disabled={!canUploadData}
+                          />
+                          <Input
+                            type="email"
+                            value={newSupplierEmail}
+                            onChange={(e) => setNewSupplierEmail(e.target.value)}
+                            placeholder={t.emailOptionalPlaceholder}
+                            className="h-8 text-sm"
+                            disabled={!canUploadData}
+                          />
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              variant="default"
+                              size="sm"
+                              onClick={handleCreateNewSupplier}
+                              className="flex-1 h-8 bg-green-600 hover:bg-green-700"
+                              disabled={!canUploadData}
+                            >
+                              <Check className="h-3 w-3 mr-1" />
+                              {t.create}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setIsCreatingNewSupplier(false);
+                                setNewSupplierName('');
+                                setNewSupplierMobile('');
+                                setNewSupplierEmail('');
+                              }}
+                              className="flex-1 h-8"
+                              disabled={!canUploadData}
+                            >
+                              <X className="h-3 w-3 mr-1" />
+                              {t.cancel}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleCancelCreateNewProduct}
+                      className="w-full h-8 text-xs"
+                      disabled={!canUploadData}
+                    >
+                      <X className="h-3 w-3 mr-1" />
+                      {t.cancelCreation}
+                    </Button>
+                  </div>
+                )}
+
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    <Label className="text-slate-700 text-sm">{t.quantity}</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={quantity}
+                      onChange={(e) => setQuantity(parseInt(e.target.value) || 0)}
+                      className="mt-2 border-2 focus:border-purple-500 rounded-xl h-11 sm:h-10 text-sm sm:text-base"
+                      disabled={!canUploadData}
+                    />
+                  </div>
+                  <Button
+                    onClick={handleAddProduct}
+                    disabled={(!isCreatingNewProduct && !selectedProduct) || !canUploadData}
+                    className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 h-11 sm:h-10 w-11 sm:w-10 p-0 flex-shrink-0"
+                  >
+                    <Plus className="h-5 w-5" />
+                  </Button>
+                </div>
+                <p className="text-xs text-slate-500 px-1">
+                  {isCreatingNewProduct 
+                    ? "Crea un nuovo prodotto e aggiungilo all'ordine" 
+                    : t.info
+                  }
+                </p>
+              </div>
+
+              {orderItems.length > 0 && (
+                <div className="border-t-2 border-purple-200 pt-4 space-y-3 sm:space-y-4">
+                  <Label className="text-slate-700 font-medium text-sm sm:text-base">
+                    {t.productsAdded} ({orderItems.length})
+                  </Label>
+                  
+                  {Object.entries(groupedItems).map(([supplierId, items]) => {
+                    const supplier = suppliers.find((s) => s.id === supplierId);
+                    const isEditingSupplier = editingSupplierId === supplierId;
+
+                    return (
+                      <div key={supplierId} className="border-2 border-purple-200 rounded-xl p-3 sm:p-4 bg-white space-y-3">
+                        {/* NEW: Editable supplier info */}
+                        {isEditingSupplier ? (
+                          <div className="space-y-3 p-3 bg-purple-50 rounded-lg border-2 border-purple-300">
+                            <div>
+                              <Label className="text-xs text-slate-600">Nome Fornitore</Label>
+                              <Input
+                                type="text"
+                                value={editingSupplierName}
+                                onChange={(e) => setEditingSupplierName(e.target.value)}
+                                className="h-9 text-sm mt-1"
+                                autoFocus
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs text-slate-600">WhatsApp (Mobile)</Label>
+                              <Input
+                                type="text"
+                                value={editingSupplierMobile}
+                                onChange={(e) => setEditingSupplierMobile(e.target.value)}
+                                placeholder="+34 123 456 789"
+                                className="h-9 text-sm mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs text-slate-600">Email</Label>
+                              <Input
+                                type="email"
+                                value={editingSupplierEmail}
+                                onChange={(e) => setEditingSupplierEmail(e.target.value)}
+                                placeholder="fornitore@example.com"
+                                className="h-9 text-sm mt-1"
+                              />
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={handleSaveSupplier}
+                                className="flex-1 bg-green-600 hover:bg-green-700 h-9"
+                              >
+                                <Check className="h-4 w-4 mr-1" />
+                                Salva
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleCancelEditSupplier}
+                                className="flex-1 h-9"
+                              >
+                                <X className="h-4 w-4 mr-1" />
+                                Annulla
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-4">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <h5 className="font-bold text-slate-800 flex items-center gap-2 flex-wrap text-sm sm:text-base">
+                                <span className="truncate">{supplier?.name || t.supplier}</span>
+                                <Badge className="bg-purple-100 text-purple-700 text-xs flex-shrink-0">
+                                  {items.length} {t.products}
+                                </Badge>
+                              </h5>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleStartEditSupplier(supplierId)}
+                                className="h-8 w-8 p-0 hover:bg-purple-100 flex-shrink-0"
+                                title="Modifica fornitore"
+                              >
+                                <Edit2 className="h-4 w-4 text-purple-600" />
+                              </Button>
+                            </div>
+                            <div className="flex gap-2 flex-wrap">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleSendWhatsApp(supplierId)}
+                                className="border-green-500 text-green-600 hover:bg-green-50 h-9 text-xs flex-1 sm:flex-none min-w-[44px]"
+                              >
+                                <MessageCircle className="h-4 w-4 sm:mr-1" />
+                                <span className="hidden sm:inline">WhatsApp</span>
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleSendEmail(supplierId)}
+                                className="border-blue-500 text-blue-600 hover:bg-blue-50 h-9 text-xs flex-1 sm:flex-none min-w-[44px]"
+                              >
+                                <Mail className="h-4 w-4 sm:mr-1" />
+                                <span className="hidden sm:inline">Email</span>
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="space-y-2">
+                          {items.map((item, index) => {
+                            const product = allProductsForDisplay.find((p) => p.id === item.product_id);
+                            const globalIndex = orderItems.findIndex((oi) => oi === item);
+                            const unitDisplay = product?.unit && product.unit.toLowerCase() !== 'pz' ? ` ${product.unit}` : '';
+                            const isEditing = editingProductId === product?.id;
+                            
+                            return (
+                              <div key={index} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 p-2 bg-slate-50 rounded-lg">
+                                {/* NEW: Editable product name */}
+                                {isEditing ? (
+                                  <div className="flex-1 flex items-center gap-2">
+                                    <Input
+                                      type="text"
+                                      value={editingProductName}
+                                      onChange={(e) => setEditingProductName(e.target.value)}
+                                      className="h-9 text-sm flex-1"
+                                      autoFocus
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          handleSaveProductName(product!.id);
+                                        } else if (e.key === 'Escape') {
+                                          handleCancelEditProductName();
+                                        }
+                                      }}
+                                    />
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleSaveProductName(product!.id)}
+                                      className="h-9 w-9 p-0 text-green-600 hover:bg-green-50 flex-shrink-0"
+                                    >
+                                      <Check className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={handleCancelEditProductName}
+                                      className="h-9 w-9 p-0 text-red-600 hover:bg-red-50 flex-shrink-0"
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <span 
+                                    className="text-slate-700 text-sm flex-1 cursor-pointer hover:text-purple-600 flex items-center gap-2 group/name min-w-0"
+                                    onClick={() => product && handleStartEditProductName(product.id, product.name)}
+                                    title={t.editProduct}
+                                  >
+                                    <span className="truncate">{item.quantity}{unitDisplay} - {product?.name}</span>
+                                    <Edit2 className="h-3 w-3 opacity-0 group-hover/name:opacity-50 transition-opacity flex-shrink-0" />
+                                  </span>
+                                )}
+                                
+                                <div className="flex items-center gap-2 justify-between sm:justify-end w-full sm:w-auto">
+                                  <div className="flex items-center gap-1 bg-white rounded-lg border border-slate-200 px-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleUpdateQuantity(globalIndex, item.quantity - 1)}
+                                      className="h-9 w-9 p-0 hover:bg-slate-100"
+                                    >
+                                      <Minus className="h-4 w-4" />
+                                    </Button>
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      value={item.quantity}
+                                      onChange={(e) => handleUpdateQuantity(globalIndex, parseInt(e.target.value) || 0)}
+                                      className="h-9 w-12 sm:w-14 text-center border-0 p-0 text-sm"
+                                    />
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleUpdateQuantity(globalIndex, item.quantity + 1)}
+                                      className="h-9 w-9 p-0 hover:bg-slate-100"
+                                    >
+                                      <Plus className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    onClick={() => handleRemoveItem(globalIndex)}
+                                    className="hover:bg-red-100 hover:text-red-600 h-9 w-9 p-0 flex-shrink-0"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {orderItems.length === 0 && (
+                <div className="text-center py-6 sm:py-8 text-slate-500 border-t-2 border-purple-200 pt-4">
+                  <p className="font-medium text-sm sm:text-base">{t.noProductsInOrder}</p>
+                  <p className="text-xs sm:text-sm mt-1 px-2">
+                    {t.addProducts}
+                  </p>
+                </div>
+              )}
+
+              {/* NEW: Added "Salva PDF" button next to "Annulla" */}
+              <div className="flex gap-3 pt-4 border-t-2 border-purple-200">
+                {orderItems.length > 0 && (
+                  <Button 
+                    onClick={handleSavePDF}
+                    className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 h-11 sm:h-10 text-sm sm:text-base"
+                  >
+                    <FileDown className="h-4 w-4 mr-2" />
+                    {t.savePDF}
+                  </Button>
+                )}
+                <Button 
+                  variant="outline" 
+                  onClick={handleCancelOrder}
+                  className={`${orderItems.length > 0 ? 'flex-1' : 'w-full'} border-2 hover:border-red-500 hover:text-red-500 h-11 sm:h-10 text-sm sm:text-base`}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  {t.cancel}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

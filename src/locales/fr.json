@@ -741,5 +741,6 @@
   "demoBannerText": "Vous êtes en Mode Démo — les données ne sont pas sauvegardées. Inscrivez-vous pour débloquer toutes les fonctionnalités !",
   "demoActionBlocked": "Action non disponible en Mode Démo",
   "demoRegisterPrompt": "Créez un compte gratuit pour sauvegarder vos données et accéder à toutes les fonctionnalités.",
-  "exitDemo": "Quitter la Démo"
+  "exitDemo": "Quitter la Démo",
+  "transferProduct": "Transférer le Produit"
 }

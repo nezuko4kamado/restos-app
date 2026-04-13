@@ -741,5 +741,6 @@
   "demoBannerText": "Sie sind im Demo-Modus — Daten werden nicht gespeichert. Registrieren Sie sich, um alle Funktionen freizuschalten!",
   "demoActionBlocked": "Aktion im Demo-Modus nicht verfügbar",
   "demoRegisterPrompt": "Erstellen Sie ein kostenloses Konto, um Ihre Daten zu speichern und auf alle Funktionen zuzugreifen.",
-  "exitDemo": "Demo verlassen"
+  "exitDemo": "Demo verlassen",
+  "transferProduct": "Produkt übertragen"
 }

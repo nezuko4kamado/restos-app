@@ -1131,5 +1131,6 @@
   "demoBannerText": "Jūs esate Demo režime — duomenys neišsaugomi. Užsiregistruokite, kad atrakintumėte visas funkcijas!",
   "demoActionBlocked": "Veiksmas neprieinamas Demo režime",
   "demoRegisterPrompt": "Sukurkite nemokamą paskyrą, kad išsaugotumėte savo duomenis ir pasiektumėte visas funkcijas.",
-  "exitDemo": "Išeiti iš Demo"
+  "exitDemo": "Išeiti iš Demo",
+  "transferProduct": "Perkelti produktą"
 }

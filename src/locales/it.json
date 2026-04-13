@@ -749,5 +749,6 @@
   "demoBannerText": "Sei in Modalità Demo — i dati non vengono salvati. Registrati per sbloccare tutte le funzionalità!",
   "demoActionBlocked": "Azione non disponibile in Modalità Demo",
   "demoRegisterPrompt": "Crea un account gratuito per salvare i tuoi dati e accedere a tutte le funzionalità.",
-  "exitDemo": "Esci dalla Demo"
+  "exitDemo": "Esci dalla Demo",
+  "transferProduct": "Trasferisci Prodotto"
 }

@@ -280,10 +280,18 @@ export default function ProductsSection({
 
       for (const extracted of allExtractedProducts) {
         try {
-          const existingProduct = products.find(
-            p => p.name.toLowerCase() === extracted.name.toLowerCase() && 
-                 p.supplier_id === supplierId
-          );
+          // DEDUPLICATION FIX: Match by product code first (most reliable), then fall back to name+supplier
+          const existingProduct = products.find(p => {
+            const extractedCode = (extracted.code_description || extracted.codeDescription)?.trim();
+            const productCode = p.code_description?.trim();
+            if (extractedCode && productCode && extractedCode === productCode && p.supplier_id === supplierId) {
+              return true;
+            }
+            if (extractedCode && productCode && extractedCode === productCode) {
+              return true;
+            }
+            return p.name.toLowerCase() === extracted.name.toLowerCase() && p.supplier_id === supplierId;
+          });
 
           const productVATRate = extracted.vat_rate || extracted.vatRate || 0;
           

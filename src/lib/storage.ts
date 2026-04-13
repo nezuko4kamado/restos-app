@@ -1184,8 +1184,32 @@ export const getProducts = async (): Promise<Product[]> => {
       return result;
     });
 
-    console.log(`🔍 [DATABASE] Returning ${productsWithUpdatedAt.length} products with updated_at fixed`);
-    return productsWithUpdatedAt;
+    // 🔥 DEDUPLICATION FIX: Remove duplicate products by code_description (same supplier), then by name+supplier
+    const seen = new Map<string, typeof productsWithUpdatedAt[0]>();
+    for (const product of productsWithUpdatedAt) {
+      const code = product.code_description?.trim();
+      const key = code
+        ? `code:${code}:${product.supplier_id || ''}`
+        : `name:${product.name?.toLowerCase()}:${product.supplier_id || ''}`;
+      if (!seen.has(key)) {
+        seen.set(key, product);
+      } else {
+        // Keep the most recently updated one
+        const existing = seen.get(key)!;
+        const existingDate = new Date(existing.updated_at || existing.created_at || 0).getTime();
+        const currentDate = new Date(product.updated_at || product.created_at || 0).getTime();
+        if (currentDate > existingDate) {
+          seen.set(key, product);
+        }
+      }
+    }
+    const dedupedProducts = Array.from(seen.values());
+    if (dedupedProducts.length < productsWithUpdatedAt.length) {
+      console.log(`🔥 [DEDUP] Removed ${productsWithUpdatedAt.length - dedupedProducts.length} duplicate products`);
+    }
+
+    console.log(`🔍 [DATABASE] Returning ${dedupedProducts.length} products with updated_at fixed`);
+    return dedupedProducts;
 
   } catch (error) {
     console.error('❌ Exception fetching products:', error);

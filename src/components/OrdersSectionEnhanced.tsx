@@ -181,20 +181,36 @@ const resolveEmailPhone = (
   return undefined;
 };
 
-// Helper: open external URL reliably on mobile PWA
+// Helper: open external URL reliably on mobile — NEVER navigate away from the current page
 const openExternalUrl = (url: string) => {
-  // Detect if running as installed PWA (standalone mode)
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches
-    || (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
-
-  if (isStandalone) {
-    // In standalone PWA, use location.href to trigger OS deep link
-    // WhatsApp app opens, PWA stays in background, user can switch back
-    window.location.href = url;
-  } else {
-    // In regular browser, open in new tab
-    window.open(url, '_blank', 'noopener,noreferrer');
+  // Always open in a new tab/window so the user stays on the current page.
+  // On mobile browsers/PWA, window.open with '_blank' triggers the OS intent
+  // system which opens the native WhatsApp app without leaving the page.
+  // Using window.location.href would navigate away and lose the order form.
+  const newWindow = window.open(url, '_blank', 'noopener,noreferrer');
+  if (!newWindow) {
+    // Pop-up blocked fallback: create a temporary <a> and click it
+    const a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   }
+};
+
+// Helper: build the best WhatsApp URL for the current platform.
+// On mobile, the native deep-link "whatsapp://" opens the app directly
+// without showing any "download WhatsApp" landing page.
+const buildWhatsAppUrl = (cleanPhone: string, encodedText: string): string => {
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (isMobile) {
+    // Native deep link — opens WhatsApp app directly, no browser redirect
+    return `whatsapp://send?phone=${cleanPhone}&text=${encodedText}`;
+  }
+  // Desktop: use web.whatsapp.com (avoids the wa.me marketing page)
+  return `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`;
 };
 
 export default function OrdersSectionEnhanced({ orders, setOrders, products, setProducts, suppliers, setSuppliers, settings }: OrdersSectionEnhancedProps) {
@@ -888,32 +904,34 @@ export default function OrdersSectionEnhanced({ orders, setOrders, products, set
     toast.success(t('productDeleted'));
   };
 
-  // Move product to another supplier
+  // Move product to another supplier — updates live draft UI immediately
   const handleMoveProduct = () => {
     if (!productToAction || !selectedTargetSupplier) {
       toast.error(t('selectSupplier'));
       return;
     }
 
-    const targetProduct = allProductsForDisplay.find(p => p.supplier_id === selectedTargetSupplier);
-    if (!targetProduct) {
-      toast.error(t('error'));
-      return;
+    const productId = productToAction.item.product_id;
+    const targetSupplier = suppliers.find(s => s.id === selectedTargetSupplier);
+
+    // 1. Update supplier_id in temporaryOcrProducts (OCR-created products)
+    const isOcrProduct = temporaryOcrProducts.some(p => p.id === productId);
+    if (isOcrProduct) {
+      setTemporaryOcrProducts(prev =>
+        prev.map(p => p.id === productId ? { ...p, supplier_id: selectedTargetSupplier } : p)
+      );
+    } else {
+      // 2. Update supplier_id in the permanent products list (live re-group in UI)
+      setProducts(prev =>
+        prev.map(p => p.id === productId ? { ...p, supplier_id: selectedTargetSupplier } : p)
+      );
     }
 
-    const updatedTempProducts = temporaryOcrProducts.map(p => 
-      p.id === productToAction.item.product_id 
-        ? { ...p, supplier_id: selectedTargetSupplier }
-        : p
-    );
-    setTemporaryOcrProducts(updatedTempProducts);
-
-    const targetSupplier = suppliers.find(s => s.id === selectedTargetSupplier);
-    
+    // 3. Close dialog and notify user — groupedItems will recompute instantly
     setShowProductActionDialog(false);
     setProductToAction(null);
     setSelectedTargetSupplier('');
-    toast.success(`${t('productUpdated')} → ${targetSupplier?.name || t('supplier')}`);
+    toast.success(`✅ ${t('transferProduct')} → ${targetSupplier?.name || t('supplier')}`);
   };
 
   // Show supplier action dialog (delete all or move all)
@@ -2871,7 +2889,7 @@ export default function OrdersSectionEnhanced({ orders, setOrders, products, set
       <Dialog open={showProductActionDialog} onOpenChange={setShowProductActionDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('delete')} / {t('edit')} {t('productName')}?</DialogTitle>
+            <DialogTitle>{t('delete')} / {t('transferProduct')}?</DialogTitle>
             <DialogDescription>
               {t('selectSupplier')}
             </DialogDescription>
@@ -2906,7 +2924,7 @@ export default function OrdersSectionEnhanced({ orders, setOrders, products, set
                 className="w-full"
               >
                 <MoveRight className="h-4 w-4 mr-2" />
-                {t('edit')} {t('productName')}
+                {t('transferProduct')}
               </Button>
             </div>
           </div>

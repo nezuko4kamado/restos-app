@@ -850,10 +850,18 @@ export default function ProductsSectionEnhanced({
       let skippedCount = 0;
 
       for (const extracted of allExtractedProducts) {
-        const existingProduct = products.find(
-          p => p.name.toLowerCase() === extracted.name.toLowerCase() && 
-               p.supplier_id === supplierId
-        );
+        // DEDUPLICATION FIX: Match by product code first (most reliable), then fall back to name+supplier
+        const existingProduct = products.find(p => {
+          const extractedCode = extracted.code_description?.trim();
+          const productCode = p.code_description?.trim();
+          if (extractedCode && productCode && extractedCode === productCode && p.supplier_id === supplierId) {
+            return true;
+          }
+          if (extractedCode && productCode && extractedCode === productCode) {
+            return true;
+          }
+          return p.name.toLowerCase() === extracted.name.toLowerCase() && p.supplier_id === supplierId;
+        });
 
         // ✅ TRUST KLIPPA'S VAT RATE, CATEGORY, AND CODE_DESCRIPTION - No recalculation, no default override!
         const productVATRate = extracted.vatRate || 0;

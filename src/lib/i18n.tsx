@@ -570,3 +570,13 @@ export const languageOptions = [
   { value: 'de' as Language, label: '🇩🇪 Deutsch', flag: '🇩🇪' },
   { value: 'lt' as Language, label: '🇱🇹 Lietuvių', flag: '🇱🇹' },
 ];
+// Standalone t() function for non-React contexts (e.g. orderUtils.ts, CountrySelector.tsx)
+// Reads language from localStorage at call time
+export function t(key: string, params?: Record<string, string | number>): string {
+  const savedLang = localStorage.getItem('language');
+  const lang: Language = (savedLang && ['it', 'en', 'es', 'fr', 'de', 'lt'].includes(savedLang))
+    ? savedLang as Language
+    : 'it';
+  const currentTranslations = translations[lang] || translations.it;
+  return getNestedValue(currentTranslations, key, params);
+}

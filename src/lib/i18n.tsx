@@ -325,6 +325,8 @@ export interface Translations {
   deleteInvoice: string;
   totalPaid: string;
   totalUnpaid: string;
+  monthlySupplierSummary: string;
+  monthlyTotal: string;
   openingInvoiceManagement: string;
   unlimitedProductsSuppliers: string;
   fullAccessToAllFeatures: string;

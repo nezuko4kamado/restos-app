@@ -3,7 +3,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Search, Trash2, ChevronDown, ChevronRight, Percent } from 'lucide-react';
+import { FileText, Search, Trash2, ChevronDown, ChevronRight, Percent, BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Invoice, Supplier } from '@/types';
 import { calculateInvoiceStats, formatCurrency } from '@/lib/invoiceStats';
@@ -33,6 +33,9 @@ export default function AllInvoicesView({ invoices, suppliers, onDeleteInvoice, 
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedYears, setExpandedYears] = useState<Set<string>>(new Set());
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
+  const [showMonthlySummary, setShowMonthlySummary] = useState(true);
+  const [expandedSummaryYears, setExpandedSummaryYears] = useState<Set<string>>(new Set());
+  const [expandedSummaryMonths, setExpandedSummaryMonths] = useState<Set<string>>(new Set());
 
   // Month translation mapping
   const getMonthName = (monthIndex: number): string => {
@@ -118,6 +121,42 @@ export default function AllInvoicesView({ invoices, suppliers, onDeleteInvoice, 
   const groupedInvoices = groupInvoicesByYearMonth(filteredInvoices);
   const years = Object.keys(groupedInvoices).sort((a, b) => parseInt(b) - parseInt(a));
 
+  // Monthly supplier summary data
+  const monthlySupplierData = invoices.reduce((acc, invoice) => {
+    const date = new Date(invoice.date);
+    const year = date.getFullYear().toString();
+    const monthIndex = date.getMonth();
+    const monthName = getMonthName(monthIndex);
+    const supplierName = getSupplierName(invoice);
+    const amount = getInvoiceTotal(invoice);
+    const isPaid = invoice.is_paid || invoice.isPaid;
+
+    if (!acc[year]) acc[year] = {};
+    if (!acc[year][monthName]) acc[year][monthName] = { suppliers: {}, monthIndex };
+    if (!acc[year][monthName].suppliers[supplierName]) {
+      acc[year][monthName].suppliers[supplierName] = { paid: 0, unpaid: 0 };
+    }
+    if (isPaid) acc[year][monthName].suppliers[supplierName].paid += amount;
+    else acc[year][monthName].suppliers[supplierName].unpaid += amount;
+    return acc;
+  }, {} as Record<string, Record<string, { suppliers: Record<string, { paid: number; unpaid: number }>; monthIndex: number }>>);
+
+  const summaryYears = Object.keys(monthlySupplierData).sort((a, b) => parseInt(b) - parseInt(a));
+
+  const toggleSummaryYear = (year: string) => {
+    const newExpanded = new Set(expandedSummaryYears);
+    if (newExpanded.has(year)) newExpanded.delete(year);
+    else newExpanded.add(year);
+    setExpandedSummaryYears(newExpanded);
+  };
+
+  const toggleSummaryMonth = (key: string) => {
+    const newExpanded = new Set(expandedSummaryMonths);
+    if (newExpanded.has(key)) newExpanded.delete(key);
+    else newExpanded.add(key);
+    setExpandedSummaryMonths(newExpanded);
+  };
+
   // Create month order mapping for sorting
   const getMonthOrder = (monthName: string): number => {
     const monthKeys = [
@@ -151,6 +190,126 @@ export default function AllInvoicesView({ invoices, suppliers, onDeleteInvoice, 
           <p className="text-2xl font-bold text-purple-600">{stats.totalInvoices}</p>
         </Card>
       </div>
+
+      {/* Monthly Supplier Summary */}
+      <Card className="p-6">
+        <div
+          className="flex justify-between items-center cursor-pointer"
+          onClick={() => setShowMonthlySummary(!showMonthlySummary)}
+        >
+          <div className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-indigo-600" />
+            <h3 className="font-semibold text-lg text-slate-800">
+              {t('monthlySupplierSummary') || 'Riepilogo Mensile per Fornitore'}
+            </h3>
+          </div>
+          <Button variant="ghost" size="sm">
+            {showMonthlySummary ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </Button>
+        </div>
+
+        {showMonthlySummary && (
+          <div className="mt-4 space-y-2">
+            {summaryYears.length === 0 ? (
+              <p className="text-slate-500 text-sm text-center py-4">
+                {t('noInvoicesRegistered') || 'Nessuna fattura registrata'}
+              </p>
+            ) : (
+              summaryYears.map(year => {
+                const yearExpanded = expandedSummaryYears.has(year);
+                const monthsInYear = Object.keys(monthlySupplierData[year]).sort(
+                  (a, b) => monthlySupplierData[year][b].monthIndex - monthlySupplierData[year][a].monthIndex
+                );
+                const yearPaid = monthsInYear.reduce((sum, m) =>
+                  sum + Object.values(monthlySupplierData[year][m].suppliers).reduce((s, v) => s + v.paid, 0), 0);
+                const yearUnpaid = monthsInYear.reduce((sum, m) =>
+                  sum + Object.values(monthlySupplierData[year][m].suppliers).reduce((s, v) => s + v.unpaid, 0), 0);
+
+                return (
+                  <div key={year} className="border-2 border-slate-200 rounded-xl overflow-hidden">
+                    {/* Year Header */}
+                    <div
+                      className="flex justify-between items-center p-4 bg-slate-50 hover:bg-slate-100 cursor-pointer transition-colors"
+                      onClick={() => toggleSummaryYear(year)}
+                    >
+                      <div className="flex items-center gap-3">
+                        {yearExpanded ? <ChevronDown className="h-5 w-5 text-slate-600" /> : <ChevronRight className="h-5 w-5 text-slate-600" />}
+                        <span className="font-bold text-slate-800 text-xl">{year}</span>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm">
+                        <span className="text-green-600 font-semibold">✓ {formatPrice(yearPaid, currency)}</span>
+                        <span className="text-orange-500 font-semibold">⏳ {formatPrice(yearUnpaid, currency)}</span>
+                      </div>
+                    </div>
+
+                    {yearExpanded && (
+                      <div className="divide-y divide-slate-200">
+                        {monthsInYear.map(month => {
+                          const monthKey = `summary-${year}-${month}`;
+                          const monthExpanded = expandedSummaryMonths.has(monthKey);
+                          const suppliersData = monthlySupplierData[year][month].suppliers;
+                          const monthPaid = Object.values(suppliersData).reduce((s, v) => s + v.paid, 0);
+                          const monthUnpaid = Object.values(suppliersData).reduce((s, v) => s + v.unpaid, 0);
+                          const monthTotal = monthPaid + monthUnpaid;
+
+                          return (
+                            <div key={monthKey}>
+                              {/* Month Header */}
+                              <div
+                                className="flex justify-between items-center p-3 pl-12 bg-white hover:bg-slate-50 cursor-pointer transition-colors"
+                                onClick={() => toggleSummaryMonth(monthKey)}
+                              >
+                                <div className="flex items-center gap-2">
+                                  {monthExpanded ? <ChevronDown className="h-4 w-4 text-slate-500" /> : <ChevronRight className="h-4 w-4 text-slate-500" />}
+                                  <span className="font-semibold text-slate-700 capitalize">{month}</span>
+                                  <span className="text-xs text-slate-400">({Object.keys(suppliersData).length} {t('supplierName') || 'fornitori'})</span>
+                                </div>
+                                <div className="flex items-center gap-3 text-sm">
+                                  <span className="text-green-600 font-medium">{formatPrice(monthPaid, currency)}</span>
+                                  <span className="text-orange-500 font-medium">{formatPrice(monthUnpaid, currency)}</span>
+                                  <span className="text-indigo-600 font-bold">{formatPrice(monthTotal, currency)}</span>
+                                </div>
+                              </div>
+
+                              {/* Supplier rows */}
+                              {monthExpanded && (
+                                <div className="bg-slate-50">
+                                  {/* Table Header */}
+                                  <div className="grid grid-cols-4 gap-2 px-16 py-2 text-xs font-semibold text-slate-500 uppercase border-b border-slate-200">
+                                    <span>{t('supplierName') || 'Fornitore'}</span>
+                                    <span className="text-green-600 text-right">{t('paid') || 'Pagato'}</span>
+                                    <span className="text-orange-500 text-right">{t('unpaid') || 'Da Pagare'}</span>
+                                    <span className="text-indigo-600 text-right">Totale</span>
+                                  </div>
+                                  {Object.entries(suppliersData).map(([supplierName, amounts]) => (
+                                    <div key={supplierName} className="grid grid-cols-4 gap-2 px-16 py-2 text-sm hover:bg-white transition-colors border-b border-slate-100">
+                                      <span className="font-medium text-slate-700 truncate">{supplierName}</span>
+                                      <span className="text-green-600 text-right font-medium">{formatPrice(amounts.paid, currency)}</span>
+                                      <span className="text-orange-500 text-right font-medium">{formatPrice(amounts.unpaid, currency)}</span>
+                                      <span className="text-indigo-600 text-right font-bold">{formatPrice(amounts.paid + amounts.unpaid, currency)}</span>
+                                    </div>
+                                  ))}
+                                  {/* Month Total Row */}
+                                  <div className="grid grid-cols-4 gap-2 px-16 py-2 bg-indigo-50 border-t-2 border-indigo-200 text-sm font-bold">
+                                    <span className="text-slate-700">{t('monthlyTotal') || 'Totale Mese'}</span>
+                                    <span className="text-green-700 text-right">{formatPrice(monthPaid, currency)}</span>
+                                    <span className="text-orange-600 text-right">{formatPrice(monthUnpaid, currency)}</span>
+                                    <span className="text-indigo-700 text-right">{formatPrice(monthTotal, currency)}</span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
+      </Card>
 
       {/* Search Bar */}
       <div className="relative">

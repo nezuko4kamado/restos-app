@@ -375,6 +375,8 @@
   "deleteInvoice": "Delete invoice",
   "totalPaid": "Total Paid",
   "totalUnpaid": "Total Unpaid",
+  "monthlySupplierSummary": "Monthly Supplier Summary",
+  "monthlyTotal": "Monthly Total",
   "openingInvoiceManagement": "Opening invoice management for",
   "unlimitedProductsSuppliers": "Unlimited",
   "fullAccessToAllFeatures": "Full access",

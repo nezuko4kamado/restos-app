@@ -375,6 +375,8 @@
   "deleteInvoice": "Elimina fattura",
   "totalPaid": "Totale Pagato",
   "totalUnpaid": "Totale Non Pagato",
+  "monthlySupplierSummary": "Riepilogo Mensile per Fornitore",
+  "monthlyTotal": "Totale Mese",
   "openingInvoiceManagement": "Apertura gestione fatture per",
   "unlimitedProductsSuppliers": "Illimitati",
   "fullAccessToAllFeatures": "Accesso completo",

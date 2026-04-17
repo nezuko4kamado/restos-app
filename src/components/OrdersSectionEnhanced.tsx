@@ -183,33 +183,32 @@ const resolveEmailPhone = (
 
 // Helper: open external URL reliably on mobile — NEVER navigate away from the current page
 const openExternalUrl = (url: string) => {
-  // Always open in a new tab/window so the user stays on the current page.
-  // On mobile browsers/PWA, window.open with '_blank' triggers the OS intent
-  // system which opens the native WhatsApp app without leaving the page.
-  // Using window.location.href would navigate away and lose the order form.
-  const newWindow = window.open(url, '_blank', 'noopener,noreferrer');
-  if (!newWindow) {
-    // Pop-up blocked fallback: create a temporary <a> and click it
-    const a = document.createElement('a');
-    a.href = url;
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  }
+  // Use a temporary <a> with target="_blank" and rel="noopener noreferrer".
+  // This is the most reliable cross-platform approach:
+  // - On desktop: opens a new browser tab
+  // - On mobile Safari/Chrome: triggers the OS intent system → opens native app
+  // - Inside WebView/PWA: _blank forces an external browser, preventing in-app navigation
+  const a = document.createElement('a');
+  a.href = url;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  // Must be appended to DOM for Firefox compatibility
+  document.body.appendChild(a);
+  a.click();
+  // Small delay before removal to ensure the click is processed
+  setTimeout(() => document.body.removeChild(a), 100);
 };
 
 // Helper: build the best WhatsApp URL for the current platform.
 // On mobile, the native deep-link "whatsapp://" opens the app directly
-// without showing any "download WhatsApp" landing page.
+// without showing any "download WhatsApp" landing page or ads.
 const buildWhatsAppUrl = (cleanPhone: string, encodedText: string): string => {
   const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   if (isMobile) {
-    // Native deep link — opens WhatsApp app directly, no browser redirect
+    // Native deep link — opens WhatsApp app directly, no browser redirect, no ads
     return `whatsapp://send?phone=${cleanPhone}&text=${encodedText}`;
   }
-  // Desktop: use web.whatsapp.com (avoids the wa.me marketing page)
+  // Desktop: use web.whatsapp.com (avoids the wa.me marketing/download page)
   return `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`;
 };
 
@@ -1125,7 +1124,7 @@ export default function OrdersSectionEnhanced({ orders, setOrders, products, set
     );
 
     const cleanPhoneNumber = phoneNumber.replace(/[^0-9]/g, '');
-    const whatsappUrl = `https://wa.me/${cleanPhoneNumber}?text=${encodeURIComponent(message)}`;
+    const whatsappUrl = buildWhatsAppUrl(cleanPhoneNumber, encodeURIComponent(message));
     
     openExternalUrl(whatsappUrl);
   };
@@ -1223,11 +1222,10 @@ export default function OrdersSectionEnhanced({ orders, setOrders, products, set
       );
 
       const cleanPhoneNumber = phoneNumber.replace(/[^0-9]/g, '');
-      const whatsappUrl = `https://wa.me/${cleanPhoneNumber}?text=${encodeURIComponent(message)}`;
+      const whatsappUrl = buildWhatsAppUrl(cleanPhoneNumber, encodeURIComponent(message));
       
       setTimeout(() => {
         openExternalUrl(whatsappUrl);
-      
       }, sentCount * 1000);
       sentCount++;
     });
@@ -1556,7 +1554,7 @@ export default function OrdersSectionEnhanced({ orders, setOrders, products, set
     );
 
     const cleanPhoneNumber = phoneNumber.replace(/[^0-9]/g, '');
-    const whatsappUrl = `https://wa.me/${cleanPhoneNumber}?text=${encodeURIComponent(message)}`;
+    const whatsappUrl = buildWhatsAppUrl(cleanPhoneNumber, encodeURIComponent(message));
     
     openExternalUrl(whatsappUrl);
   };
@@ -1649,11 +1647,10 @@ export default function OrdersSectionEnhanced({ orders, setOrders, products, set
       );
 
       const cleanPhoneNumber = phoneNumber.replace(/[^0-9]/g, '');
-      const whatsappUrl = `https://wa.me/${cleanPhoneNumber}?text=${encodeURIComponent(message)}`;
+      const whatsappUrl = buildWhatsAppUrl(cleanPhoneNumber, encodeURIComponent(message));
       
       setTimeout(() => {
         openExternalUrl(whatsappUrl);
-      
       }, sentCount * 1000);
       sentCount++;
     });

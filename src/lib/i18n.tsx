@@ -327,6 +327,10 @@ export interface Translations {
   totalUnpaid: string;
   monthlySupplierSummary: string;
   monthlyTotal: string;
+  filterByMonth: string;
+  filterByYear: string;
+  allMonths: string;
+  allYears: string;
   openingInvoiceManagement: string;
   unlimitedProductsSuppliers: string;
   fullAccessToAllFeatures: string;

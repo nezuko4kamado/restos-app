@@ -1,14 +1,21 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Search, Trash2, ChevronDown, ChevronRight, Percent, BarChart3 } from 'lucide-react';
+import { FileText, Search, Trash2, ChevronDown, ChevronRight, Percent, BarChart3, X } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Invoice, Supplier } from '@/types';
 import { calculateInvoiceStats, formatCurrency } from '@/lib/invoiceStats';
 import { useLanguage } from '@/lib/i18n';
 import { formatPrice } from '@/lib/currency';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface AllInvoicesViewProps {
   invoices: Invoice[];
@@ -31,6 +38,8 @@ interface InvoiceItem {
 export default function AllInvoicesView({ invoices, suppliers, onDeleteInvoice, currency = 'EUR' }: AllInvoicesViewProps) {
   const { language, t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterMonth, setFilterMonth] = useState<string>('all');
+  const [filterYear, setFilterYear] = useState<string>('all');
   const [expandedYears, setExpandedYears] = useState<Set<string>>(new Set());
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
   const [showMonthlySummary, setShowMonthlySummary] = useState(true);
@@ -105,16 +114,46 @@ export default function AllInvoicesView({ invoices, suppliers, onDeleteInvoice, 
     return invoice.total_amount || invoice.totalAmount || invoice.amount || 0;
   };
 
-  // Filter invoices based on search
+  // Compute available years dynamically from invoices
+  const availableYears = useMemo(() => {
+    const years = new Set<string>();
+    invoices.forEach(inv => {
+      const y = new Date(inv.date).getFullYear().toString();
+      years.add(y);
+    });
+    return Array.from(years).sort((a, b) => parseInt(b) - parseInt(a));
+  }, [invoices]);
+
+  // Month options (0-based index)
+  const monthOptions = useMemo(() => {
+    return Array.from({ length: 12 }, (_, i) => ({
+      value: String(i),
+      label: getMonthName(i),
+    }));
+  }, [language]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const hasActiveFilter = filterMonth !== 'all' || filterYear !== 'all';
+
+  const resetFilters = () => {
+    setFilterMonth('all');
+    setFilterYear('all');
+  };
+
+  // Filter invoices based on search + month/year filters
   const filteredInvoices = invoices.filter(invoice => {
     const query = searchQuery.toLowerCase();
     const supplierName = getSupplierName(invoice);
-    return (
+    const matchesSearch =
       invoice.invoiceNumber?.toLowerCase().includes(query) ||
       invoice.invoice_number?.toLowerCase().includes(query) ||
       supplierName.toLowerCase().includes(query) ||
-      invoice.notes?.toLowerCase().includes(query)
-    );
+      invoice.notes?.toLowerCase().includes(query);
+
+    const date = new Date(invoice.date);
+    const matchesYear = filterYear === 'all' || date.getFullYear().toString() === filterYear;
+    const matchesMonth = filterMonth === 'all' || date.getMonth().toString() === filterMonth;
+
+    return matchesSearch && matchesYear && matchesMonth;
   });
 
   const stats = calculateInvoiceStats(filteredInvoices);
@@ -311,16 +350,62 @@ export default function AllInvoicesView({ invoices, suppliers, onDeleteInvoice, 
         )}
       </Card>
 
-      {/* Search Bar */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
-        <Input
-          type="text"
-          placeholder={`${t('search')} ${t('invoices')?.toLowerCase()}...`}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10 border-2 focus:border-indigo-500 rounded-xl"
-        />
+      {/* Search Bar + Month/Year Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        {/* Search */}
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
+          <Input
+            type="text"
+            placeholder={`${t('search')} ${t('invoices')?.toLowerCase()}...`}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 border-2 focus:border-indigo-500 rounded-xl"
+          />
+        </div>
+
+        {/* Month Select */}
+        <Select value={filterMonth} onValueChange={setFilterMonth}>
+          <SelectTrigger className="w-full sm:w-44 border-2 focus:border-indigo-500 rounded-xl">
+            <SelectValue placeholder={t('filterByMonth')} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t('allMonths')}</SelectItem>
+            {monthOptions.map(opt => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Year Select */}
+        <Select value={filterYear} onValueChange={setFilterYear}>
+          <SelectTrigger className="w-full sm:w-36 border-2 focus:border-indigo-500 rounded-xl">
+            <SelectValue placeholder={t('filterByYear')} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t('allYears')}</SelectItem>
+            {availableYears.map(year => (
+              <SelectItem key={year} value={year}>
+                {year}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Reset Filter Button */}
+        {hasActiveFilter && (
+          <Button
+            variant="outline"
+            onClick={resetFilters}
+            className="border-2 border-red-300 text-red-600 hover:bg-red-50 rounded-xl px-3"
+            title={t('allYears') + ' / ' + t('allMonths')}
+          >
+            <X className="h-4 w-4 mr-1" />
+            Reset
+          </Button>
+        )}
       </div>
 
       {/* Invoice List */}

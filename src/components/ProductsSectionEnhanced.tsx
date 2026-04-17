@@ -85,8 +85,8 @@ const ProductCard = memo(({
 
   // ✅ FIX: Always use Klippa's extracted VAT rate, fallback to 0% instead of country default
   const vatRate = product.vatRate || product.vat_rate || 0;
-  const unitPrice = product.unit_price || product.price;
-  const discountedPrice = product.discounted_price || product.price;
+  const unitPrice = (product.unit_price !== undefined && product.unit_price !== null) ? product.unit_price : product.price;
+  const discountedPrice = (product.discounted_price !== undefined && product.discounted_price !== null) ? product.discounted_price : product.price;
   const discountPercent = product.discount_percent || 0;
   const discountAmount = product.discount_amount || 0;
   const hasDiscount = discountPercent > 0;

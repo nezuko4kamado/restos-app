@@ -847,7 +847,7 @@ export default function ProductsSectionEnhanced({
       const productsToUpdate: { id: string; updates: Partial<Product> }[] = [];
       let successCount = 0;
       let updatedCount = 0;
-      let skippedCount = 0;
+      const skippedCount = 0;
 
       for (const extracted of allExtractedProducts) {
         // DEDUPLICATION FIX: Match by product code first (most reliable), then fall back to name+supplier
@@ -872,8 +872,8 @@ export default function ProductsSectionEnhanced({
         console.log(`🔍 [VAT+CATEGORY+CODE DEBUG] Product "${extracted.name}": extracted.vatRate = ${extracted.vatRate}, productVATRate = ${productVATRate}, extracted.category = "${extracted.category}", productCategory = "${productCategory}", extracted.code_description = "${extracted.code_description}", productCodeDescription = "${productCodeDescription}"`);
 
         if (existingProduct) {
-          if (existingProduct.price !== extracted.discounted_price) {
-            // ✅ FIX: Read from both camelCase and snake_case history fields
+          {
+            // ✅ FIX: Always update product from invoice — including 0 price (100% discount)
             const existingHistory = getProductPriceHistory(existingProduct);
             
             // ✅ FIX: If history is empty, seed with old price first
@@ -910,8 +910,8 @@ export default function ProductsSectionEnhanced({
               discount_percent: extracted.discount_percent,
               vat_rate: productVATRate,
               vatRate: productVATRate,
-              category: productCategory,  // ✅ FIX: Update category too
-              code_description: productCodeDescription,  // ✅ NEW: Update code_description
+              category: productCategory,
+              code_description: productCodeDescription,
               notes: extracted.discount_percent > 0 ? `${t('discount') || 'Discount'} ${extracted.discount_percent}%` : existingProduct.notes,
               price_history: newHistory.map(h => ({ price: h.price, date: h.date })),
               updated_at: new Date().toISOString(),
@@ -921,8 +921,6 @@ export default function ProductsSectionEnhanced({
 
             productsToUpdate.push({ id: existingProduct.id, updates });
             updatedCount++;
-          } else {
-            skippedCount++;
           }
         } else {
           const initialHistory = [{

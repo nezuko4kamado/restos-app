@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -387,7 +387,7 @@ export function InvoicesSection({ settings, onInvoicesChanged }: InvoicesSection
     t('invoicesSection.december') || 'Dicembre',
   ];
 
-  const filteredInvoices = invoices.filter(invoice => {
+  const filteredInvoices = useMemo(() => invoices.filter(invoice => {
     const matchesSearch =
       invoice.invoice_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
       invoice.supplier_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -398,7 +398,19 @@ export function InvoicesSection({ settings, onInvoicesChanged }: InvoicesSection
     const matchesYear = filterYear === 'all' || invoiceDate.getFullYear().toString() === filterYear;
 
     return matchesSearch && matchesMonth && matchesYear;
-  });
+  }), [invoices, searchQuery, filterMonth, filterYear]);
+
+  const filteredStats = useMemo(() => {
+    const paid = filteredInvoices.filter(inv => inv.is_paid);
+    const unpaid = filteredInvoices.filter(inv => !inv.is_paid);
+    return {
+      total_invoices: filteredInvoices.length,
+      paid_invoices: paid.length,
+      unpaid_invoices: unpaid.length,
+      paid_amount: paid.reduce((sum, inv) => sum + (Number(inv.total_amount) || 0), 0),
+      unpaid_amount: unpaid.reduce((sum, inv) => sum + (Number(inv.total_amount) || 0), 0),
+    };
+  }, [filteredInvoices]);
 
   const filteredCatalogProducts = catalogProducts.filter(product =>
     product.name.toLowerCase().includes(productSearchQuery.toLowerCase()) ||
@@ -488,7 +500,7 @@ export function InvoicesSection({ settings, onInvoicesChanged }: InvoicesSection
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-600 mb-1">{t('invoicesSection.totalInvoices')}</p>
-                <p className="text-3xl font-bold text-blue-600">{stats.total_invoices}</p>
+                <p className="text-3xl font-bold text-blue-600">{filteredStats.total_invoices}</p>
               </div>
               <FileText className="h-12 w-12 text-blue-600 opacity-50" />
             </div>
@@ -500,8 +512,8 @@ export function InvoicesSection({ settings, onInvoicesChanged }: InvoicesSection
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-600 mb-1">{t('invoicesSection.paid')}</p>
-                <p className="text-3xl font-bold text-green-600">{stats.paid_invoices}</p>
-                <p className="text-xs text-slate-500 mt-1">{formatPrice(stats.paid_amount, currency)}</p>
+                <p className="text-3xl font-bold text-green-600">{filteredStats.paid_invoices}</p>
+                <p className="text-xs text-slate-500 mt-1">{formatPrice(filteredStats.paid_amount, currency)}</p>
               </div>
               <CheckCircle2 className="h-12 w-12 text-green-600 opacity-50" />
             </div>
@@ -513,8 +525,8 @@ export function InvoicesSection({ settings, onInvoicesChanged }: InvoicesSection
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-600 mb-1">{t('invoicesSection.unpaid')}</p>
-                <p className="text-3xl font-bold text-orange-600">{stats.unpaid_invoices}</p>
-                <p className="text-xs text-slate-500 mt-1">{formatPrice(stats.unpaid_amount, currency)}</p>
+                <p className="text-3xl font-bold text-orange-600">{filteredStats.unpaid_invoices}</p>
+                <p className="text-xs text-slate-500 mt-1">{formatPrice(filteredStats.unpaid_amount, currency)}</p>
               </div>
               <Circle className="h-12 w-12 text-orange-600 opacity-50" />
             </div>

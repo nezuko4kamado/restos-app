@@ -85,6 +85,8 @@ export function InvoicesSection({ settings, onInvoicesChanged }: InvoicesSection
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'paid' | 'unpaid'>('all');
   const [filterSupplier, setFilterSupplier] = useState<string>('all');
+  const [filterMonth, setFilterMonth] = useState<string>('all');
+  const [filterYear, setFilterYear] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [suppliers, setSuppliers] = useState<string[]>([]);
@@ -114,7 +116,7 @@ export function InvoicesSection({ settings, onInvoicesChanged }: InvoicesSection
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterStatus, filterSupplier, dateFrom, dateTo]);
+  }, [searchQuery, filterStatus, filterSupplier, filterMonth, filterYear, dateFrom, dateTo]);
 
   useEffect(() => {
     if (linkDialogOpen) {
@@ -365,13 +367,37 @@ export function InvoicesSection({ settings, onInvoicesChanged }: InvoicesSection
     return 'bg-red-100 text-red-600 border-red-300';
   };
 
+  // Compute available years dynamically from loaded invoices
+  const availableYears = Array.from(
+    new Set(invoices.map(inv => new Date(inv.date).getFullYear().toString()))
+  ).sort((a, b) => parseInt(b) - parseInt(a));
+
+  const monthNames = [
+    t('invoicesSection.january') || 'Gennaio',
+    t('invoicesSection.february') || 'Febbraio',
+    t('invoicesSection.march') || 'Marzo',
+    t('invoicesSection.april') || 'Aprile',
+    t('invoicesSection.may') || 'Maggio',
+    t('invoicesSection.june') || 'Giugno',
+    t('invoicesSection.july') || 'Luglio',
+    t('invoicesSection.august') || 'Agosto',
+    t('invoicesSection.september') || 'Settembre',
+    t('invoicesSection.october') || 'Ottobre',
+    t('invoicesSection.november') || 'Novembre',
+    t('invoicesSection.december') || 'Dicembre',
+  ];
+
   const filteredInvoices = invoices.filter(invoice => {
-    const matchesSearch = 
+    const matchesSearch =
       invoice.invoice_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
       invoice.supplier_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       invoice.notes?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    return matchesSearch;
+
+    const invoiceDate = new Date(invoice.date);
+    const matchesMonth = filterMonth === 'all' || invoiceDate.getMonth().toString() === filterMonth;
+    const matchesYear = filterYear === 'all' || invoiceDate.getFullYear().toString() === filterYear;
+
+    return matchesSearch && matchesMonth && matchesYear;
   });
 
   const filteredCatalogProducts = catalogProducts.filter(product =>
@@ -513,7 +539,7 @@ export function InvoicesSection({ settings, onInvoicesChanged }: InvoicesSection
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label className="text-sm mb-2 block">{t('invoicesSection.state')}</Label>
                 <Select value={filterStatus} onValueChange={(value: 'all' | 'paid' | 'unpaid') => setFilterStatus(value)}>
@@ -562,6 +588,40 @@ export function InvoicesSection({ settings, onInvoicesChanged }: InvoicesSection
                   onChange={(e) => setDateTo(e.target.value)}
                 />
               </div>
+
+              <div>
+                <Label className="text-sm mb-2 block">{t('invoicesSection.filterByMonth') || 'Mese'}</Label>
+                <Select value={filterMonth} onValueChange={setFilterMonth}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t('invoicesSection.allMonths') || 'Tutti i mesi'}</SelectItem>
+                    {monthNames.map((name, idx) => (
+                      <SelectItem key={idx} value={String(idx)}>
+                        {name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="text-sm mb-2 block">{t('invoicesSection.filterByYear') || 'Anno'}</Label>
+                <Select value={filterYear} onValueChange={setFilterYear}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t('invoicesSection.allYears') || 'Tutti gli anni'}</SelectItem>
+                    {availableYears.map(year => (
+                      <SelectItem key={year} value={year}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -590,6 +650,8 @@ export function InvoicesSection({ settings, onInvoicesChanged }: InvoicesSection
                   setSearchQuery('');
                   setFilterStatus('all');
                   setFilterSupplier('all');
+                  setFilterMonth('all');
+                  setFilterYear('all');
                   setDateFrom('');
                   setDateTo('');
                 }}

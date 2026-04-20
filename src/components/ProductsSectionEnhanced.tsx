@@ -919,6 +919,18 @@ export default function ProductsSectionEnhanced({
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (updates as any).priceHistory = newHistory;
 
+            // ✅ PRICE CHANGE NOTIFICATION: Show toast only if price actually changed
+            if (existingProduct.price !== extracted.discounted_price) {
+              const oldPrice = existingProduct.price;
+              const newPrice = extracted.discounted_price;
+              const changePercent = ((newPrice - oldPrice) / oldPrice) * 100;
+              const arrow = changePercent > 0 ? '📈' : '📉';
+              toast.info(
+                `${arrow} ${extracted.name}: ${formatPrice(oldPrice, currency)} → ${formatPrice(newPrice, currency)} (${changePercent > 0 ? '+' : ''}${changePercent.toFixed(1)}%)`,
+                { duration: 5000 }
+              );
+            }
+
             productsToUpdate.push({ id: existingProduct.id, updates });
             updatedCount++;
           }

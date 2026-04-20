@@ -128,6 +128,7 @@ interface LoadingContext {
  * 3. ✅ REMOVED: Redundant de-duplication (frontend already handles it)
  * 4. ✅ NEW: Extract code_description field from Klippa
  * 5. ✅ ENHANCED: Extract phone, mobile, and email from supplier
+ * 6. ✅ FIX: Split merged products that have multiple codes in code_description
  */
 export async function extractDataFromImage(
   file: File, 
@@ -227,8 +228,37 @@ export async function extractDataFromImage(
       console.log(`   Base64: ${(perfBase64 - perfCompress).toFixed(0)}ms`);
       console.log(`   Edge Function: ${(perfEdgeFunction - perfBase64).toFixed(0)}ms`);
       console.log(`   Total OCR: ${(perfTotal - perfStart).toFixed(0)}ms`);
+
+      // ✅ SPLIT MERGED PRODUCTS: Klippa sometimes merges two adjacent invoice lines into one
+      // entry with a combined name (e.g. "PROD A PROD B") and two space-separated codes
+      // (e.g. code_description = "4165001 3536013"). We detect this and split them apart.
+      type RawProduct = typeof rawProducts[0];
+      const splitProducts: RawProduct[] = [];
+      for (const p of rawProducts) {
+        const codes = (p.code_description || '').trim().split(/\s+/).filter(Boolean);
+        if (codes.length >= 2) {
+          console.log(`🔀 [SPLIT] Product "${p.name}" has ${codes.length} codes: [${codes.join(', ')}] — attempting split`);
+          const words = p.name.trim().split(/\s+/);
+          const half = Math.ceil(words.length / 2);
+          const nameA = words.slice(0, half).join(' ');
+          const nameB = words.slice(half).join(' ');
+          // Only split if both halves are non-trivial (at least 2 words each)
+          if (nameA.split(/\s+/).length >= 2 && nameB.split(/\s+/).length >= 2) {
+            console.log(`✅ [SPLIT] Splitting into: "${nameA}" (${codes[0]}) and "${nameB}" (${codes[1]})`);
+            splitProducts.push({ ...p, name: nameA, description: nameA, code_description: codes[0] });
+            splitProducts.push({ ...p, name: nameB, description: nameB, code_description: codes[1] });
+          } else {
+            // Can't split cleanly — keep only the first code to avoid showing multiple codes
+            console.log(`⚠️ [SPLIT] Cannot split name cleanly, keeping first code only: ${codes[0]}`);
+            splitProducts.push({ ...p, code_description: codes[0] });
+          }
+        } else {
+          splitProducts.push(p);
+        }
+      }
+
       // ✅ Client-side safety filter: remove notes/comments that slipped through edge function
-      const filteredProducts = rawProducts.filter((p: { name: string; unit_price: number; discounted_price: number; quantity: number }) => {
+      const filteredProducts = splitProducts.filter((p: { name: string; unit_price: number; discounted_price: number; quantity: number }) => {
         const name = (p.name || '').trim();
         
         // Rule A (PRIORITY): Known non-product patterns - check BEFORE price/quantity
@@ -289,7 +319,7 @@ export async function extractDataFromImage(
         return true;
       });
       
-      console.log(`📦 [OCR] Extracted ${rawProducts.length} products, after client filter: ${filteredProducts.length} (NO deduplication in OCR layer)`);
+      console.log(`📦 [OCR] Extracted ${rawProducts.length} raw → ${splitProducts.length} after split → ${filteredProducts.length} after client filter (NO deduplication in OCR layer)`);
       
       return {
         success: true,

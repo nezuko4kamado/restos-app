@@ -1148,5 +1148,7 @@
   "demoActionBlocked": "Veiksmas neprieinamas Demo režime",
   "demoRegisterPrompt": "Sukurkite nemokamą paskyrą, kad išsaugotumėte savo duomenis ir pasiektumėte visas funkcijas.",
   "exitDemo": "Išeiti iš Demo",
-  "transferProduct": "Perkelti produktą"
+  "transferProduct": "Perkelti produktą",
+  "startFreeNow": "Pradėkite nemokamai",
+  "noHiddenCosts": "Jokių paslėptų mokesčių"
 }

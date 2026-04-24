@@ -758,5 +758,7 @@
   "demoActionBlocked": "Aktion im Demo-Modus nicht verfügbar",
   "demoRegisterPrompt": "Erstellen Sie ein kostenloses Konto, um Ihre Daten zu speichern und auf alle Funktionen zuzugreifen.",
   "exitDemo": "Demo verlassen",
-  "transferProduct": "Produkt übertragen"
+  "transferProduct": "Produkt übertragen",
+  "startFreeNow": "Jetzt kostenlos starten",
+  "noHiddenCosts": "Keine versteckten Kosten"
 }

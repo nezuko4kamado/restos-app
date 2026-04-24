@@ -771,5 +771,7 @@
   "demoActionBlocked": "Action not available in Demo Mode",
   "demoRegisterPrompt": "Create a free account to save your data and access all features.",
   "exitDemo": "Exit Demo",
-  "transferProduct": "Transfer Product"
+  "transferProduct": "Transfer Product",
+  "startFreeNow": "Start for free now",
+  "noHiddenCosts": "No hidden costs"
 }

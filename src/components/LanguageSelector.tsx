@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -6,18 +7,23 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Languages } from 'lucide-react';
-import { getAvailableLanguages, useLanguage, Language } from '@/lib/i18n';
+import { getAvailableLanguages, getLanguage, setLanguage, Language } from '@/lib/i18n';
 
 interface LanguageSelectorProps {
   onLanguageChange?: () => void;
 }
 
 export default function LanguageSelector({ onLanguageChange }: LanguageSelectorProps) {
-  const { language: currentLang, setLanguage } = useLanguage();
+  const [currentLang, setCurrentLang] = useState<Language>(getLanguage());
   const languages = getAvailableLanguages();
+
+  useEffect(() => {
+    setCurrentLang(getLanguage());
+  }, []);
 
   const handleLanguageChange = (lang: Language) => {
     setLanguage(lang);
+    setCurrentLang(lang);
     if (onLanguageChange) {
       onLanguageChange();
     }

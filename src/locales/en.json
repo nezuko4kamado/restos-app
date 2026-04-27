@@ -773,5 +773,8 @@
   "exitDemo": "Exit Demo",
   "transferProduct": "Transfer Product",
   "startFreeNow": "Start for free now",
-  "noHiddenCosts": "No hidden costs"
+  "noHiddenCosts": "No hidden costs",
+  "priceNotUpdatedOlderInvoice": "price not updated (invoice date is older than last update)",
+  "skippedOlderInvoice": "skipped (older invoice date)",
+  "allSkippedOlderInvoice": "No prices updated: the invoice date is older than the current prices. Upload a more recent invoice to update prices."
 }

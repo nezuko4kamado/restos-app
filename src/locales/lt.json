@@ -1150,5 +1150,8 @@
   "exitDemo": "Išeiti iš Demo",
   "transferProduct": "Perkelti produktą",
   "startFreeNow": "Pradėkite nemokamai",
-  "noHiddenCosts": "Jokių paslėptų mokesčių"
+  "noHiddenCosts": "Jokių paslėptų mokesčių",
+  "priceNotUpdatedOlderInvoice": "kaina neatnaujinta (sąskaitos data senesnė nei paskutinis atnaujinimas)",
+  "skippedOlderInvoice": "praleista (senesnė sąskaita)",
+  "allSkippedOlderInvoice": "Kainos neatnaujintos: sąskaitos data senesnė nei dabartinės kainos. Įkelkite naujesnę sąskaitą, kad atnaujintumėte kainas."
 }

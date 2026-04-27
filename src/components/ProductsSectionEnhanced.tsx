@@ -847,7 +847,7 @@ export default function ProductsSectionEnhanced({
       const productsToUpdate: { id: string; updates: Partial<Product> }[] = [];
       let successCount = 0;
       let updatedCount = 0;
-      const skippedCount = 0;
+      let skippedCount = 0;
 
       for (const extracted of allExtractedProducts) {
         // DEDUPLICATION FIX: Match by product code first (most reliable), then fall back to name+supplier
@@ -873,10 +873,24 @@ export default function ProductsSectionEnhanced({
 
         if (existingProduct) {
           {
-            // ✅ FIX: Always update product from invoice — including 0 price (100% discount)
+            // ✅ DATE GUARD: Skip price update if invoice date is older than last price update
+            const invoiceDateStr = invoiceData?.date;
+            const lastPriceUpdate = existingProduct.last_price_change || existingProduct.updated_at || existingProduct.created_at;
+            if (invoiceDateStr && lastPriceUpdate) {
+              const invoiceDate = new Date(invoiceDateStr);
+              const lastUpdate = new Date(lastPriceUpdate);
+              if (invoiceDate < lastUpdate) {
+                console.log(`[DATE GUARD] Skipping "${extracted.name}": invoice date ${invoiceDateStr} is older than last price update ${lastPriceUpdate}`);
+                skippedCount++;
+                continue;
+              }
+            }
+
+            // ✅ ALWAYS update product from invoice — including 0 price (100% discount)
             const existingHistory = getProductPriceHistory(existingProduct);
             
-            // ✅ FIX: If history is empty, seed with old price first
+            // ✅ FIX: If history is empty, seed with old price first so PriceChangeIndicator
+            // has at least 2 entries to calculate the change percentage
             let newHistory: Array<{ price: number; date: string; reason?: string }>;
             if (existingHistory.length === 0) {
               newHistory = [
@@ -915,6 +929,7 @@ export default function ProductsSectionEnhanced({
               notes: extracted.discount_percent > 0 ? `${t('discount') || 'Discount'} ${extracted.discount_percent}%` : existingProduct.notes,
               price_history: newHistory.map(h => ({ price: h.price, date: h.date })),
               updated_at: new Date().toISOString(),
+              last_price_change: new Date().toISOString(),
             };
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (updates as any).priceHistory = newHistory;
@@ -1107,11 +1122,19 @@ export default function ProductsSectionEnhanced({
       }
       console.log('💾 [INVOICE] ========== INVOICE SAVING END ==========');
 
+      // Warn if ALL products were skipped due to older invoice date
+      if (skippedCount > 0 && productsToUpdate.length === 0 && productsToInsert.length === 0) {
+        toast.warning(
+          t("allSkippedOlderInvoice") || "No prices updated: the invoice date (" + (invoiceData?.date || "") + ") is older than the current prices. Upload a more recent invoice to update prices.",
+          { duration: 8000 }
+        );
+      }
+
       if (successCount > 0 || updatedCount > 0 || skippedCount > 0) {
         const messages = [];
         if (successCount > 0) messages.push(`${successCount} ${t('newProducts') || 'new'}`);
         if (updatedCount > 0) messages.push(`${updatedCount} ${t('updated') || 'updated'}`);
-        if (skippedCount > 0) messages.push(`${skippedCount} unchanged`);
+        if (skippedCount > 0) messages.push(`${skippedCount} ${t('skippedOlderInvoice') || 'skipped (older invoice date)'}`);
         
         const productsText = t('products') ? t('products')?.toLowerCase() : 'products';
         const pagesText = uniqueFiles.length > 1 ? ` from ${uniqueFiles.length} pages` : '';

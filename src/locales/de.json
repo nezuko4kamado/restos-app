@@ -760,5 +760,8 @@
   "exitDemo": "Demo verlassen",
   "transferProduct": "Produkt übertragen",
   "startFreeNow": "Jetzt kostenlos starten",
-  "noHiddenCosts": "Keine versteckten Kosten"
+  "noHiddenCosts": "Keine versteckten Kosten",
+  "priceNotUpdatedOlderInvoice": "Preis nicht aktualisiert (Rechnungsdatum ist älter als die letzte Aktualisierung)",
+  "skippedOlderInvoice": "übersprungen (ältere Rechnung)",
+  "allSkippedOlderInvoice": "Keine Preise aktualisiert: Das Rechnungsdatum ist älter als die aktuellen Preise. Laden Sie eine neuere Rechnung hoch, um die Preise zu aktualisieren."
 }

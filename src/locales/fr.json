@@ -760,5 +760,8 @@
   "exitDemo": "Quitter la Démo",
   "transferProduct": "Transférer le Produit",
   "startFreeNow": "Commencez gratuitement",
-  "noHiddenCosts": "Aucun coût caché"
+  "noHiddenCosts": "Aucun coût caché",
+  "priceNotUpdatedOlderInvoice": "prix non mis à jour (la date de la facture est antérieure à la dernière mise à jour)",
+  "skippedOlderInvoice": "ignorés (facture plus ancienne)",
+  "allSkippedOlderInvoice": "Aucun prix mis à jour : la date de la facture est antérieure aux prix actuels. Téléchargez une facture plus récente pour mettre à jour les prix."
 }

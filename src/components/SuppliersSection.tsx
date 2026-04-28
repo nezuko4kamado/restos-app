@@ -447,7 +447,7 @@ export default function SuppliersSection({
         console.log('✅ Product updated in Supabase:', updatedProduct.id);
         
         // Update local state
-        setProducts(products.map(p => p.id === productId ? updatedProduct : p));
+        setProducts(prev => prev.map(p => p.id === productId ? updatedProduct : p));
       }
     } catch (error) {
       console.error('❌ Error updating product:', error);
@@ -457,7 +457,7 @@ export default function SuppliersSection({
 
   const handleUpdateProducts = () => {
     // Trigger a refresh by updating the products state
-    setProducts([...products]);
+    setProducts(prev => [...prev]);
   };
 
   const handleCloseInvoiceDialog = () => {

@@ -1249,6 +1249,7 @@ export const saveProducts = async (products: Product[]): Promise<boolean> => {
         vat_rate: product.vat_rate || extProduct.vatRate,
         price_difference: extProduct.price_difference || 0,
         code_description: product.code_description || '',
+        price_history_data: (product as Product & { price_history_data?: Array<{ price: number; date: string }> }).price_history_data || [],
         user_id: user.id,
         updated_at: new Date().toISOString(),
       };

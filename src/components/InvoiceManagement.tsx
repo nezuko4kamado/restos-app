@@ -625,10 +625,17 @@ function InvoiceManagement({
           };
           await onAddProduct(newProduct);
         } else if (item.matchedProductId && onUpdateProduct) {
-          await onUpdateProduct(item.matchedProductId, {
+          const priceUpdates: Partial<Product> = {
             price: item.price,
-            updated_at: currentTimestamp
-          });
+            updated_at: currentTimestamp,
+          };
+          if (item.originalPrice !== undefined) priceUpdates.originalPrice = item.originalPrice;
+          if (item.discountPercent !== undefined) priceUpdates.discountPercent = item.discountPercent;
+          if (item.vatRate !== undefined) {
+            priceUpdates.vatRate = item.vatRate;
+            priceUpdates.vat_rate = item.vatRate;
+          }
+          await onUpdateProduct(item.matchedProductId, priceUpdates);
         }
       }
 

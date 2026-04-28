@@ -122,8 +122,8 @@ async function matchProduct(
         };
       }
       
-      // Fuzzy match: > 80% similarity
-      if (similarity > 80 && similarity > highestSimilarity) {
+      // Fuzzy match: >= 60% similarity
+      if (similarity >= 60 && similarity > highestSimilarity) {
         highestSimilarity = similarity;
         bestMatch = {
           matched: true,
@@ -193,7 +193,7 @@ export async function matchProductBySupplier(
         };
       }
       
-      if (similarity > 80 && similarity > highestSimilarity) {
+      if (similarity >= 60 && similarity > highestSimilarity) {
         highestSimilarity = similarity;
         bestMatch = {
           matched: true,

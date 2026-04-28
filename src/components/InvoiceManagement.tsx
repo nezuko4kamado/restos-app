@@ -1,5 +1,6 @@
 import { generateUUID } from "@/lib/uuid";
 import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -97,6 +98,16 @@ function InvoiceManagement({
   const [detectedSupplierName, setDetectedSupplierName] = useState('');
   const [confirmedSupplierName, setConfirmedSupplierName] = useState('');
   const [pendingInvoiceDataForConfirmation, setPendingInvoiceDataForConfirmation] = useState<InvoiceDataExtracted | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
+
+  // Fetch current user ID from Supabase
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data?.user?.id) {
+        setCurrentUserId(data.user.id);
+      }
+    });
+  }, []);
 
   // Handle pending invoice from parent
   useEffect(() => {
@@ -191,7 +202,8 @@ function InvoiceManagement({
           item.name,
           item.sku,
           targetSupplierName,
-          item.code_description
+          item.code_description,
+          currentUserId
         );
         
         if (matchResult.matched && matchResult.product && matchResult.confidence >= 70) {
@@ -286,7 +298,8 @@ function InvoiceManagement({
                 item.name,
                 item.sku,
                 supplierName,
-                item.code_description
+                item.code_description,
+                currentUserId
               );
               
               if (matchResult.matched && matchResult.product && matchResult.confidence >= 70) {
@@ -343,7 +356,8 @@ function InvoiceManagement({
                 item.name,
                 item.sku,
                 supplierName,
-                item.code_description
+                item.code_description,
+                currentUserId
               );
               
               if (matchResult.matched && matchResult.product && matchResult.confidence >= 70) {
@@ -634,20 +648,15 @@ function InvoiceManagement({
           };
           await onAddProduct(newProduct);
         } else if (item.matchedProductId && onUpdateProduct) {
-          // ✅ FIX: Only update if price actually changed (avoid no-op writes that RLS may block)
-          const existingPrice = item.oldPrice ?? item.price;
-          const priceActuallyChanged = Math.abs(item.price - existingPrice) > 0.001;
-
           console.log(`🔄 [UPDATE PRODUCT] id=${item.matchedProductId} name="${item.name}"`);
-          console.log(`   existingPrice=${existingPrice} newPrice=${item.price} changed=${priceActuallyChanged}`);
+          console.log(`   oldPrice=${item.oldPrice} newPrice=${item.price}`);
           console.log(`   item.priceChanged=${item.priceChanged} item.matchStatus=${item.matchStatus}`);
 
+          // ALWAYS update price from invoice, regardless of manual changes
           const priceUpdates: Partial<Product> = {
             updated_at: currentTimestamp,
+            price: item.price,
           };
-
-          // Always sync price (even if unchanged) so the DB row gets touched and RLS is exercised
-          priceUpdates.price = item.price;
 
           if (item.originalPrice !== undefined) priceUpdates.originalPrice = item.originalPrice;
           if (item.discountPercent !== undefined) priceUpdates.discountPercent = item.discountPercent;

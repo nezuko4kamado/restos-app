@@ -15,7 +15,7 @@ export default function PriceChangeIndicator({ product }: PriceChangeIndicatorPr
   // ✅ Support both camelCase (runtime) and snake_case (DB type) history fields
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const p = product as any;
-  const history: PriceHistoryEntry[] = p.priceHistory || p.price_history || [];
+  const history: PriceHistoryEntry[] = p.priceHistory || p.price_history_data || [];
 
   // Need at least 2 entries to show a change
   if (history.length < 2) return null;

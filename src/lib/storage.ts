@@ -39,7 +39,7 @@ interface ProductWithExtendedFields extends Product {
 }
 
 // ✅ OPTIMIZED: Select only essential columns + price_difference + code_description + updated_at
-const PRODUCT_DB_COLUMNS = 'id,name,price,category,supplier_id,vat_rate,unit,discount_percent,discount_amount,unit_price,discounted_price,price_difference,code_description,price_history,created_at,updated_at';
+const PRODUCT_DB_COLUMNS = 'id,name,price,category,supplier_id,vat_rate,unit,discount_percent,discount_amount,unit_price,discounted_price,price_difference,code_description,price_history_data,created_at,updated_at';
 
 // CRITICAL: Define the actual invoice table name
 const INVOICES_TABLE = 'app_43909_invoices';
@@ -2703,7 +2703,7 @@ export const clearAllData = async (): Promise<boolean> => {
       'suppliers',
       'user_settings',
       PRODUCT_COMPATIBILITY_TABLE,
-      'price_history', // ✅ NEW: Clear price history when clearing all data
+      'price_history_data', // ✅ NEW: Clear price history when clearing all data
     ];
 
     for (const table of tables) {

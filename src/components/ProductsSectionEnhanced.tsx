@@ -53,7 +53,7 @@ interface TranslationFunction {
 function getProductPriceHistory(product: Product | Partial<Product>): Array<{ price: number; date: string; reason?: string }> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const p = product as any;
-  return p.priceHistory || p.price_history || [];
+  return p.priceHistory || p.price_history_data || [];
 }
 
 const ProductCard = memo(({ 
@@ -337,7 +337,7 @@ export default function ProductsSectionEnhanced({
           date: new Date().toISOString(),
           reason: t('productCreated') || 'Product created'
         }],
-        price_history: [{
+        price_history_data: [{
           price: newProduct.price,
           date: new Date().toISOString(),
         }],
@@ -426,7 +426,7 @@ export default function ProductsSectionEnhanced({
         // ✅ Write to both camelCase (runtime) and snake_case (DB type) for consistency
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (updates as any).priceHistory = newHistory;
-        updates.price_history = newHistory.map(h => ({ price: h.price, date: h.date }));
+        updates.price_history_data = newHistory.map(h => ({ price: h.price, date: h.date }));
         
         updates.original_price = currentProduct.price;
         
@@ -913,7 +913,7 @@ export default function ProductsSectionEnhanced({
               category: productCategory,
               code_description: productCodeDescription,
               notes: extracted.discount_percent > 0 ? `${t('discount') || 'Discount'} ${extracted.discount_percent}%` : existingProduct.notes,
-              price_history: newHistory.map(h => ({ price: h.price, date: h.date })),
+              price_history_data: newHistory.map(h => ({ price: h.price, date: h.date })),
               updated_at: new Date().toISOString(),
             };
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -956,7 +956,7 @@ export default function ProductsSectionEnhanced({
             code_description: productCodeDescription,  // ✅ NEW: Include code_description
             notes: extracted.discount_percent > 0 ? `${t('discount') || 'Discount'} ${extracted.discount_percent}%` : '',
             priceHistory: initialHistory,
-            price_history: initialHistory.map(h => ({ price: h.price, date: h.date })),
+            price_history_data: initialHistory.map(h => ({ price: h.price, date: h.date })),
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           };

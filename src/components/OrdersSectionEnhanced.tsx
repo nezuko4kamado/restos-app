@@ -1870,7 +1870,7 @@ export default function OrdersSectionEnhanced({ orders, setOrders, products, set
                 price: processedItem.price || 0,
                 unit: productUnit,
                 vatRate: processedItem.vatRate,
-                price_history: [{ price: processedItem.price || 0, date: new Date().toISOString() }],
+                price_history_data: [{ price: processedItem.price || 0, date: new Date().toISOString() }],
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
               };

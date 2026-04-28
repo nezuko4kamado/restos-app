@@ -39,7 +39,7 @@ export const calculatePriceAlertsFromProducts = (
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const p = product as any;
     const history: Array<{ price: number; date: string }> =
-      p.price_history || p.priceHistory || [];
+      p.price_history_data || p.priceHistory || [];
 
     if (history.length < 2) continue;
 

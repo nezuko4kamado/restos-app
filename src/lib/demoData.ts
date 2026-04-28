@@ -60,7 +60,7 @@ export const demoProducts: Product[] = [
     price: 2.80,
     unit: 'kg',
     vat_rate: 4,
-    price_history: [
+    price_history_data: [
       { price: 3.10, date: oneMonthAgo },
       { price: 2.90, date: twoWeeksAgo },
       { price: 2.80, date: now },
@@ -77,7 +77,7 @@ export const demoProducts: Product[] = [
     price: 12.50,
     unit: 'kg',
     vat_rate: 4,
-    price_history: [
+    price_history_data: [
       { price: 11.80, date: oneMonthAgo },
       { price: 12.50, date: now },
     ],
@@ -93,7 +93,7 @@ export const demoProducts: Product[] = [
     price: 38.00,
     unit: 'kg',
     vat_rate: 10,
-    price_history: [
+    price_history_data: [
       { price: 36.50, date: oneMonthAgo },
       { price: 38.00, date: now },
     ],
@@ -109,7 +109,7 @@ export const demoProducts: Product[] = [
     price: 8.90,
     unit: 'kg',
     vat_rate: 10,
-    price_history: [
+    price_history_data: [
       { price: 9.20, date: oneMonthAgo },
       { price: 8.90, date: now },
     ],
@@ -125,7 +125,7 @@ export const demoProducts: Product[] = [
     price: 9.50,
     unit: 'lt',
     vat_rate: 4,
-    price_history: [
+    price_history_data: [
       { price: 8.90, date: oneMonthAgo },
       { price: 9.50, date: now },
     ],
@@ -141,7 +141,7 @@ export const demoProducts: Product[] = [
     price: 7.80,
     unit: 'bt',
     vat_rate: 22,
-    price_history: [
+    price_history_data: [
       { price: 7.50, date: oneMonthAgo },
       { price: 7.80, date: now },
     ],
@@ -157,7 +157,7 @@ export const demoProducts: Product[] = [
     price: 0.35,
     unit: 'bt',
     vat_rate: 22,
-    price_history: [
+    price_history_data: [
       { price: 0.32, date: oneMonthAgo },
       { price: 0.35, date: now },
     ],
@@ -173,7 +173,7 @@ export const demoProducts: Product[] = [
     price: 1.20,
     unit: 'kg',
     vat_rate: 4,
-    price_history: [
+    price_history_data: [
       { price: 1.10, date: oneMonthAgo },
       { price: 1.20, date: now },
     ],

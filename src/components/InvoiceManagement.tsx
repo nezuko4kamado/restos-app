@@ -189,8 +189,9 @@ function InvoiceManagement({
       for (const item of data.items) {
         const matchResult = await ProductMatcher.matchProduct(
           item.name,
-          undefined,
-          targetSupplierName
+          item.sku,
+          targetSupplierName,
+          item.code_description
         );
         
         if (matchResult.matched && matchResult.product && matchResult.confidence >= 70) {
@@ -204,6 +205,7 @@ function InvoiceManagement({
             name: item.name,
             quantity: item.quantity,
             price: item.price,
+            code_description: item.code_description,
             originalPrice: item.originalPrice,
             discountPercent: item.discountPercent,
             vatRate: item.vatRate,
@@ -220,6 +222,7 @@ function InvoiceManagement({
             name: item.name,
             quantity: item.quantity,
             price: item.price,
+            code_description: item.code_description,
             originalPrice: item.originalPrice,
             discountPercent: item.discountPercent,
             vatRate: item.vatRate,
@@ -281,8 +284,9 @@ function InvoiceManagement({
             for (const item of data.items) {
               const matchResult = await ProductMatcher.matchProduct(
                 item.name,
-                undefined,
-                supplierName
+                item.sku,
+                supplierName,
+                item.code_description
               );
               
               if (matchResult.matched && matchResult.product && matchResult.confidence >= 70) {
@@ -296,6 +300,7 @@ function InvoiceManagement({
                   name: item.name,
                   quantity: item.quantity,
                   price: item.price,
+                  code_description: item.code_description,
                   originalPrice: item.originalPrice,
                   discountPercent: item.discountPercent,
                   vatRate: item.vatRate,
@@ -312,6 +317,7 @@ function InvoiceManagement({
                   name: item.name,
                   quantity: item.quantity,
                   price: item.price,
+                  code_description: item.code_description,
                   originalPrice: item.originalPrice,
                   discountPercent: item.discountPercent,
                   vatRate: item.vatRate,
@@ -335,8 +341,9 @@ function InvoiceManagement({
             for (const item of itemsData.items) {
               const matchResult = await ProductMatcher.matchProduct(
                 item.name,
-                undefined,
-                supplierName
+                item.sku,
+                supplierName,
+                item.code_description
               );
               
               if (matchResult.matched && matchResult.product && matchResult.confidence >= 70) {
@@ -350,6 +357,7 @@ function InvoiceManagement({
                   name: item.name,
                   quantity: item.quantity,
                   price: item.price,
+                  code_description: item.code_description,
                   originalPrice: item.originalPrice,
                   discountPercent: item.discountPercent,
                   vatRate: item.vatRate,
@@ -366,6 +374,7 @@ function InvoiceManagement({
                   name: item.name,
                   quantity: item.quantity,
                   price: item.price,
+                  code_description: item.code_description,
                   originalPrice: item.originalPrice,
                   discountPercent: item.discountPercent,
                   vatRate: item.vatRate,

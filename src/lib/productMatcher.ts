@@ -77,7 +77,8 @@ function levenshteinDistance(str1: string, str2: string): number {
 async function matchProduct(
   productName: string,
   eanCode?: string,
-  supplierName?: string
+  supplierName?: string,
+  codeDescription?: string
 ): Promise<MatchResult> {
   try {
     // CRITICAL FIX: Use correct table name 'products' instead of 'products'
@@ -101,6 +102,18 @@ async function matchProduct(
     for (const product of existingProducts) {
       // Exact match by EAN code (if provided)
       if (eanCode && product.ean_code && eanCode === product.ean_code) {
+        return {
+          matched: true,
+          product,
+          confidence: 100,
+          matchType: 'exact'
+        };
+      }
+
+      // Exact match by code_description (product code from invoice)
+      if (
+        codeDescription && codeDescription.trim() !== '' && product.code_description && product.code_description.trim() !== '' && codeDescription.trim() === product.code_description.trim()
+      ) {
         return {
           matched: true,
           product,
@@ -217,6 +230,9 @@ export const ProductMatcher = {
   matchProductByName,
   matchProductBySupplier
 };
+
+// Re-export matchProduct type for callers
+export type { MatchResult };
 
 export default {
   matchProduct,

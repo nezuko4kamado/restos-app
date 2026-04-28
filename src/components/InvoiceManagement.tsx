@@ -349,9 +349,9 @@ function InvoiceManagement({
           
           setCurrentState('analyzing');
           
-          if (itemsData.items && itemsData.items.length > 0) {
-            console.log(`  ✅ Extracted ${itemsData.items.length} items from page ${i + 1}`);
-            for (const item of itemsData.items) {
+          if (itemsData && itemsData.length > 0) {
+            console.log(`  ✅ Extracted ${itemsData.length} items from page ${i + 1}`);
+            for (const item of itemsData) {
               const matchResult = await ProductMatcher.matchProduct(
                 item.name,
                 item.sku,

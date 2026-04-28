@@ -86,6 +86,8 @@ export interface InvoiceDataExtracted {
     price: number;
     unit?: string;
     vatRate?: number;
+    sku?: string;
+    code_description?: string;
   }>;
   totalAmount?: number;
 }
@@ -445,9 +447,11 @@ export async function extractInvoiceData(file: File): Promise<InvoiceDataExtract
       const rawItems = (result.data.products || []).map((product: KlippaProduct) => ({
         name: product.name || '',
         quantity: product.quantity || 0,
-        price: product.discounted_price || 0,
+        price: product.discounted_price || product.unit_price || 0,
         unit: product.unit || '',
-        vatRate: product.vatRate || product.vat_rate || 0
+        vatRate: product.vatRate || product.vat_rate || 0,
+        sku: product.sku || '',
+        code_description: product.code_description || '',
       }));
 
       return {
@@ -481,7 +485,8 @@ export async function extractInvoiceItems(file: File): Promise<ExtractedInvoiceI
       price: item.price,
       unit: item.unit,
       vatRate: item.vatRate,
-      sku: ''
+      sku: item.sku || '',
+      code_description: item.code_description || '',
     }));
   } catch (error) {
     console.error('❌ [OCR] extractInvoiceItems fallback:', error);

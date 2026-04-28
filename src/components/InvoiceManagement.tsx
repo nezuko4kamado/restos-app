@@ -505,9 +505,13 @@ function InvoiceManagement({
     setShowSupplierConfirmation(false);
     
     if (pendingInvoiceDataForConfirmation) {
+      // ✅ FIX: Do NOT call processExtractedData again here.
+      // extractedItems was already set in handleConfirmUpload with full match data
+      // (matchedProductId, priceChanged, oldPrice). Calling processExtractedData again
+      // would overwrite it with stripped items (no matchedProductId) causing price updates to fail.
       setExtractedData(pendingInvoiceDataForConfirmation);
-      await processExtractedData(pendingInvoiceDataForConfirmation, confirmedSupName);
-      
+
+      // Only update invoice metadata fields
       if (pendingInvoiceDataForConfirmation.invoiceNumber) {
         setNewInvoice(prev => ({ ...prev, invoiceNumber: pendingInvoiceDataForConfirmation.invoiceNumber || '' }));
       }
@@ -519,7 +523,11 @@ function InvoiceManagement({
       } else if (pendingInvoiceDataForConfirmation.amount !== undefined && pendingInvoiceDataForConfirmation.amount !== null) {
         setNewInvoice(prev => ({ ...prev, amount: pendingInvoiceDataForConfirmation.amount!.toString() }));
       }
-      
+
+      console.log(`✅ [SUPPLIER CONFIRMED] Using ${extractedItems.length} pre-matched items from handleConfirmUpload`);
+      console.log(`✅ [SUPPLIER CONFIRMED] Items with matchedProductId:`, extractedItems.filter(i => i.matchedProductId).length);
+      console.log(`✅ [SUPPLIER CONFIRMED] Items with priceChanged:`, extractedItems.filter(i => i.priceChanged).length);
+
       toast.success(`✅ Fattura elaborata con successo per ${confirmedSupName}! ${extractedItems.length} prodotti estratti`);
     }
   };

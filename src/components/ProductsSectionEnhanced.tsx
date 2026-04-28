@@ -1016,12 +1016,27 @@ export default function ProductsSectionEnhanced({
         }
       }
 
+      // ✅ Build a map of updates by id so we can merge priceHistory into DB results
+      const updatesMap = new Map<string, Partial<Product>>();
+      for (const { id, updates: u } of productsToUpdate) {
+        updatesMap.set(id, u);
+      }
+
       // BATCH UPDATE: All updates at once
       if (productsToUpdate.length > 0) {
         console.log(`🔄 [UPLOAD] Calling batchUpdateProducts with ${productsToUpdate.length} products`);
         const batchUpdated = await batchUpdateProducts(productsToUpdate);
         console.log(`✅ [UPLOAD] batchUpdateProducts returned ${batchUpdated.length} products`);
         for (const updated of batchUpdated) {
+          // ✅ FIX: Merge priceHistory from updates into DB result (DB does not return priceHistory)
+          const localUpdates = updatesMap.get(updated.id);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const mergedHistory = (localUpdates as any)?.priceHistory || localUpdates?.price_history_data;
+          if (mergedHistory) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (updated as any).priceHistory = mergedHistory;
+            updated.price_history_data = mergedHistory.map((h: { price: number; date: string }) => ({ price: h.price, date: h.date }));
+          }
           savedProducts.push(updated);
         }
       }
@@ -1034,7 +1049,18 @@ export default function ProductsSectionEnhanced({
       for (const savedProduct of savedProducts) {
         const index = updatedProductsList.findIndex(p => p.id === savedProduct.id);
         if (index !== -1) {
-          updatedProductsList[index] = savedProduct;
+          // ✅ FIX: Merge instead of overwrite — preserve priceHistory from local updates
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const existingHistory = (updatedProductsList[index] as any).priceHistory || updatedProductsList[index].price_history_data;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const incomingHistory = (savedProduct as any).priceHistory || savedProduct.price_history_data;
+          const finalHistory = incomingHistory || existingHistory;
+          updatedProductsList[index] = { ...updatedProductsList[index], ...savedProduct };
+          if (finalHistory) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (updatedProductsList[index] as any).priceHistory = finalHistory;
+            updatedProductsList[index].price_history_data = (finalHistory as Array<{ price: number; date: string }>).map(h => ({ price: h.price, date: h.date }));
+          }
         } else {
           updatedProductsList.push(savedProduct);
         }

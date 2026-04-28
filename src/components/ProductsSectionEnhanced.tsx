@@ -847,7 +847,7 @@ export default function ProductsSectionEnhanced({
       const productsToUpdate: { id: string; updates: Partial<Product> }[] = [];
       let successCount = 0;
       let updatedCount = 0;
-      let skippedCount = 0;
+      const skippedCount = 0;
 
       for (const extracted of allExtractedProducts) {
         // DEDUPLICATION FIX: Match by product code first (most reliable), then fall back to name+supplier

@@ -78,13 +78,15 @@ async function matchProduct(
   productName: string,
   eanCode?: string,
   supplierName?: string,
-  codeDescription?: string
+  codeDescription?: string,
+  userId?: string
 ): Promise<MatchResult> {
   try {
-    // CRITICAL FIX: Use correct table name 'products' instead of 'products'
-    const { data: existingProducts, error } = await supabase
-      .from('products')
-      .select('*');
+    let query = supabase.from('products').select('*');
+    if (userId) {
+      query = query.eq('user_id', userId);
+    }
+    const { data: existingProducts, error } = await query;
 
     if (error) {
       console.error('❌ Error matching product:', error);
@@ -162,7 +164,7 @@ export async function matchProductByName(
   userId: string,
   supplierName: string
 ): Promise<MatchResult> {
-  return matchProduct(extractedProduct.name, undefined, supplierName);
+  return matchProduct(extractedProduct.name, undefined, supplierName, undefined, userId);
 }
 
 /**

@@ -634,17 +634,31 @@ function InvoiceManagement({
           };
           await onAddProduct(newProduct);
         } else if (item.matchedProductId && onUpdateProduct) {
+          // ✅ FIX: Only update if price actually changed (avoid no-op writes that RLS may block)
+          const existingPrice = item.oldPrice ?? item.price;
+          const priceActuallyChanged = Math.abs(item.price - existingPrice) > 0.001;
+
+          console.log(`🔄 [UPDATE PRODUCT] id=${item.matchedProductId} name="${item.name}"`);
+          console.log(`   existingPrice=${existingPrice} newPrice=${item.price} changed=${priceActuallyChanged}`);
+          console.log(`   item.priceChanged=${item.priceChanged} item.matchStatus=${item.matchStatus}`);
+
           const priceUpdates: Partial<Product> = {
-            price: item.price,
             updated_at: currentTimestamp,
           };
+
+          // Always sync price (even if unchanged) so the DB row gets touched and RLS is exercised
+          priceUpdates.price = item.price;
+
           if (item.originalPrice !== undefined) priceUpdates.originalPrice = item.originalPrice;
           if (item.discountPercent !== undefined) priceUpdates.discountPercent = item.discountPercent;
           if (item.vatRate !== undefined) {
             priceUpdates.vatRate = item.vatRate;
             priceUpdates.vat_rate = item.vatRate;
           }
+
+          console.log(`   priceUpdates=`, JSON.stringify(priceUpdates));
           await onUpdateProduct(item.matchedProductId, priceUpdates);
+          console.log(`   ✅ onUpdateProduct called for ${item.matchedProductId}`);
         }
       }
 

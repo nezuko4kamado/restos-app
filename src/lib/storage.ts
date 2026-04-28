@@ -1351,10 +1351,18 @@ export const updateProduct = async (id: string, updates: Partial<Product>): Prom
     }
     if (updates.code_description !== undefined) dbUpdates.code_description = updates.code_description;
 
+    // ✅ FIX: Filter by user_id so RLS does not silently block the update
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.error('❌ updateProduct: no authenticated user, aborting update');
+      return null;
+    }
+
     const { data, error } = await supabase
     .from(PRODUCTS_TABLE)
     .update(dbUpdates)
     .eq('id', id)
+    .eq('user_id', user.id)
     .select(PRODUCT_DB_COLUMNS)
     .single();
 

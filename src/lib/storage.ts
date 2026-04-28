@@ -43,6 +43,7 @@ const PRODUCT_DB_COLUMNS = 'id,name,price,category,supplier_id,vat_rate,unit,dis
 
 // CRITICAL: Define the actual invoice table name
 const INVOICES_TABLE = 'app_43909_invoices';
+const PRODUCTS_TABLE = 'app_43909_products';
 
 // ✅ FIX: Correct table name for product comparisons
 const PRODUCT_COMPATIBILITY_TABLE = 'product_compatibility';
@@ -457,7 +458,7 @@ export const checkProductLimitDetailed = async (): Promise<LimitCheckResult> => 
     // 2. Count actual products in the database (robust: fetch IDs)
     let actualCount = 0;
     const { count, error: countError } = await supabase
-      .from('products')
+      .from(PRODUCTS_TABLE)
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user.id);
 
@@ -467,7 +468,7 @@ export const checkProductLimitDetailed = async (): Promise<LimitCheckResult> => 
       // Fallback: fetch IDs and count client-side
       console.warn('⚠️ Product count head query failed, using fallback:', countError?.message);
       const { data: rows, error: fallbackError } = await supabase
-        .from('products')
+        .from(PRODUCTS_TABLE)
         .select('id')
         .eq('user_id', user.id);
 
@@ -837,7 +838,7 @@ export const batchAddProducts = async (products: Omit<Product, 'id'>[]): Promise
     });
 
     const { data, error } = await supabase
-      .from('products')
+      .from(PRODUCTS_TABLE)
       .insert(dbProducts)
       .select(PRODUCT_DB_COLUMNS);
 
@@ -878,7 +879,7 @@ export const getProductById = async (productId: string): Promise<Product | null>
 
   try {
     const { data, error } = await supabase
-      .from('products')
+      .from(PRODUCTS_TABLE)
       .select(PRODUCT_DB_COLUMNS)
       .eq('id', productId)
       .single();
@@ -923,7 +924,7 @@ export const batchUpdateProducts = async (updates: { id: string; updates: Partia
     // ✅ STEP 1: Fetch old prices and supplier info for all products being updated
     const productIds = updates.map(u => u.id);
     const { data: existingProducts, error: fetchError } = await supabase
-      .from('products')
+      .from(PRODUCTS_TABLE)
       .select('id,name,price,supplier_id')
       .in('id', productIds);
 
@@ -1020,7 +1021,7 @@ export const batchUpdateProducts = async (updates: { id: string; updates: Partia
     });
 
     const { data, error } = await supabase
-      .from('products')
+      .from(PRODUCTS_TABLE)
       .upsert(dbUpdates, { onConflict: 'id' })
       .select(PRODUCT_DB_COLUMNS);
 
@@ -1103,7 +1104,7 @@ export const addProduct = async (product: Omit<Product, 'id'>): Promise<Product 
     };
 
     const { data, error } = await supabase
-      .from('products')
+      .from(PRODUCTS_TABLE)
       .insert([dbProduct])
       .select(PRODUCT_DB_COLUMNS)
       .single();
@@ -1146,7 +1147,7 @@ export const getProducts = async (): Promise<Product[]> => {
     console.log('🔍 [DATABASE] getProducts called - fetching from Supabase...');
 
     const { data, error } = await supabase
-      .from('products')
+      .from(PRODUCTS_TABLE)
       .select(PRODUCT_DB_COLUMNS)
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
@@ -1255,7 +1256,7 @@ export const saveProducts = async (products: Product[]): Promise<boolean> => {
       };
 
       const { error } = await supabase
-        .from('products')
+        .from(PRODUCTS_TABLE)
         .upsert(dbProduct, { onConflict: 'id' });
 
       if (error) {
@@ -1321,7 +1322,7 @@ export const updateProduct = async (id: string, updates: Partial<Product>): Prom
     if (updates.code_description !== undefined) dbUpdates.code_description = updates.code_description;
 
     const { data, error } = await supabase
-    .from('products')
+    .from(PRODUCTS_TABLE)
     .update(dbUpdates)
     .eq('id', id)
     .select(PRODUCT_DB_COLUMNS)
@@ -1388,7 +1389,7 @@ export const deleteProduct = async (id: string): Promise<boolean> => {
     console.log(`🗑️ [DELETE] Deleting product ${id} for user ${user.id}...`);
 
     const { error, count } = await supabase
-      .from('products')
+      .from(PRODUCTS_TABLE)
       .delete()
       .eq('id', id)
       .eq('user_id', user.id);
@@ -1403,7 +1404,7 @@ export const deleteProduct = async (id: string): Promise<boolean> => {
 
     // ✅ Verify deletion
     const { data: verifyData } = await supabase
-      .from('products')
+      .from(PRODUCTS_TABLE)
       .select('id')
       .eq('id', id)
       .eq('user_id', user.id);

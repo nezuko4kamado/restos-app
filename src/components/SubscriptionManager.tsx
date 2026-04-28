@@ -237,7 +237,7 @@ export function SubscriptionManager() {
     try {
       // ── Count products ──
       const { count: productsCount, error: prodErr } = await supabase
-        .from('products')
+        .from('app_43909_products')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', userId)
 
@@ -247,7 +247,7 @@ export function SubscriptionManager() {
       } else {
         console.warn('[SubscriptionManager] Products head count failed, using fallback. Error:', prodErr?.message)
         const { data: productRows, error: prodFallbackErr } = await supabase
-          .from('products')
+          .from('app_43909_products')
           .select('id')
           .eq('user_id', userId)
 

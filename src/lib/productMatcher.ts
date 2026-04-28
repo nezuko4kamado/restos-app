@@ -82,7 +82,7 @@ async function matchProduct(
   try {
     // CRITICAL FIX: Use correct table name 'products' instead of 'app_43909_products'
     const { data: existingProducts, error } = await supabase
-      .from('products')
+      .from('app_43909_products')
       .select('*');
 
     if (error) {
@@ -163,7 +163,7 @@ export async function matchProductBySupplier(
   try {
     // CRITICAL FIX: Use correct table name 'products' and correct column 'supplier_id'
     const { data: existingProducts, error } = await supabase
-      .from('products')
+      .from('app_43909_products')
       .select('*')
       .eq('user_id', userId)
       .eq('supplier_id', supplierId);

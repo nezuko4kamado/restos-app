@@ -51,7 +51,7 @@ export const addProduct = async (product: Omit<Product, 'id'>): Promise<Product 
     });
 
     const { data, error } = await supabase
-      .from('products')
+      .from('app_43909_products')
       .insert([dbProduct])
       .select()
       .single();
@@ -84,7 +84,7 @@ export const getProducts = async (): Promise<Product[]> => {
     }
 
     const { data, error } = await supabase
-      .from('products')
+      .from('app_43909_products')
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
@@ -142,7 +142,7 @@ export const saveProducts = async (products: Product[]): Promise<boolean> => {
       };
 
       const { error } = await supabase
-        .from('products')
+        .from('app_43909_products')
         .upsert(dbProduct, { onConflict: 'id' });
 
       if (error) {
@@ -184,7 +184,7 @@ export const updateProduct = async (id: string, updates: Partial<Product>): Prom
     dbUpdates.updated_at = new Date().toISOString();
 
     const { data, error } = await supabase
-      .from('products')
+      .from('app_43909_products')
       .update(dbUpdates)
       .eq('id', id)
       .select()
@@ -211,7 +211,7 @@ export const deleteProduct = async (id: string): Promise<boolean> => {
 
   try {
     const { error } = await supabase
-      .from('products')
+      .from('app_43909_products')
       .delete()
       .eq('id', id);
 
@@ -589,7 +589,7 @@ export const saveDraftOrder = async (items: OrderItem[], temporaryOcrProducts: P
     let supplierId = null;
     if (items.length > 0) {
       const { data } = await supabase
-        .from('products')
+        .from('app_43909_products')
         .select('supplier_id')
         .eq('id', items[0].product_id)
         .single();
@@ -711,7 +711,7 @@ export const saveCancelledDraft = async (items: OrderItem[], temporaryOcrProduct
     let supplierId = null;
     if (items.length > 0) {
       const { data } = await supabase
-        .from('products')
+        .from('app_43909_products')
         .select('supplier_id')
         .eq('id', items[0].product_id)
         .single();
@@ -1132,7 +1132,7 @@ export const clearAllData = async (): Promise<boolean> => {
 
     await supabase.from('invoices').delete().eq('user_id', user.id);
     await supabase.from('orders').delete().eq('user_id', user.id);
-    await supabase.from('products').delete().eq('user_id', user.id);
+    await supabase.from('app_43909_products').delete().eq('user_id', user.id);
     await supabase.from('suppliers').delete().eq('user_id', user.id);
 
     console.log('✅ All data cleared');

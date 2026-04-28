@@ -51,7 +51,7 @@ export class PriceComparisonService {
 
       // Get products
       const { data: products, error: productsError } = await supabase
-        .from('products')
+        .from('app_43909_products')
         .select('*')
         .eq('user_id', user.id)
         .ilike('name', `%${productName}%`);
@@ -127,7 +127,7 @@ export class PriceComparisonService {
 
       // Get products
       const { data: products, error } = await supabase
-        .from('products')
+        .from('app_43909_products')
         .select('*')
         .eq('user_id', user.id)
         .order('name');
@@ -294,7 +294,7 @@ export class PriceComparisonService {
 
       // Get products
       const { data: products, error } = await supabase
-        .from('products')
+        .from('app_43909_products')
         .select('supplier_id, price')
         .eq('user_id', user.id);
 

@@ -167,6 +167,11 @@ function InvoiceManagement({
     console.log('🔍 [PROCESS] data.items?.length:', data.items?.length || 0);
     
     const targetSupplierName = confirmedSupName || supplierName;
+
+    // CRITICAL FIX: Always fetch userId fresh from Supabase, never rely on React state
+    const { data: authData } = await supabase.auth.getUser();
+    const resolvedUserId = authData?.user?.id || currentUserId;
+    console.log('🔑 [PROCESS] resolvedUserId:', resolvedUserId);
     
     // Set invoice basic info
     if (data.invoiceNumber) {
@@ -203,7 +208,7 @@ function InvoiceManagement({
           item.sku,
           targetSupplierName,
           item.code_description,
-          currentUserId
+          resolvedUserId
         );
         
         if (matchResult.matched && matchResult.product && matchResult.confidence >= 70) {
@@ -267,6 +272,17 @@ function InvoiceManagement({
     setCurrentState('extracting');
 
     try {
+      // CRITICAL FIX: Always fetch userId fresh from Supabase, never rely on React state
+      // React state (currentUserId) may be undefined if useEffect hasn't completed yet
+      const { data: authData } = await supabase.auth.getUser();
+      const resolvedUserId = authData?.user?.id || currentUserId;
+      console.log('🔑 [UPLOAD] resolvedUserId:', resolvedUserId);
+      if (!resolvedUserId) {
+        toast.error('Utente non autenticato. Effettua il login e riprova.');
+        setIsProcessing(false);
+        return;
+      }
+
       console.log(`📤 Processing ${selectedFiles.length} file(s)`);
       
       const allItems: ExtractedInvoiceItem[] = [];
@@ -299,7 +315,7 @@ function InvoiceManagement({
                 item.sku,
                 supplierName,
                 item.code_description,
-                currentUserId
+                resolvedUserId
               );
               
               if (matchResult.matched && matchResult.product && matchResult.confidence >= 70) {
@@ -357,7 +373,7 @@ function InvoiceManagement({
                 item.sku,
                 supplierName,
                 item.code_description,
-                currentUserId
+                resolvedUserId
               );
               
               if (matchResult.matched && matchResult.product && matchResult.confidence >= 70) {

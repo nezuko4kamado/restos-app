@@ -420,6 +420,8 @@ function InvoiceManagement({
           originalPrice: item.originalPrice,
           discountPercent: item.discountPercent,
           vatRate: item.vatRate,
+          sku: item.sku || '',
+          code_description: item.code_description || '',
         }))
       };
       

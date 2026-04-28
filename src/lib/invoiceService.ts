@@ -2,7 +2,7 @@ import { supabase } from './supabase';
 import * as XLSX from 'xlsx';
 
 // CRITICAL FIX: Use the correct invoice table name
-const INVOICES_TABLE = 'app_43909_invoices';
+const INVOICES_TABLE = 'invoices';
 
 interface VATBreakdownItem {
   rate: number;

@@ -38,7 +38,7 @@ import { supabase } from '@/lib/supabase';
 import { demoProducts, demoSuppliers, demoOrders, demoInvoices, demoSettings, demoPriceAlerts } from '@/lib/demoData';
 
 // CRITICAL FIX: Define the actual invoice table name (same as in storage.ts)
-const INVOICES_TABLE = 'app_43909_invoices';
+const INVOICES_TABLE = 'invoices';
 
 interface InvoiceItem {
   name: string;
@@ -720,7 +720,7 @@ export default function Index() {
         
         // STEP 4: Delete products (no dependencies)
         console.log('🗑️ Step 4: Deleting products...');
-        const productsResult = await supabase.from('app_43909_products').delete().eq('user_id', user.id);
+        const productsResult = await supabase.from('products').delete().eq('user_id', user.id);
         console.log('🗑️ DELETE RESULT for products:', {
           error: productsResult.error,
           status: productsResult.status,
@@ -765,7 +765,7 @@ export default function Index() {
         console.log('🔍 ========== VERIFYING DELETION ==========');
         const [verifyInvoices, verifyProducts, verifySuppliers, verifyOrders] = await Promise.all([
           supabase.from(INVOICES_TABLE).select('*').eq('user_id', user.id),
-          supabase.from('app_43909_products').select('*').eq('user_id', user.id),
+          supabase.from('products').select('*').eq('user_id', user.id),
           supabase.from('suppliers').select('*').eq('user_id', user.id),
           supabase.from('orders').select('*').eq('user_id', user.id)
         ]);

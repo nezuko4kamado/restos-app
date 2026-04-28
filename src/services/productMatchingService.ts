@@ -137,7 +137,7 @@ export class ProductMatchingService {
       if (!user) return null;
 
       const { data, error } = await supabase
-        .from('app_43909_products')
+        .from('products')
         .select('*')
         .eq('user_id', user.id)
         .eq('ean_code', eanCode)
@@ -167,7 +167,7 @@ export class ProductMatchingService {
 
       // Get all products
       const { data: products, error } = await supabase
-        .from('app_43909_products')
+        .from('products')
         .select('id, name, ean_code')
         .eq('user_id', user.id);
 

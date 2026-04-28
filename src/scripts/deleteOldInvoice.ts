@@ -16,7 +16,7 @@ async function deleteOldInvoice() {
     // Step 1: Verifica che la fattura esista
     console.log('\n1️⃣ Verifica esistenza fattura...');
     const { data: existingInvoice, error: checkError } = await supabase
-      .from('app_43909_invoices')
+      .from('invoices')
       .select('id, invoice_number, supplier_id, created_at')
       .eq('id', OLD_INVOICE_ID)
       .single();
@@ -45,7 +45,7 @@ async function deleteOldInvoice() {
     // Step 3: Elimina la fattura
     console.log('\n2️⃣ Eliminazione fattura...');
     const { error: deleteError } = await supabase
-      .from('app_43909_invoices')
+      .from('invoices')
       .delete()
       .eq('id', OLD_INVOICE_ID);
 
@@ -58,7 +58,7 @@ async function deleteOldInvoice() {
     // Step 4: Verifica che sia stata eliminata
     console.log('\n3️⃣ Verifica eliminazione...');
     const { data: verifyData, error: verifyError } = await supabase
-      .from('app_43909_invoices')
+      .from('invoices')
       .select('id')
       .eq('id', OLD_INVOICE_ID);
 

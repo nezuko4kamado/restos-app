@@ -45,9 +45,9 @@ const PRODUCT_DB_COLUMNS = 'id,name,price,category,supplier_id,vat_rate,unit,dis
 const PRODUCT_DB_COLUMNS_MINIMAL = 'id,name,price,category,supplier_id,vat_rate,unit,created_at,updated_at';
 
 // CRITICAL: Define the actual invoice table name
-const INVOICES_TABLE = 'app_43909_invoices';
+const INVOICES_TABLE = 'invoices';
 // ✅ EXPORTED so other modules can reference the correct table name
-export const PRODUCTS_TABLE = 'app_43909_products';
+export const PRODUCTS_TABLE = 'products';
 
 // ✅ FIX: Correct table name for product comparisons
 const PRODUCT_COMPATIBILITY_TABLE = 'product_compatibility';

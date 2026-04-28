@@ -106,7 +106,7 @@ export const calculatePriceAlerts = async (): Promise<number> => {
 
     // Fetch all invoices ordered by date (newest first)
     const { data: invoices, error } = await supabase
-      .from('app_43909_invoices')
+      .from('invoices')
       .select('*')
       .eq('user_id', user.id)
       .order('invoice_date', { ascending: false });
@@ -221,7 +221,7 @@ export const getDetailedPriceAlerts = async (): Promise<PriceAlert[]> => {
 
     // Fetch all invoices ordered by date (newest first)
     const { data: invoices, error } = await supabase
-      .from('app_43909_invoices')
+      .from('invoices')
       .select('*')
       .eq('user_id', user.id)
       .order('invoice_date', { ascending: false });

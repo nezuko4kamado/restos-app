@@ -10,7 +10,7 @@ import { getCurrencySymbol } from '@/lib/currency'
 import { useSettings } from '@/hooks/useSettings'
 
 // ✅ CRITICAL: Must match the actual invoices table name used in storage.ts
-const INVOICES_TABLE = 'app_43909_invoices'
+const INVOICES_TABLE = 'invoices'
 
 interface PlanLimits {
   products: number
@@ -237,7 +237,7 @@ export function SubscriptionManager() {
     try {
       // ── Count products ──
       const { count: productsCount, error: prodErr } = await supabase
-        .from('app_43909_products')
+        .from('products')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', userId)
 
@@ -247,7 +247,7 @@ export function SubscriptionManager() {
       } else {
         console.warn('[SubscriptionManager] Products head count failed, using fallback. Error:', prodErr?.message)
         const { data: productRows, error: prodFallbackErr } = await supabase
-          .from('app_43909_products')
+          .from('products')
           .select('id')
           .eq('user_id', userId)
 

@@ -80,9 +80,9 @@ async function matchProduct(
   supplierName?: string
 ): Promise<MatchResult> {
   try {
-    // CRITICAL FIX: Use correct table name 'products' instead of 'app_43909_products'
+    // CRITICAL FIX: Use correct table name 'products' instead of 'products'
     const { data: existingProducts, error } = await supabase
-      .from('app_43909_products')
+      .from('products')
       .select('*');
 
     if (error) {
@@ -163,7 +163,7 @@ export async function matchProductBySupplier(
   try {
     // CRITICAL FIX: Use correct table name 'products' and correct column 'supplier_id'
     const { data: existingProducts, error } = await supabase
-      .from('app_43909_products')
+      .from('products')
       .select('*')
       .eq('user_id', userId)
       .eq('supplier_id', supplierId);

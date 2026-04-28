@@ -12,7 +12,7 @@ export class InvoiceService {
       if (!user) throw new Error('User not authenticated');
 
       const { data, error } = await supabase
-        .from('app_43909_invoices')
+        .from('invoices')
         .insert({
           user_id: user.id,
           ...invoice,
@@ -78,7 +78,7 @@ export class InvoiceService {
       if (!user) return [];
 
       let query = supabase
-        .from('app_43909_invoices')
+        .from('invoices')
         .select('*')
         .eq('user_id', user.id)
         .order('date', { ascending: false });
@@ -117,7 +117,7 @@ export class InvoiceService {
       if (!user) return null;
 
       const { data, error } = await supabase
-        .from('app_43909_invoices')
+        .from('invoices')
         .select('*')
         .eq('id', id)
         .eq('user_id', user.id)
@@ -140,7 +140,7 @@ export class InvoiceService {
       if (!user) return null;
 
       const { data, error } = await supabase
-        .from('app_43909_invoices')
+        .from('invoices')
         .update(updates)
         .eq('id', id)
         .eq('user_id', user.id)
@@ -164,7 +164,7 @@ export class InvoiceService {
       if (!user) return false;
 
       const { error } = await supabase
-        .from('app_43909_invoices')
+        .from('invoices')
         .update({
           is_paid: true,
           payment_date: paymentDate || new Date().toISOString().split('T')[0],
@@ -189,7 +189,7 @@ export class InvoiceService {
       if (!user) return false;
 
       const { error } = await supabase
-        .from('app_43909_invoices')
+        .from('invoices')
         .delete()
         .eq('id', id)
         .eq('user_id', user.id);
@@ -213,7 +213,7 @@ export class InvoiceService {
       }
 
       let query = supabase
-        .from('app_43909_invoices')
+        .from('invoices')
         .select('*')
         .eq('user_id', user.id);
 

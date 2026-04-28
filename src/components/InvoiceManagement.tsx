@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Plus, Trash2, FileText, AlertTriangle, TrendingUp, TrendingDown, Check, X, ChevronDown, ChevronRight, CheckCircle2, Circle } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Invoice, Product, Supplier, ExtractedInvoiceItem } from '@/types';
+import type { PriceAlert } from '@/lib/priceAlertService';
 import { extractInvoiceData, extractInvoiceItems, type InvoiceDataExtracted } from '@/lib/ocrService';
 import { ProductMatcher } from '@/lib/productMatcher';
 import { calculateInvoiceStats, formatCurrency } from '@/lib/invoiceStats';
@@ -35,6 +36,7 @@ interface InvoiceManagementProps {
   onAddProduct: (product: Omit<Product, 'id'>) => Promise<void>;
   onUpdateProduct?: (productId: string, updates: Partial<Product>) => Promise<void>;
   onAddSupplier?: (supplier: Omit<Supplier, 'id'>) => Promise<Supplier>;
+  onPriceAlertsUpdate?: (alerts: PriceAlert[]) => void;
   isOpen: boolean;
   onClose: () => void;
   pendingInvoiceFile?: File;
@@ -61,6 +63,7 @@ function InvoiceManagement({
   onAddProduct,
   onUpdateProduct,
   onAddSupplier,
+  onPriceAlertsUpdate,
   isOpen,
   onClose,
   pendingInvoiceFile,
@@ -168,24 +171,13 @@ function InvoiceManagement({
     if (data.totalAmount !== undefined && data.totalAmount !== null) {
       const amountStr = data.totalAmount.toString();
       console.log('💰 [PROCESS] ✅ USING totalAmount (with IVA):', amountStr);
-      setNewInvoice(prev => {
-        console.log('💰 [PROCESS] Previous amount:', prev.amount);
-        console.log('💰 [PROCESS] New amount:', amountStr);
-        return { ...prev, amount: amountStr };
-      });
+      setNewInvoice(prev => ({ ...prev, amount: amountStr }));
     } else if (data.amount !== undefined && data.amount !== null) {
       const amountStr = data.amount.toString();
       console.log('💰 [PROCESS] ⚠️ FALLBACK to amount (base imponibile):', amountStr);
-      console.log('💰 [PROCESS] WARNING: totalAmount not found, using base amount');
-      setNewInvoice(prev => {
-        console.log('💰 [PROCESS] Previous amount:', prev.amount);
-        console.log('💰 [PROCESS] New amount:', amountStr);
-        return { ...prev, amount: amountStr };
-      });
+      setNewInvoice(prev => ({ ...prev, amount: amountStr }));
     } else {
       console.error('❌ [PROCESS] CRITICAL: No amount found in data!');
-      console.error('❌ [PROCESS] data.amount:', data.amount);
-      console.error('❌ [PROCESS] data.totalAmount:', data.totalAmount);
     }
 
     // Process items and match with existing products
@@ -195,17 +187,9 @@ function InvoiceManagement({
       const currentTimestamp = new Date().toISOString();
       
       for (const item of data.items) {
-        console.log('🔍 [PROCESS] Processing item:', {
-          name: item.name,
-          price: item.price,
-          quantity: item.quantity,
-          priceType: typeof item.price,
-          quantityType: typeof item.quantity
-        });
-        
         const matchResult = await ProductMatcher.matchProduct(
           item.name,
-          undefined, // ean_code
+          undefined,
           targetSupplierName
         );
         
@@ -216,7 +200,7 @@ function InvoiceManagement({
             ? ((item.price - matchedProduct.price) / matchedProduct.price) * 100 
             : 0;
 
-          const processedItem = {
+          processedItems.push({
             name: item.name,
             quantity: item.quantity,
             price: item.price,
@@ -230,13 +214,9 @@ function InvoiceManagement({
             oldPrice: matchedProduct.price,
             priceChangePercent,
             updated_at: currentTimestamp,
-          };
-          
-          console.log('🔍 [OCR EXTRACTION] Product extracted:', item.name, 'updated_at:', currentTimestamp);
-          console.log('🔍 [PROCESS] Processed matched item:', processedItem);
-          processedItems.push(processedItem);
+          });
         } else {
-          const processedItem = {
+          processedItems.push({
             name: item.name,
             quantity: item.quantity,
             price: item.price,
@@ -245,25 +225,15 @@ function InvoiceManagement({
             vatRate: item.vatRate,
             matchStatus: 'new' as const,
             updated_at: currentTimestamp,
-          };
-          
-          console.log('🔍 [OCR EXTRACTION] Product extracted:', item.name, 'updated_at:', currentTimestamp);
-          console.log('🔍 [PROCESS] Processed new item:', processedItem);
-          processedItems.push(processedItem);
+          });
         }
       }
 
       console.log('✅ [PROCESS] Finished processing. Total items:', processedItems.length);
-      console.log('✅ [PROCESS] Processed items:', JSON.stringify(processedItems, null, 2));
-      console.log('✅ [PROCESS] Calling setExtractedItems with', processedItems.length, 'items');
-      
       setExtractedItems(processedItems);
-      
-      console.log('✅ [PROCESS] setExtractedItems called');
       console.log('🔍 [PROCESS] ===== END PROCESSING EXTRACTED DATA =====');
     } else {
       console.warn('⚠️ [PROCESS] No items to process (data.items is empty or undefined)');
-      console.warn('⚠️ [PROCESS] data object keys:', Object.keys(data));
       console.log('🔍 [PROCESS] ===== END PROCESSING EXTRACTED DATA =====');
     }
   };
@@ -299,31 +269,16 @@ function InvoiceManagement({
         console.log(`📄 Processing page ${i + 1}/${selectedFiles.length}: ${file.name}`);
         
         if (isLastPage) {
-          // Last page: extract EVERYTHING (metadata + items)
           console.log('📋 Last page - extracting invoice metadata AND items');
           
           const data = await extractInvoiceData(file);
           invoiceMetadata = data;
           
-          console.log('📋 [METADATA] Extracted data:', data);
-          console.log('📋 [METADATA] Data.supplier:', data.supplier);
-          console.log('📋 [METADATA] Data.invoiceNumber:', data.invoiceNumber);
-          console.log('📋 [METADATA] Data.items:', data.items);
-          console.log('📋 [METADATA] Data.amount (base):', data.amount);
-          console.log('📋 [METADATA] Data.totalAmount (con IVA):', data.totalAmount);
-          
           setCurrentState('analyzing');
           
-          // Add items from last page
           if (data.items && data.items.length > 0) {
             console.log(`  ✅ Extracted ${data.items.length} items from last page`);
             for (const item of data.items) {
-              console.log('  📦 [ITEM] Processing:', {
-                name: item.name,
-                price: item.price,
-                quantity: item.quantity
-              });
-              
               const matchResult = await ProductMatcher.matchProduct(
                 item.name,
                 undefined,
@@ -337,7 +292,7 @@ function InvoiceManagement({
                   ? ((item.price - matchedProduct.price) / matchedProduct.price) * 100 
                   : 0;
 
-                const processedItem = {
+                allItems.push({
                   name: item.name,
                   quantity: item.quantity,
                   price: item.price,
@@ -351,13 +306,9 @@ function InvoiceManagement({
                   oldPrice: matchedProduct.price,
                   priceChangePercent,
                   updated_at: currentTimestamp,
-                };
-                
-                console.log('🔍 [OCR EXTRACTION] Product extracted:', item.name, 'updated_at:', currentTimestamp);
-                console.log('  ✅ [MATCHED] Processed item:', processedItem);
-                allItems.push(processedItem);
+                });
               } else {
-                const processedItem = {
+                allItems.push({
                   name: item.name,
                   quantity: item.quantity,
                   price: item.price,
@@ -366,18 +317,13 @@ function InvoiceManagement({
                   vatRate: item.vatRate,
                   matchStatus: 'new' as const,
                   updated_at: currentTimestamp,
-                };
-                
-                console.log('🔍 [OCR EXTRACTION] Product extracted:', item.name, 'updated_at:', currentTimestamp);
-                console.log('  ✅ [NEW] Processed item:', processedItem);
-                allItems.push(processedItem);
+                });
               }
               
               setProductsFound(allItems.length);
             }
           }
         } else {
-          // Not last page: extract ONLY items
           console.log('📦 Intermediate page - extracting items only');
           
           const itemsData = await extractInvoiceItems(file);
@@ -415,7 +361,6 @@ function InvoiceManagement({
                   priceChangePercent,
                   updated_at: currentTimestamp,
                 });
-                console.log('🔍 [OCR EXTRACTION] Product extracted:', item.name, 'updated_at:', currentTimestamp);
               } else {
                 allItems.push({
                   name: item.name,
@@ -427,7 +372,6 @@ function InvoiceManagement({
                   matchStatus: 'new' as const,
                   updated_at: currentTimestamp,
                 });
-                console.log('🔍 [OCR EXTRACTION] Product extracted:', item.name, 'updated_at:', currentTimestamp);
               }
               
               setProductsFound(allItems.length);
@@ -443,9 +387,7 @@ function InvoiceManagement({
       setCurrentState('saving');
 
       console.log(`✅ Total items extracted from ${selectedFiles.length} page(s): ${allItems.length}`);
-      console.log('✅ All items:', JSON.stringify(allItems, null, 2));
       
-      // Set the extracted data with all items
       const finalData: InvoiceDataExtracted = {
         ...invoiceMetadata,
         items: allItems.map(item => ({
@@ -458,66 +400,35 @@ function InvoiceManagement({
         }))
       };
       
-      console.log('✅ Final data prepared:', finalData);
-      console.log('✅ Final data.supplier:', finalData.supplier);
-      console.log('✅ Final data.invoiceNumber:', finalData.invoiceNumber);
-      console.log('✅ Final data.items:', finalData.items);
-      console.log('✅ Final data.amount (base):', finalData.amount);
-      console.log('✅ Final data.totalAmount (con IVA):', finalData.totalAmount);
-      
       setCurrentState('completed');
       
-      // Wait 1 second before setting isProcessing to false (dialog will auto-close after 2 seconds total)
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       setIsProcessing(false);
 
-      // Check if supplier name was detected and show confirmation dialog
       if (finalData.supplier && finalData.supplier.name) {
         const detectedName = finalData.supplier.name.trim();
         console.log('🏢 Detected supplier name:', detectedName);
         
         setDetectedSupplierName(detectedName);
         setPendingInvoiceDataForConfirmation(finalData);
-        
-        console.log('🔵 [UPLOAD] Setting extractedItems to', allItems.length, 'items');
         setExtractedItems(allItems);
-        console.log('🔵 [UPLOAD] setExtractedItems called');
-        
         setShowSupplierConfirmation(true);
       } else {
-        // No supplier detected, proceed with current supplier
         console.log('⚠️ No supplier name detected, using current supplier');
         setExtractedData(finalData);
-        
-        console.log('🔵 [UPLOAD] Setting extractedItems to', allItems.length, 'items');
         setExtractedItems(allItems);
-        console.log('🔵 [UPLOAD] setExtractedItems called');
         
-        // Set invoice metadata INCLUDING AMOUNT (prioritize totalAmount)
         if (finalData.invoiceNumber) {
           setNewInvoice(prev => ({ ...prev, invoiceNumber: finalData.invoiceNumber || '' }));
         }
         if (finalData.date) {
           setNewInvoice(prev => ({ ...prev, date: finalData.date || '' }));
         }
-        // 🔥 CRITICAL FIX: Prioritize totalAmount (with IVA)
         if (finalData.totalAmount !== undefined && finalData.totalAmount !== null) {
-          const amountStr = finalData.totalAmount.toString();
-          console.log('💰 [UPLOAD] ✅ Setting amount from finalData.totalAmount (con IVA):', amountStr);
-          setNewInvoice(prev => {
-            console.log('💰 [UPLOAD] Previous amount:', prev.amount);
-            console.log('💰 [UPLOAD] New amount:', amountStr);
-            return { ...prev, amount: amountStr };
-          });
+          setNewInvoice(prev => ({ ...prev, amount: finalData.totalAmount!.toString() }));
         } else if (finalData.amount !== undefined && finalData.amount !== null) {
-          const amountStr = finalData.amount.toString();
-          console.log('💰 [UPLOAD] ⚠️ Fallback to finalData.amount (base):', amountStr);
-          setNewInvoice(prev => {
-            console.log('💰 [UPLOAD] Previous amount:', prev.amount);
-            console.log('💰 [UPLOAD] New amount:', amountStr);
-            return { ...prev, amount: amountStr };
-          });
+          setNewInvoice(prev => ({ ...prev, amount: finalData.amount!.toString() }));
         }
         
         toast.success(`✅ Fattura elaborata con successo! ${allItems.length} prodotti estratti da ${selectedFiles.length} pagina/e`);
@@ -538,19 +449,14 @@ function InvoiceManagement({
   const handleSupplierConfirmed = async (confirmedSupId: string, confirmedSupName: string, isNewSupplier: boolean) => {
     console.log('✅ Supplier confirmed:', { confirmedSupId, confirmedSupName, isNewSupplier });
     
-    // If it's a new supplier, create it
     if (isNewSupplier && onAddSupplier) {
       try {
         console.log('➕ Creating new supplier:', confirmedSupName);
         
-        // ✅ FIX: Extract phone, email, address, and vat_number from invoice data
         const supplierPhone = pendingInvoiceDataForConfirmation?.supplier?.phone || '';
         const supplierEmail = pendingInvoiceDataForConfirmation?.supplier?.email || '';
         const supplierAddress = pendingInvoiceDataForConfirmation?.supplier?.address || '';
         const supplierVatNumber = pendingInvoiceDataForConfirmation?.supplier?.vat_number || '';
-        
-        console.log('📞 Supplier phone:', supplierPhone);
-        console.log('📧 Supplier email:', supplierEmail);
         
         await onAddSupplier({
           name: confirmedSupName,
@@ -573,29 +479,20 @@ function InvoiceManagement({
     setConfirmedSupplierName(confirmedSupName);
     setShowSupplierConfirmation(false);
     
-    console.log('🔍 [SUPPLIER CONFIRMED] Setting confirmed supplier name:', confirmedSupName);
-    
-    // Process the invoice data with confirmed supplier
     if (pendingInvoiceDataForConfirmation) {
       setExtractedData(pendingInvoiceDataForConfirmation);
       await processExtractedData(pendingInvoiceDataForConfirmation, confirmedSupName);
       
-      // Set invoice metadata INCLUDING AMOUNT (prioritize totalAmount)
       if (pendingInvoiceDataForConfirmation.invoiceNumber) {
         setNewInvoice(prev => ({ ...prev, invoiceNumber: pendingInvoiceDataForConfirmation.invoiceNumber || '' }));
       }
       if (pendingInvoiceDataForConfirmation.date) {
         setNewInvoice(prev => ({ ...prev, date: pendingInvoiceDataForConfirmation.date || '' }));
       }
-      // 🔥 CRITICAL FIX: Prioritize totalAmount (with IVA)
       if (pendingInvoiceDataForConfirmation.totalAmount !== undefined && pendingInvoiceDataForConfirmation.totalAmount !== null) {
-        const amountStr = pendingInvoiceDataForConfirmation.totalAmount.toString();
-        console.log('💰 [SUPPLIER CONFIRMED] ✅ Setting amount from totalAmount (con IVA):', amountStr);
-        setNewInvoice(prev => ({ ...prev, amount: amountStr }));
+        setNewInvoice(prev => ({ ...prev, amount: pendingInvoiceDataForConfirmation.totalAmount!.toString() }));
       } else if (pendingInvoiceDataForConfirmation.amount !== undefined && pendingInvoiceDataForConfirmation.amount !== null) {
-        const amountStr = pendingInvoiceDataForConfirmation.amount.toString();
-        console.log('💰 [SUPPLIER CONFIRMED] ⚠️ Fallback to amount (base):', amountStr);
-        setNewInvoice(prev => ({ ...prev, amount: amountStr }));
+        setNewInvoice(prev => ({ ...prev, amount: pendingInvoiceDataForConfirmation.amount!.toString() }));
       }
       
       toast.success(`✅ Fattura elaborata con successo per ${confirmedSupName}! ${extractedItems.length} prodotti estratti`);
@@ -617,8 +514,6 @@ function InvoiceManagement({
       toast.error(t('fillRequiredFields'));
       return;
     }
-
-    console.log('💾 Creating manual invoice...');
 
     const parsedAmount = parseFloat(newInvoice.amount);
     
@@ -661,51 +556,32 @@ function InvoiceManagement({
   const handleAddExtractedInvoice = async () => {
     console.log('💾 [SAVE] ===== START SAVE PROCESS =====');
     console.log('💾 [SAVE] extractedData:', extractedData);
-    console.log('💾 [SAVE] newInvoice object:', JSON.stringify(newInvoice, null, 2));
     console.log('💾 [SAVE] newInvoice.amount:', newInvoice.amount);
-    console.log('💾 [SAVE] typeof newInvoice.amount:', typeof newInvoice.amount);
     console.log('💾 [SAVE] newInvoice.invoiceNumber:', newInvoice.invoiceNumber);
     
     if (!extractedData || !newInvoice.invoiceNumber) {
       console.error('❌ [SAVE] Missing required data!');
-      console.error('  - extractedData:', extractedData);
-      console.error('  - newInvoice.invoiceNumber:', newInvoice.invoiceNumber);
       toast.error(t('incompleteInvoiceData'));
       return;
     }
 
     if (!newInvoice.amount || newInvoice.amount === '' || newInvoice.amount === '0') {
       console.error('❌ [SAVE] Amount is missing or zero!');
-      console.error('  - newInvoice.amount:', newInvoice.amount);
       toast.error('Errore: Il totale della fattura è mancante o zero. Verifica i dati estratti.');
       return;
     }
 
-    console.log('🔍 [STEP 1] Current state values:');
-    console.log('  - confirmedSupplierName (state):', confirmedSupplierName);
-    console.log('  - supplierName (prop):', supplierName);
-
-    // CRITICAL FIX: Use confirmed supplier name if available, otherwise use current supplier name
     const targetSupplierName = confirmedSupplierName || supplierName;
     
-    console.log('🔍 [STEP 2] Determined target supplier name:', targetSupplierName);
-    console.log('  - Logic: confirmedSupplierName || supplierName');
-    console.log('  - Result:', targetSupplierName);
-
     if (!targetSupplierName) {
       console.error('❌ [CRITICAL ERROR] No supplier name available!');
-      console.error('  - confirmedSupplierName:', confirmedSupplierName);
-      console.error('  - supplierName:', supplierName);
       toast.error('Errore: Nome fornitore mancante. Riprova.');
       return;
     }
 
     try {
       const parsedAmount = parseFloat(newInvoice.amount || '0');
-      console.log('💰 [SAVE] Parsed amount:', parsedAmount);
-      console.log('💰 [SAVE] Is parsedAmount valid?', !isNaN(parsedAmount) && parsedAmount > 0);
       
-      // CRITICAL FIX: Create invoice object with ALL required fields
       const invoice: Invoice = {
         id: generateUUID(),
         supplier_name: targetSupplierName,
@@ -723,36 +599,18 @@ function InvoiceManagement({
         createdAt: new Date().toISOString(),
       };
 
-      console.log('🔍 [STEP 3] Created invoice object:');
-      console.log('  - invoice.id:', invoice.id);
-      console.log('  - invoice.supplier_name:', invoice.supplier_name);
-      console.log('  - invoice.invoiceNumber:', invoice.invoiceNumber);
-      console.log('  - invoice.invoice_number:', invoice.invoice_number);
-      console.log('  - invoice.date:', invoice.date);
-      console.log('  - invoice.amount:', invoice.amount);
-      console.log('  - invoice.total_amount:', invoice.total_amount);
-      console.log('  - invoice.totalAmount:', invoice.totalAmount);
-      console.log('  - typeof invoice.amount:', typeof invoice.amount);
-      console.log('  - invoice.items.length:', invoice.items?.length || 0);
-      console.log('  - Full invoice object:', JSON.stringify(invoice, null, 2));
+      console.log('🔍 [STEP 3] Created invoice object - supplier_name:', invoice.supplier_name, 'amount:', invoice.amount);
 
-      // Save invoice
-      console.log('🔍 [STEP 4] Calling onAddInvoice with invoice...');
       await onAddInvoice(invoice);
       console.log('✅ [STEP 5] Invoice saved successfully');
 
-      // 🔥 CRITICAL FIX: Update updated_at for ALL extracted products (new, matched, price changed or not)
-      // Find the supplier by name to get the supplierId
+      // Update products
       const targetSupplier = suppliers.find(s => s.name === targetSupplierName);
       const targetSupplierId = targetSupplier?.id || supplierId;
-      
       const currentTimestamp = new Date().toISOString();
 
       for (const item of extractedItems) {
         if (item.matchStatus === 'new') {
-          // Add new product with updated_at
-          console.log('➕ [INVOICE] Adding new product:', item.name);
-          console.log('🔄 [INVOICE] Setting updated_at for new product:', item.name, 'at', currentTimestamp);
           const newProduct: Omit<Product, 'id'> = {
             name: item.name,
             price: item.price,
@@ -766,29 +624,44 @@ function InvoiceManagement({
             updated_at: currentTimestamp,
           };
           await onAddProduct(newProduct);
-        } else if (item.matchedProductId) {
-          // 🔥 CRITICAL FIX: Update ALL matched products (price changed OR NOT)
-          // This ensures updated_at is ALWAYS set for products in the invoice
-          if (item.priceChanged) {
-            console.log('🔄 [INVOICE] Updating product with price change:', item.name, 'from', item.oldPrice, 'to', item.price);
-          } else {
-            console.log('🔄 [INVOICE] Updating product with SAME price:', item.name, 'price:', item.price);
-          }
-          console.log('🔄 [INVOICE] Setting updated_at for product:', item.name, 'at', currentTimestamp);
-          
-          if (onUpdateProduct) {
-            await onUpdateProduct(item.matchedProductId, {
-              price: item.price,
-              updated_at: currentTimestamp
-            });
-            console.log('✅ [INVOICE] Product updated in database with updated_at');
-          }
+        } else if (item.matchedProductId && onUpdateProduct) {
+          await onUpdateProduct(item.matchedProductId, {
+            price: item.price,
+            updated_at: currentTimestamp
+          });
+        }
+      }
+
+      // 🔔 PRICE CHANGE NOTIFICATIONS: fire toasts and update parent alerts
+      const changedItems = extractedItems.filter(item => item.priceChanged === true);
+      if (changedItems.length > 0) {
+        const newAlerts: PriceAlert[] = [];
+        for (const item of changedItems) {
+          const oldPrice = item.oldPrice ?? 0;
+          const newPrice = item.price;
+          const changePercent = item.priceChangePercent ?? 0;
+          const sign = changePercent >= 0 ? '+' : '';
+          toast.warning(
+            `⚠️ Prezzo cambiato: ${item.name}  €${oldPrice.toFixed(2)} → €${newPrice.toFixed(2)} (${sign}${changePercent.toFixed(1)}%)`,
+            { duration: 6000 }
+          );
+          newAlerts.push({
+            productName: item.name,
+            supplierName: targetSupplierName,
+            oldPrice,
+            newPrice,
+            changePercent,
+            invoiceDate: newInvoice.date,
+            source: 'invoice',
+          });
+        }
+        if (onPriceAlertsUpdate && newAlerts.length > 0) {
+          onPriceAlertsUpdate(newAlerts);
         }
       }
 
       onUpdateProducts();
       
-      // Reset form and states
       setNewInvoice({
         invoiceNumber: '',
         date: new Date().toISOString().split('T')[0],
@@ -798,19 +671,12 @@ function InvoiceManagement({
       setExtractedData(null);
       setExtractedItems([]);
       setSelectedFiles([]);
-      
-      console.log('🔍 [STEP 6] Resetting confirmed supplier states');
       setConfirmedSupplierName('');
       
       console.log('💾 [SAVE] ===== END SAVE PROCESS (SUCCESS) =====');
       toast.success(`✅ ${t('invoiceAddedSuccess')}`);
     } catch (error) {
       console.error('❌ [ERROR] Errore salvataggio fattura:', error);
-      console.error('❌ Error details:', {
-        message: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined,
-        error: error,
-      });
       console.log('💾 [SAVE] ===== END SAVE PROCESS (ERROR) =====');
       if (error instanceof Error) {
         toast.error(`${t('error')}: ${error.message}`);
@@ -831,7 +697,6 @@ function InvoiceManagement({
     console.log('🔵 [TOGGLE START] InvoiceManagement.handleTogglePaymentStatus called');
     console.log('  - Invoice ID:', invoice.id);
     console.log('  - Current isPaid status:', invoice.isPaid);
-    console.log('  - Invoice supplier_name:', invoice.supplier_name);
     
     if (!onUpdateInvoice) {
       console.error('❌ [TOGGLE ERROR] onUpdateInvoice is not available');
@@ -840,7 +705,6 @@ function InvoiceManagement({
     }
 
     const newStatus = !invoice.isPaid;
-    console.log('  - New isPaid status will be:', newStatus);
 
     const updatedInvoice = {
       ...invoice,
@@ -848,28 +712,12 @@ function InvoiceManagement({
       is_paid: newStatus,
       updated_at: new Date().toISOString(),
     };
-    
-    console.log('🔵 [TOGGLE] Created updated invoice object:', {
-      id: updatedInvoice.id,
-      isPaid: updatedInvoice.isPaid,
-      is_paid: updatedInvoice.is_paid,
-      supplier_name: updatedInvoice.supplier_name
-    });
 
     try {
-      console.log('🔵 [TOGGLE] Calling onUpdateInvoice...');
       await onUpdateInvoice(updatedInvoice);
-      console.log('✅ [TOGGLE SUCCESS] onUpdateInvoice completed');
-      
       toast.success(updatedInvoice.isPaid ? t('invoiceMarkedPaid') : t('invoiceMarkedUnpaid'));
-      
-      console.log('🔵 [TOGGLE END] Payment status toggle completed successfully');
     } catch (error) {
       console.error('❌ [TOGGLE ERROR] Error updating invoice:', error);
-      console.error('❌ Error details:', {
-        message: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined
-      });
       toast.error(t('invoiceUpdateError'));
     }
   };
@@ -919,7 +767,6 @@ function InvoiceManagement({
   const groupedInvoices = groupInvoicesByYearMonth(invoices);
   const years = Object.keys(groupedInvoices).sort((a, b) => parseInt(b) - parseInt(a));
 
-  // Calculate paid/unpaid statistics
   const paidInvoices = invoices.filter(inv => inv.isPaid);
   const unpaidInvoices = invoices.filter(inv => !inv.isPaid);
   const totalPaid = paidInvoices.reduce((sum, inv) => sum + (inv.total_amount || inv.totalAmount || inv.amount || 0), 0);
@@ -1038,7 +885,7 @@ function InvoiceManagement({
               </div>
             </TabsContent>
 
-            {/* Upload Tab - NOW USING InvoiceUploadWithLimits */}
+            {/* Upload Tab */}
             <TabsContent value="upload" className="space-y-4">
               <div className="space-y-4">
                 {!extractedData ? (
@@ -1050,7 +897,7 @@ function InvoiceManagement({
                   />
                 ) : (
                   <div className="space-y-4">
-                    {/* Invoice Details - WITH AMOUNT FIELD */}
+                    {/* Invoice Details */}
                     <div className="p-4 border-2 border-indigo-200 bg-indigo-50 rounded-xl space-y-4">
                       <div className="flex justify-between items-center">
                         <h3 className="font-semibold text-slate-800">{t('invoiceData')}</h3>
@@ -1094,7 +941,7 @@ function InvoiceManagement({
                           className="mt-2 font-bold text-lg"
                         />
                         <p className="text-xs text-slate-500 mt-1">
-                          💡 Estratto dall'OCR. Puoi modificarlo se necessario.
+                          💡 Estratto dall&apos;OCR. Puoi modificarlo se necessario.
                         </p>
                       </div>
                     </div>

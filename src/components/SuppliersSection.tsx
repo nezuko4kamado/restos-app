@@ -23,6 +23,8 @@ import type { InvoiceDataExtracted } from '@/lib/ocrService';
 import { InvoiceService } from '@/lib/invoiceService';
 import { formatPrice } from '@/lib/currency';
 
+import type { PriceAlert } from '@/lib/priceAlertService';
+
 interface SuppliersSectionProps {
   suppliers: Supplier[];
   setSuppliers: React.Dispatch<React.SetStateAction<Supplier[]>>;
@@ -34,6 +36,7 @@ interface SuppliersSectionProps {
   settings: Settings;
   pendingInvoice?: { supplierId: string; file: File; invoiceData?: InvoiceDataExtracted } | null;
   onInvoiceProcessed?: () => void;
+  onPriceAlertsUpdate?: (alerts: PriceAlert[]) => void;
 }
 
 interface SupplierWithVat extends Supplier {
@@ -50,7 +53,8 @@ export default function SuppliersSection({
   language,
   settings,
   pendingInvoice,
-  onInvoiceProcessed
+  onInvoiceProcessed,
+  onPriceAlertsUpdate,
 }: SuppliersSectionProps) {
   const t = useTranslations(language);
   const currency = settings.defaultCurrency || 'EUR';
@@ -1205,6 +1209,7 @@ export default function SuppliersSection({
               setSuppliers([...suppliers, newSupplier]);
               return newSupplier;
             }}
+            onPriceAlertsUpdate={onPriceAlertsUpdate}
             isOpen={true}
             onClose={handleCloseInvoiceDialog}
             pendingInvoiceFile={pendingInvoice?.supplierId === invoiceDialogSupplierId ? pendingInvoice.file : undefined}

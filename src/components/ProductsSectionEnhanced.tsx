@@ -429,7 +429,6 @@ export default function ProductsSectionEnhanced({
         updates.price_history = newHistory.map(h => ({ price: h.price, date: h.date }));
         
         updates.original_price = currentProduct.price;
-        updates.last_price_change = new Date().toISOString();
         
         const changePercent = ((editingProduct.price! - currentProduct.price) / currentProduct.price) * 100;
         const direction = changePercent > 0 ? (t('priceIncreased') || 'Price increased') : (t('priceDecreased') || 'Price decreased');
@@ -916,7 +915,6 @@ export default function ProductsSectionEnhanced({
               notes: extracted.discount_percent > 0 ? `${t('discount') || 'Discount'} ${extracted.discount_percent}%` : existingProduct.notes,
               price_history: newHistory.map(h => ({ price: h.price, date: h.date })),
               updated_at: new Date().toISOString(),
-              last_price_change: new Date().toISOString(),
             };
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (updates as any).priceHistory = newHistory;

@@ -38,8 +38,9 @@ interface ProductWithExtendedFields extends Product {
   price_difference?: number;
 }
 
-// ✅ OPTIMIZED: Select only essential columns + price_difference + code_description + price_history_data + updated_at
-const PRODUCT_DB_COLUMNS = 'id,name,price,category,supplier_id,vat_rate,unit,discount_percent,discount_amount,unit_price,discounted_price,price_difference,code_description,price_history_data,created_at,updated_at';
+// ✅ OPTIMIZED: Select only essential columns + price_difference + code_description + updated_at
+// NOTE: price_history_data is NOT a DB column — it is managed in-memory only
+const PRODUCT_DB_COLUMNS = 'id,name,price,category,supplier_id,vat_rate,unit,discount_percent,discount_amount,unit_price,discounted_price,price_difference,code_description,created_at,updated_at';
 // Minimal fallback columns in case some optional columns don't exist
 const PRODUCT_DB_COLUMNS_MINIMAL = 'id,name,price,category,supplier_id,vat_rate,unit,created_at,updated_at';
 
@@ -985,7 +986,8 @@ export const batchUpdateProducts = async (updates: { id: string; updates: Partia
         dbUpdate.vat_rate = productUpdates.vat_rate || extUpdates.vatRate;
       }
       if (productUpdates.code_description !== undefined) dbUpdate.code_description = productUpdates.code_description;
-      if (productUpdates.price_history_data !== undefined) dbUpdate.price_history_data = productUpdates.price_history_data;
+      // NOTE: price_history_data is NOT a DB column — do NOT write it to the DB
+
 
       // ✅ CALCULATE PRICE DIFFERENCE PERCENTAGE & PREPARE PRICE HISTORY
       if (productUpdates.price !== undefined) {
@@ -995,14 +997,13 @@ export const batchUpdateProducts = async (updates: { id: string; updates: Partia
 
         if (oldPrice && oldPrice > 0 && newPrice !== oldPrice) {
           const percentageChange = ((newPrice - oldPrice) / oldPrice) * 100;
-          dbUpdate.price_difference = Math.round(percentageChange * 100) / 100; // Round to 2 decimals
-          
+          dbUpdate.price_difference = Math.round(percentageChange * 100) / 100;
+
           console.log(`💰 [PRICE DIFF] Product ${id}:`);
           console.log(`   Old price: ${oldPrice} €`);
           console.log(`   New price: ${newPrice} €`);
           console.log(`   Difference: ${percentageChange > 0 ? '+' : ''}${dbUpdate.price_difference}%`);
 
-          // Prepare price history data
           if (oldProduct) {
             const supplierName = supplierNamesMap.get(oldProduct.supplier_id) || 'Unknown Supplier';
             priceHistoryItems.push({
@@ -1016,11 +1017,11 @@ export const batchUpdateProducts = async (updates: { id: string; updates: Partia
         } else {
           dbUpdate.price_difference = 0;
         }
-        
+
         // ✅ FIX: Update updated_at timestamp when price changes
         dbUpdate.updated_at = new Date().toISOString();
       }
-      
+
       return dbUpdate;
     });
 
@@ -1039,7 +1040,6 @@ export const batchUpdateProducts = async (updates: { id: string; updates: Partia
 
     // ✅ STEP 3: Track price changes in price_history (async, don't wait)
     if (priceHistoryItems.length > 0) {
-      // Use a dummy invoice ID for batch updates (not from invoice)
       PriceHistoryService.trackInvoicePrices(priceHistoryItems, 'batch-update').catch(err => {
         console.error('❌ Error tracking price history:', err);
       });
@@ -1054,8 +1054,9 @@ export const batchUpdateProducts = async (updates: { id: string; updates: Partia
       discount_amount: product.discount_amount || 0,
       price_difference: product.price_difference || 0,
       code_description: product.code_description || '',
-      price_history_data: product.price_history_data || [],
-      priceHistory: product.price_history_data || [],
+      // price_history_data is in-memory only — not stored in DB
+      price_history_data: [],
+      priceHistory: [],
       updated_at: product.updated_at || product.created_at || new Date().toISOString(),
     }));
 
@@ -1064,6 +1065,7 @@ export const batchUpdateProducts = async (updates: { id: string; updates: Partia
     return [];
   }
 };
+
 
 export const addProduct = async (product: Omit<Product, 'id'>): Promise<Product | null> => {
   if (!isSupabaseConfigured()) {

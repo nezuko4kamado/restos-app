@@ -39,11 +39,15 @@ interface ProductWithExtendedFields extends Product {
 }
 
 // ✅ OPTIMIZED: Select only essential columns + price_difference + code_description + updated_at
+// NOTE: price_history_data is intentionally excluded - it may not exist in all Supabase deployments
 const PRODUCT_DB_COLUMNS = 'id,name,price,category,supplier_id,vat_rate,unit,discount_percent,discount_amount,unit_price,discounted_price,price_difference,code_description,created_at,updated_at';
+// Minimal fallback columns in case some optional columns don't exist
+const PRODUCT_DB_COLUMNS_MINIMAL = 'id,name,price,category,supplier_id,vat_rate,unit,created_at,updated_at';
 
 // CRITICAL: Define the actual invoice table name
 const INVOICES_TABLE = 'app_43909_invoices';
-const PRODUCTS_TABLE = 'app_43909_products';
+// ✅ EXPORTED so other modules can reference the correct table name
+export const PRODUCTS_TABLE = 'app_43909_products';
 
 // ✅ FIX: Correct table name for product comparisons
 const PRODUCT_COMPATIBILITY_TABLE = 'product_compatibility';
@@ -1144,20 +1148,43 @@ export const getProducts = async (): Promise<Product[]> => {
       return [];
     }
 
-    console.log('🔍 [DATABASE] getProducts called - fetching from Supabase...');
+    console.log('🔍 [DATABASE] getProducts called - fetching from Supabase for user:', user.id);
 
-    const { data, error } = await supabase
+    // Try full columns first; if a column doesn't exist, retry with minimal columns
+    let data: Record<string, unknown>[] | null = null;
+    let fetchError: { message?: string; code?: string } | null = null;
+
+    const result = await supabase
       .from(PRODUCTS_TABLE)
       .select(PRODUCT_DB_COLUMNS)
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
+    data = result.data as Record<string, unknown>[] | null;
+    fetchError = result.error;
+
+    // If error mentions a missing column, retry with minimal columns
+    if (fetchError) {
+      const errMsg = fetchError.message || '';
+      const isColumnError = errMsg.includes('column') || errMsg.includes('does not exist') || fetchError.code === '42703';
+      if (isColumnError) {
+        console.warn('⚠️ [getProducts] Column error, retrying with minimal columns:', errMsg);
+        const fallbackResult = await supabase
+          .from(PRODUCTS_TABLE)
+          .select(PRODUCT_DB_COLUMNS_MINIMAL)
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+        data = fallbackResult.data as Record<string, unknown>[] | null;
+        fetchError = fallbackResult.error;
+      }
+    }
+
     const perfEnd = performance.now();
     console.log(`⏱️ [DB] getProducts: ${(perfEnd - perfStart).toFixed(0)}ms for ${data?.length || 0} products`);
 
-    if (error) {
-      console.error('❌ Error fetching products:', error);
-      toast.error(`❌ Errore caricando prodotti: ${error.message}`);
+    if (fetchError) {
+      console.error('❌ Error fetching products:', fetchError);
+      toast.error(`❌ Errore caricando prodotti: ${fetchError.message}`);
       return [];
     }
 
@@ -2700,11 +2727,11 @@ export const clearAllData = async (): Promise<boolean> => {
       'draft_orders',
       'cancelled_draft_orders',
       'orders',
-      'products',
+      PRODUCTS_TABLE,
       'suppliers',
       'user_settings',
       PRODUCT_COMPATIBILITY_TABLE,
-      'price_history_data', // ✅ NEW: Clear price history when clearing all data
+      'price_history_data',
     ];
 
     for (const table of tables) {

@@ -39,7 +39,7 @@ interface ProductWithExtendedFields extends Product {
 }
 
 // ✅ OPTIMIZED: Select only essential columns + price_difference + code_description + updated_at
-const PRODUCT_DB_COLUMNS = 'id,name,price,category,supplier_id,vat_rate,unit,discount_percent,discount_amount,unit_price,discounted_price,price_difference,code_description,price_history_data,created_at,updated_at';
+const PRODUCT_DB_COLUMNS = 'id,name,price,category,supplier_id,vat_rate,unit,discount_percent,discount_amount,unit_price,discounted_price,price_difference,code_description,created_at,updated_at';
 
 // CRITICAL: Define the actual invoice table name
 const INVOICES_TABLE = 'app_43909_invoices';
@@ -1250,7 +1250,6 @@ export const saveProducts = async (products: Product[]): Promise<boolean> => {
         vat_rate: product.vat_rate || extProduct.vatRate,
         price_difference: extProduct.price_difference || 0,
         code_description: product.code_description || '',
-        price_history_data: (product as Product & { price_history_data?: Array<{ price: number; date: string }> }).price_history_data || [],
         user_id: user.id,
         updated_at: new Date().toISOString(),
       };

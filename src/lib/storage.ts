@@ -38,9 +38,8 @@ interface ProductWithExtendedFields extends Product {
   price_difference?: number;
 }
 
-// ✅ OPTIMIZED: Select only essential columns + price_difference + code_description + updated_at
-// NOTE: price_history_data is intentionally excluded - it may not exist in all Supabase deployments
-const PRODUCT_DB_COLUMNS = 'id,name,price,category,supplier_id,vat_rate,unit,discount_percent,discount_amount,unit_price,discounted_price,price_difference,code_description,created_at,updated_at';
+// ✅ OPTIMIZED: Select only essential columns + price_difference + code_description + price_history_data + updated_at
+const PRODUCT_DB_COLUMNS = 'id,name,price,category,supplier_id,vat_rate,unit,discount_percent,discount_amount,unit_price,discounted_price,price_difference,code_description,price_history_data,created_at,updated_at';
 // Minimal fallback columns in case some optional columns don't exist
 const PRODUCT_DB_COLUMNS_MINIMAL = 'id,name,price,category,supplier_id,vat_rate,unit,created_at,updated_at';
 
@@ -986,6 +985,7 @@ export const batchUpdateProducts = async (updates: { id: string; updates: Partia
         dbUpdate.vat_rate = productUpdates.vat_rate || extUpdates.vatRate;
       }
       if (productUpdates.code_description !== undefined) dbUpdate.code_description = productUpdates.code_description;
+      if (productUpdates.price_history_data !== undefined) dbUpdate.price_history_data = productUpdates.price_history_data;
 
       // ✅ CALCULATE PRICE DIFFERENCE PERCENTAGE & PREPARE PRICE HISTORY
       if (productUpdates.price !== undefined) {
@@ -1054,6 +1054,8 @@ export const batchUpdateProducts = async (updates: { id: string; updates: Partia
       discount_amount: product.discount_amount || 0,
       price_difference: product.price_difference || 0,
       code_description: product.code_description || '',
+      price_history_data: product.price_history_data || [],
+      priceHistory: product.price_history_data || [],
       updated_at: product.updated_at || product.created_at || new Date().toISOString(),
     }));
 

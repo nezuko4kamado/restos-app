@@ -669,6 +669,7 @@ function InvoiceManagement({
             vat_rate: item.vatRate,
             discountPercent: item.discountPercent,
             originalPrice: item.originalPrice,
+            code_description: item.code_description || '',
             created_at: currentTimestamp,
             updated_at: currentTimestamp,
           };
@@ -690,6 +691,8 @@ function InvoiceManagement({
             priceUpdates.vatRate = item.vatRate;
             priceUpdates.vat_rate = item.vatRate;
           }
+          // ✅ FIX: Always persist code_description so future invoices can match by code
+          if (item.code_description) priceUpdates.code_description = item.code_description;
 
           console.log(`   priceUpdates=`, JSON.stringify(priceUpdates));
           await onUpdateProduct(item.matchedProductId, priceUpdates);

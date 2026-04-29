@@ -23,21 +23,88 @@ interface MatchResult {
 }
 
 /**
- * Calculate similarity between two strings using Levenshtein distance
+ * Calculate similarity between two strings using Levenshtein distance + token overlap
  */
+/**
+ * Normalize a product name for better matching:
+ * - lowercase
+ * - remove trailing quantity patterns (x 1, x1, 1pz, nr.1)
+ * - remove weight/size tokens like "1,5kg", "500g", "1l"
+ * - remove DOP/IGP/STG certification labels (they are often inconsistently included)
+ * - collapse whitespace
+ */
+function normalizeForSimilarity(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\s*x\s*\d+\s*$/i, '')           // trailing "x 1", "x1"
+    .replace(/\s*\d+\s*pz\.?\s*$/i, '')       // trailing "2pz", "2 pz."
+    .replace(/\s*nr\.?\s*\d+\s*$/i, '')        // trailing "nr. 1"
+    .replace(/\b\d+[,.]?\d*\s*(kg|g|l|lt|ml|cl|pz|pcs|un|conf)\b/gi, '') // weight/unit tokens
+    .replace(/\b(dop|igp|stg|bio|doc|docg)\b/gi, '') // certification labels
+    .replace(/[^a-z0-9\s]/g, ' ')               // remove special chars
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function calculateSimilarity(str1: string, str2: string): number {
   const s1 = str1.toLowerCase().trim();
   const s2 = str2.toLowerCase().trim();
 
   if (s1 === s2) return 100;
 
-  const longer = s1.length > s2.length ? s1 : s2;
-  const shorter = s1.length > s2.length ? s2 : s1;
+  // Also compare normalized versions
+  const n1 = normalizeForSimilarity(str1);
+  const n2 = normalizeForSimilarity(str2);
 
-  if (longer.length === 0) return 100;
+  if (n1 === n2 && n1.length > 3) return 98;
 
-  const editDistance = levenshteinDistance(longer, shorter);
-  return ((longer.length - editDistance) / longer.length) * 100;
+  // Token-based similarity helper
+  const tokenScore = (a: string, b: string): number => {
+    const ta = a.split(/\s+/).filter(t => t.length > 1);
+    const tb = b.split(/\s+/).filter(t => t.length > 1);
+    if (ta.length === 0 || tb.length === 0) return 0;
+    let matched = 0;
+    for (const t1 of ta) {
+      for (const t2 of tb) {
+        if (t1 === t2 || t1.startsWith(t2) || t2.startsWith(t1)) {
+          matched++;
+          break;
+        }
+      }
+    }
+    return (matched / Math.max(ta.length, tb.length)) * 100;
+  };
+
+  // Levenshtein score helper
+  const levenScore = (a: string, b: string): number => {
+    const longer = a.length > b.length ? a : b;
+    const shorter = a.length > b.length ? b : a;
+    if (longer.length === 0) return 100;
+    const dist = levenshteinDistance(longer, shorter);
+    return ((longer.length - dist) / longer.length) * 100;
+  };
+
+  // Compute scores across raw and normalized forms
+  const scores = [
+    tokenScore(s1, s2),
+    tokenScore(n1, n2),
+    tokenScore(n1, s2),
+    tokenScore(s1, n2),
+    levenScore(s1, s2),
+    levenScore(n1, n2),
+  ];
+
+  const best = Math.max(...scores);
+
+  // Boost: if normalized token overlap is very high, ensure we clear the threshold
+  const normTokenScore = tokenScore(n1, n2);
+  if (normTokenScore >= 80) return Math.max(best, 85);
+
+  // Fall back to best of levenshtein and token score on raw strings
+  const rawLevenScore = levenScore(s1, s2);
+  const rawTokenScore = tokenScore(s1, s2);
+
+  return Math.max(best, rawLevenScore, rawTokenScore);
 }
 
 /**
@@ -174,9 +241,25 @@ async function matchProduct(
     let bestMatch: MatchResult = { matched: false, confidence: 0 };
     let highestSimilarity = 0;
 
+    // Normalize invoice product name: remove trailing quantity patterns like "x 1", "x1", "x 2" etc.
+    const normalizeProductName = (name: string): string => {
+      return name
+        .replace(/\s*x\s*\d+\s*$/i, '')   // remove trailing "x 1", "x1", "x 2"
+        .replace(/\s*\d+\s*pz\s*$/i, '')   // remove trailing "2 pz"
+        .replace(/\s*nr\.?\s*\d+\s*$/i, '') // remove trailing "nr. 1"
+        .trim();
+    };
+    const normalizedInvoiceName = normalizeProductName(productName);
+
     for (const product of candidates) {
       // Exact name match
-      const similarity = calculateSimilarity(productName, product.name);
+      const normalizedProductName = normalizeProductName(product.name);
+      const similarity = Math.max(
+        calculateSimilarity(productName, product.name),
+        calculateSimilarity(normalizedInvoiceName, normalizedProductName),
+        calculateSimilarity(normalizedInvoiceName, product.name),
+        calculateSimilarity(productName, normalizedProductName)
+      );
 
       if (similarity === 100) {
         console.log(`✅ [MATCHER] Exact name match: "${productName}" → "${product.name}"`);

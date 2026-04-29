@@ -28,14 +28,14 @@ interface MatchResult {
 function calculateSimilarity(str1: string, str2: string): number {
   const s1 = str1.toLowerCase().trim();
   const s2 = str2.toLowerCase().trim();
-  
+
   if (s1 === s2) return 100;
-  
+
   const longer = s1.length > s2.length ? s1 : s2;
   const shorter = s1.length > s2.length ? s2 : s1;
-  
+
   if (longer.length === 0) return 100;
-  
+
   const editDistance = levenshteinDistance(longer, shorter);
   return ((longer.length - editDistance) / longer.length) * 100;
 }
@@ -45,15 +45,15 @@ function calculateSimilarity(str1: string, str2: string): number {
  */
 function levenshteinDistance(str1: string, str2: string): number {
   const matrix: number[][] = [];
-  
+
   for (let i = 0; i <= str2.length; i++) {
     matrix[i] = [i];
   }
-  
+
   for (let j = 0; j <= str1.length; j++) {
     matrix[0][j] = j;
   }
-  
+
   for (let i = 1; i <= str2.length; i++) {
     for (let j = 1; j <= str1.length; j++) {
       if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
@@ -67,12 +67,14 @@ function levenshteinDistance(str1: string, str2: string): number {
       }
     }
   }
-  
+
   return matrix[str2.length][str1.length];
 }
 
 /**
- * Match product by name and optional EAN code
+ * Match product by name, EAN/SKU code, supplier name, and code_description.
+ * Always filters by userId to prevent cross-user false matches.
+ * Optionally narrows by supplier name for better accuracy.
  */
 async function matchProduct(
   productName: string,
@@ -82,71 +84,125 @@ async function matchProduct(
   userId?: string
 ): Promise<MatchResult> {
   try {
-    let query = supabase.from('products').select('*');
-    if (userId) {
-      query = query.eq('user_id', userId);
-    }
-    const { data: existingProducts, error } = await query;
-
-    if (error) {
-      console.error('❌ Error matching product:', error);
+    if (!userId) {
+      console.warn('⚠️ [MATCHER] No userId provided — skipping match to avoid cross-user contamination');
       return { matched: false, confidence: 0 };
     }
 
-    if (!existingProducts || existingProducts.length === 0) {
-      return { matched: false, confidence: 0 };
+    // --- Step 1: Try exact match via code_description (scoped to user) ---
+    if (codeDescription && codeDescription.trim() !== '') {
+      const { data: codeMatches, error: codeError } = await supabase
+        .from('products')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('code_description', codeDescription.trim());
+
+      if (!codeError && codeMatches && codeMatches.length > 0) {
+        console.log(`✅ [MATCHER] Exact code_description match for "${codeDescription}": ${codeMatches[0].name}`);
+        return {
+          matched: true,
+          product: codeMatches[0] as Product,
+          confidence: 100,
+          matchType: 'exact',
+        };
+      }
     }
 
-    // Find best match
+    // --- Step 2: Try exact match via EAN/SKU code (scoped to user) ---
+    if (eanCode && eanCode.trim() !== '') {
+      const { data: eanMatches, error: eanError } = await supabase
+        .from('products')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('ean_code', eanCode.trim());
+
+      if (!eanError && eanMatches && eanMatches.length > 0) {
+        console.log(`✅ [MATCHER] Exact EAN/SKU match for "${eanCode}": ${eanMatches[0].name}`);
+        return {
+          matched: true,
+          product: eanMatches[0] as Product,
+          confidence: 100,
+          matchType: 'exact',
+        };
+      }
+    }
+
+    // --- Step 3: Fuzzy name match — prefer supplier-scoped products first ---
+    // Build candidate list: supplier-scoped first, then all user products as fallback
+    let candidates: Product[] = [];
+
+    if (supplierName && supplierName.trim() !== '') {
+      // Try to find the supplier id by name
+      const { data: supplierRows } = await supabase
+        .from('suppliers')
+        .select('id')
+        .eq('user_id', userId)
+        .ilike('name', supplierName.trim());
+
+      if (supplierRows && supplierRows.length > 0) {
+        const supplierIds = supplierRows.map((s: { id: string }) => s.id);
+        const { data: supplierProducts, error: spError } = await supabase
+          .from('products')
+          .select('*')
+          .eq('user_id', userId)
+          .in('supplier_id', supplierIds);
+
+        if (!spError && supplierProducts && supplierProducts.length > 0) {
+          candidates = supplierProducts as Product[];
+          console.log(`🔍 [MATCHER] Supplier-scoped candidates for "${supplierName}": ${candidates.length}`);
+        }
+      }
+    }
+
+    // If no supplier-scoped candidates, fall back to all user products
+    if (candidates.length === 0) {
+      const { data: allProducts, error: allError } = await supabase
+        .from('products')
+        .select('*')
+        .eq('user_id', userId);
+
+      if (allError || !allProducts || allProducts.length === 0) {
+        console.warn('⚠️ [MATCHER] No products found for user', userId);
+        return { matched: false, confidence: 0 };
+      }
+      candidates = allProducts as Product[];
+      console.log(`🔍 [MATCHER] Fallback to all user products: ${candidates.length}`);
+    }
+
+    // --- Fuzzy name matching with threshold 70% ---
+    const FUZZY_THRESHOLD = 70;
     let bestMatch: MatchResult = { matched: false, confidence: 0 };
     let highestSimilarity = 0;
 
-    for (const product of existingProducts) {
-      // Exact match by EAN code (if provided)
-      if (eanCode && product.ean_code && eanCode === product.ean_code) {
-        return {
-          matched: true,
-          product,
-          confidence: 100,
-          matchType: 'exact'
-        };
-      }
-
-      // Exact match by code_description (product code from invoice)
-      if (
-        codeDescription && codeDescription.trim() !== '' && product.code_description && product.code_description.trim() !== '' && codeDescription.trim() === product.code_description.trim()
-      ) {
-        return {
-          matched: true,
-          product,
-          confidence: 100,
-          matchType: 'exact'
-        };
-      }
-
-      // Match by name similarity
-      const similarity = calculateSimilarity(productName, product.name);
-      
+    for (const product of candidates) {
       // Exact name match
+      const similarity = calculateSimilarity(productName, product.name);
+
       if (similarity === 100) {
+        console.log(`✅ [MATCHER] Exact name match: "${productName}" → "${product.name}"`);
         return {
           matched: true,
           product,
           confidence: 100,
-          matchType: 'exact'
+          matchType: 'exact',
         };
       }
-      
-      // Fuzzy match: >= 60% similarity
-      if (similarity >= 60 && similarity > highestSimilarity) {
+
+      if (similarity >= FUZZY_THRESHOLD && similarity > highestSimilarity) {
         highestSimilarity = similarity;
         bestMatch = {
           matched: true,
           product,
           confidence: Math.round(similarity),
-          matchType: 'fuzzy'
+          matchType: 'fuzzy',
         };
       }
+    }
+
+    if (bestMatch.matched) {
+      console.log(`🔶 [MATCHER] Fuzzy match (${bestMatch.confidence}%): "${productName}" → "${bestMatch.product?.name}"`);
+    } else {
+      console.log(`❌ [MATCHER] No match found for "${productName}" (best similarity: ${Math.round(highestSimilarity)}%)`);
     }
 
     return bestMatch;
@@ -176,7 +232,6 @@ export async function matchProductBySupplier(
   supplierId: string
 ): Promise<MatchResult> {
   try {
-    // CRITICAL FIX: Use correct table name 'products' and correct column 'supplier_id'
     const { data: existingProducts, error } = await supabase
       .from('products')
       .select('*')
@@ -192,29 +247,29 @@ export async function matchProductBySupplier(
       return { matched: false, confidence: 0 };
     }
 
-    // Find best match
+    const FUZZY_THRESHOLD = 70;
     let bestMatch: MatchResult = { matched: false, confidence: 0 };
     let highestSimilarity = 0;
 
     for (const product of existingProducts) {
       const similarity = calculateSimilarity(extractedProduct.name, product.name);
-      
+
       if (similarity === 100) {
         return {
           matched: true,
           product,
           confidence: 100,
-          matchType: 'exact'
+          matchType: 'exact',
         };
       }
-      
-      if (similarity >= 60 && similarity > highestSimilarity) {
+
+      if (similarity >= FUZZY_THRESHOLD && similarity > highestSimilarity) {
         highestSimilarity = similarity;
         bestMatch = {
           matched: true,
           product,
           confidence: Math.round(similarity),
-          matchType: 'fuzzy'
+          matchType: 'fuzzy',
         };
       }
     }
@@ -230,7 +285,7 @@ export async function matchProductBySupplier(
 export const ProductMatcher = {
   matchProduct,
   matchProductByName,
-  matchProductBySupplier
+  matchProductBySupplier,
 };
 
 // Re-export matchProduct type for callers
@@ -239,5 +294,5 @@ export type { MatchResult };
 export default {
   matchProduct,
   matchProductByName,
-  matchProductBySupplier
+  matchProductBySupplier,
 };

@@ -100,6 +100,16 @@ export interface ExtractedInvoiceItem {
   vatRate?: number;
   sku?: string;
   code_description?: string;
+  originalPrice?: number;
+  discountPercent?: number;
+  // Match result fields (populated after matching against DB products)
+  matchedProductId?: string;
+  matchScore?: number;
+  matchStatus?: 'matched' | 'partial' | 'new';
+  priceChanged?: boolean;
+  oldPrice?: number;
+  priceChangePercent?: number;
+  updated_at?: string;
 }
 
 interface KlippaProduct {

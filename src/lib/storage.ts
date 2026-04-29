@@ -901,6 +901,7 @@ export const getProductById = async (productId: string): Promise<Product | null>
       discount_percent: data.discount_percent,
       discount_amount: data.discount_amount || 0,
       price_difference: data.price_difference || 0,
+      previous_price: data.previous_price || 0,
       code_description: data.code_description || '',
       updated_at: data.updated_at || data.created_at || new Date().toISOString(),
     } : null;
@@ -1340,6 +1341,10 @@ export const updateProduct = async (id: string, updates: Partial<Product>): Prom
       dbUpdates.price = updates.price;
       dbUpdates.price_difference = priceDifference;
       dbUpdates.updated_at = new Date().toISOString();
+      // ✅ FIX: persist previous_price so the DB always shows old vs new price
+      if (oldProduct && oldProduct.price > 0 && updates.price !== oldProduct.price) {
+        dbUpdates.previous_price = oldProduct.price;
+      }
     }
     if (updates.category !== undefined) dbUpdates.category = updates.category || '';
     if (extUpdates.unit_price !== undefined) dbUpdates.unit_price = extUpdates.unit_price;

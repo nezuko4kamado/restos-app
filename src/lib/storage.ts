@@ -447,11 +447,17 @@ export const checkProductLimitDetailed = async (): Promise<LimitCheckResult> => 
       .eq('user_id', user.id)
       .single();
 
-    // Default to free tier limits if no subscription record
-    const productsLimit = subData?.products_limit ?? 20;
+    // If no subscription record found (PGRST116 = no rows), treat as unlimited
+    if (subError && (subError.code === 'PGRST116' || !subData)) {
+      console.warn('⚠️ No subscription record found for user, treating products as unlimited');
+      return unlimited;
+    }
+
+    const productsLimit = subData?.products_limit ?? -1;
 
     if (subError) {
-      console.warn('⚠️ Could not fetch subscription, using free tier limit (20):', subError.message);
+      console.warn('⚠️ Could not fetch subscription, treating as unlimited:', subError.message);
+      return unlimited;
     }
 
     // Unlimited plan
@@ -530,11 +536,18 @@ export const checkInvoiceLimitDetailed = async (): Promise<LimitCheckResult> => 
       .eq('user_id', user.id)
       .single();
 
-    const invoicesLimit = subData?.invoices_limit ?? 10;
+    // If no subscription record found (PGRST116 = no rows), treat as unlimited
+    if (subError && (subError.code === 'PGRST116' || !subData)) {
+      console.warn('⚠️ No subscription record found for user, treating as unlimited');
+      return unlimited;
+    }
+
+    const invoicesLimit = subData?.invoices_limit ?? -1;
     const subscriptionType = subData?.subscription_type ?? 'free';
 
     if (subError) {
-      console.warn('⚠️ Could not fetch subscription, using free tier limit (10):', subError.message);
+      console.warn('⚠️ Could not fetch subscription, treating as unlimited:', subError.message);
+      return unlimited;
     }
 
     // Unlimited plan

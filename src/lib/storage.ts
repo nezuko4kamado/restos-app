@@ -40,7 +40,7 @@ interface ProductWithExtendedFields extends Product {
 
 // ✅ OPTIMIZED: Select only essential columns + price_difference + code_description + updated_at
 // NOTE: price_history_data is NOT a DB column — it is managed in-memory only
-const PRODUCT_DB_COLUMNS = 'id,name,price,category,supplier_id,vat_rate,unit,discount_percent,discount_amount,unit_price,discounted_price,price_difference,code_description,created_at,updated_at';
+const PRODUCT_DB_COLUMNS = 'id,name,price,previous_price,category,supplier_id,vat_rate,unit,discount_percent,discount_amount,unit_price,discounted_price,price_difference,code_description,created_at,updated_at';
 // Minimal fallback columns in case some optional columns don't exist
 const PRODUCT_DB_COLUMNS_MINIMAL = 'id,name,price,category,supplier_id,vat_rate,unit,created_at,updated_at';
 
@@ -997,6 +997,7 @@ export const batchUpdateProducts = async (updates: { id: string; updates: Partia
 
         if (oldPrice && oldPrice > 0 && newPrice !== oldPrice) {
           const percentageChange = ((newPrice - oldPrice) / oldPrice) * 100;
+          dbUpdate.previous_price = oldPrice;
           dbUpdate.price_difference = Math.round(percentageChange * 100) / 100;
 
           console.log(`💰 [PRICE DIFF] Product ${id}:`);
@@ -1053,6 +1054,7 @@ export const batchUpdateProducts = async (updates: { id: string; updates: Partia
       discount_percent: product.discount_percent,
       discount_amount: product.discount_amount || 0,
       price_difference: product.price_difference || 0,
+      previous_price: product.previous_price || 0,
       code_description: product.code_description || '',
       // price_history_data is in-memory only — not stored in DB
       price_history_data: [],

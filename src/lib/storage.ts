@@ -2235,6 +2235,11 @@ export const addInvoice = async (invoice: Omit<Invoice, 'id'>): Promise<Invoice 
       }
     }
 
+    // Bug 1 fix: fall back to invoice.supplier_name if lookup didn't resolve a name
+    if (supplierName === 'Unknown Supplier' && invoice.supplier_name && invoice.supplier_name.trim() !== '') {
+      supplierName = invoice.supplier_name.trim();
+    }
+
     const itemsJsonb = typeof invoice.items === 'string' 
       ? JSON.parse(invoice.items) 
       : invoice.items;
@@ -2243,11 +2248,14 @@ export const addInvoice = async (invoice: Omit<Invoice, 'id'>): Promise<Invoice 
 
     const dbInvoice = {
       user_id: user.id,
-      invoice_number: invoice.invoice_number,
+      // Bug 4 fix: support both invoice_number and invoiceNumber
+      invoice_number: (invoice as Record<string, unknown>).invoice_number as string ?? (invoice as Record<string, unknown>).invoiceNumber as string ?? '',
       supplier_name: supplierName,
       date: isoDate,
-      total_amount: parseFloat(String(invoice.amount)),
-      is_paid: invoice.paid || false,
+      // Bug 3 fix: support both total_amount and amount
+      total_amount: parseFloat(String((invoice as Record<string, unknown>).total_amount ?? invoice.amount ?? 0)),
+      // Bug 2 fix: support is_paid, isPaid and paid
+      is_paid: (invoice as Record<string, unknown>).is_paid as boolean ?? (invoice as Record<string, unknown>).isPaid as boolean ?? (invoice as Record<string, unknown>).paid as boolean ?? false,
       payment_date: null,
       notes: '',
       items: itemsJsonb,

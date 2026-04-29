@@ -45,7 +45,7 @@ const PRODUCT_DB_COLUMNS = 'id,name,price,previous_price,category,supplier_id,va
 const PRODUCT_DB_COLUMNS_MINIMAL = 'id,name,price,category,supplier_id,vat_rate,unit,created_at,updated_at';
 
 // CRITICAL: Define the actual invoice table name
-const INVOICES_TABLE = 'invoices';
+const INVOICES_TABLE = 'app_43909_invoices';
 // ✅ EXPORTED so other modules can reference the correct table name
 export const PRODUCTS_TABLE = 'products';
 
@@ -2758,7 +2758,7 @@ export const clearAllData = async (): Promise<boolean> => {
       'suppliers',
       'user_settings',
       PRODUCT_COMPATIBILITY_TABLE,
-      'price_history_data',
+      'app_43909_price_history',
     ];
 
     for (const table of tables) {

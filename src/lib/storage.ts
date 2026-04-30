@@ -40,12 +40,12 @@ interface ProductWithExtendedFields extends Product {
 
 // ✅ OPTIMIZED: Select only essential columns + price_difference + code_description + updated_at
 // NOTE: price_history_data is NOT a DB column — it is managed in-memory only
-const PRODUCT_DB_COLUMNS = 'id,name,price,previous_price,category,supplier_id,vat_rate,unit,discount_percent,discount_amount,unit_price,discounted_price,price_difference,code_description,created_at,updated_at';
+const PRODUCT_DB_COLUMNS = 'id,name,price,category,supplier_id,vat_rate,unit,discount_percent,discount_amount,unit_price,discounted_price,price_difference,code_description,created_at,updated_at';
 // Minimal fallback columns in case some optional columns don't exist
 const PRODUCT_DB_COLUMNS_MINIMAL = 'id,name,price,category,supplier_id,vat_rate,unit,created_at,updated_at';
 
 // CRITICAL: Define the actual invoice table name
-const INVOICES_TABLE = 'app_43909_invoices';
+const INVOICES_TABLE = 'invoices';
 // ✅ EXPORTED so other modules can reference the correct table name
 export const PRODUCTS_TABLE = 'products';
 
@@ -447,17 +447,11 @@ export const checkProductLimitDetailed = async (): Promise<LimitCheckResult> => 
       .eq('user_id', user.id)
       .single();
 
-    // If no subscription record found (PGRST116 = no rows), treat as unlimited
-    if (subError && (subError.code === 'PGRST116' || !subData)) {
-      console.warn('⚠️ No subscription record found for user, treating products as unlimited');
-      return unlimited;
-    }
-
-    const productsLimit = subData?.products_limit ?? -1;
+    // Default to free tier limits if no subscription record
+    const productsLimit = subData?.products_limit ?? 20;
 
     if (subError) {
-      console.warn('⚠️ Could not fetch subscription, treating as unlimited:', subError.message);
-      return unlimited;
+      console.warn('⚠️ Could not fetch subscription, using free tier limit (20):', subError.message);
     }
 
     // Unlimited plan
@@ -536,18 +530,11 @@ export const checkInvoiceLimitDetailed = async (): Promise<LimitCheckResult> => 
       .eq('user_id', user.id)
       .single();
 
-    // If no subscription record found (PGRST116 = no rows), treat as unlimited
-    if (subError && (subError.code === 'PGRST116' || !subData)) {
-      console.warn('⚠️ No subscription record found for user, treating as unlimited');
-      return unlimited;
-    }
-
-    const invoicesLimit = subData?.invoices_limit ?? -1;
+    const invoicesLimit = subData?.invoices_limit ?? 10;
     const subscriptionType = subData?.subscription_type ?? 'free';
 
     if (subError) {
-      console.warn('⚠️ Could not fetch subscription, treating as unlimited:', subError.message);
-      return unlimited;
+      console.warn('⚠️ Could not fetch subscription, using free tier limit (10):', subError.message);
     }
 
     // Unlimited plan
@@ -914,7 +901,6 @@ export const getProductById = async (productId: string): Promise<Product | null>
       discount_percent: data.discount_percent,
       discount_amount: data.discount_amount || 0,
       price_difference: data.price_difference || 0,
-      previous_price: data.previous_price || 0,
       code_description: data.code_description || '',
       updated_at: data.updated_at || data.created_at || new Date().toISOString(),
     } : null;
@@ -1011,7 +997,6 @@ export const batchUpdateProducts = async (updates: { id: string; updates: Partia
 
         if (oldPrice && oldPrice > 0 && newPrice !== oldPrice) {
           const percentageChange = ((newPrice - oldPrice) / oldPrice) * 100;
-          dbUpdate.previous_price = oldPrice;
           dbUpdate.price_difference = Math.round(percentageChange * 100) / 100;
 
           console.log(`💰 [PRICE DIFF] Product ${id}:`);
@@ -1068,7 +1053,6 @@ export const batchUpdateProducts = async (updates: { id: string; updates: Partia
       discount_percent: product.discount_percent,
       discount_amount: product.discount_amount || 0,
       price_difference: product.price_difference || 0,
-      previous_price: product.previous_price || 0,
       code_description: product.code_description || '',
       // price_history_data is in-memory only — not stored in DB
       price_history_data: [],
@@ -1354,10 +1338,6 @@ export const updateProduct = async (id: string, updates: Partial<Product>): Prom
       dbUpdates.price = updates.price;
       dbUpdates.price_difference = priceDifference;
       dbUpdates.updated_at = new Date().toISOString();
-      // ✅ FIX: persist previous_price so the DB always shows old vs new price
-      if (oldProduct && oldProduct.price > 0 && updates.price !== oldProduct.price) {
-        dbUpdates.previous_price = oldProduct.price;
-      }
     }
     if (updates.category !== undefined) dbUpdates.category = updates.category || '';
     if (extUpdates.unit_price !== undefined) dbUpdates.unit_price = extUpdates.unit_price;
@@ -2248,11 +2228,6 @@ export const addInvoice = async (invoice: Omit<Invoice, 'id'>): Promise<Invoice 
       }
     }
 
-    // Bug 1 fix: fall back to invoice.supplier_name if lookup didn't resolve a name
-    if (supplierName === 'Unknown Supplier' && invoice.supplier_name && invoice.supplier_name.trim() !== '') {
-      supplierName = invoice.supplier_name.trim();
-    }
-
     const itemsJsonb = typeof invoice.items === 'string' 
       ? JSON.parse(invoice.items) 
       : invoice.items;
@@ -2261,14 +2236,11 @@ export const addInvoice = async (invoice: Omit<Invoice, 'id'>): Promise<Invoice 
 
     const dbInvoice = {
       user_id: user.id,
-      // Bug 4 fix: support both invoice_number and invoiceNumber
-      invoice_number: (invoice as Record<string, unknown>).invoice_number as string ?? (invoice as Record<string, unknown>).invoiceNumber as string ?? '',
+      invoice_number: invoice.invoice_number,
       supplier_name: supplierName,
       date: isoDate,
-      // Bug 3 fix: support both total_amount and amount
-      total_amount: parseFloat(String((invoice as Record<string, unknown>).total_amount ?? invoice.amount ?? 0)),
-      // Bug 2 fix: support is_paid, isPaid and paid
-      is_paid: (invoice as Record<string, unknown>).is_paid as boolean ?? (invoice as Record<string, unknown>).isPaid as boolean ?? (invoice as Record<string, unknown>).paid as boolean ?? false,
+      total_amount: parseFloat(String(invoice.amount)),
+      is_paid: invoice.paid || false,
       payment_date: null,
       notes: '',
       items: itemsJsonb,

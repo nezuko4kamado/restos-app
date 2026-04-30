@@ -772,10 +772,5 @@
   "demoActionBlocked": "Azione non disponibile in Modalità Demo",
   "demoRegisterPrompt": "Crea un account gratuito per salvare i tuoi dati e accedere a tutte le funzionalità.",
   "exitDemo": "Esci dalla Demo",
-  "transferProduct": "Trasferisci Prodotto",
-  "startFreeNow": "Inizia subito gratuitamente",
-  "noHiddenCosts": "Nessun costo nascosto",
-  "priceNotUpdatedOlderInvoice": "prezzo non aggiornato (fattura più vecchia dell'ultimo aggiornamento)",
-  "skippedOlderInvoice": "saltati (fattura più vecchia)",
-  "allSkippedOlderInvoice": "Nessun prezzo aggiornato: la data della fattura è precedente ai prezzi attuali. Carica una fattura più recente per aggiornare i prezzi."
+  "transferProduct": "Trasferisci Prodotto"
 }

@@ -53,7 +53,7 @@ interface TranslationFunction {
 function getProductPriceHistory(product: Product | Partial<Product>): Array<{ price: number; date: string; reason?: string }> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const p = product as any;
-  return p.priceHistory || p.price_history_data || [];
+  return p.priceHistory || p.price_history || [];
 }
 
 const ProductCard = memo(({ 
@@ -337,7 +337,7 @@ export default function ProductsSectionEnhanced({
           date: new Date().toISOString(),
           reason: t('productCreated') || 'Product created'
         }],
-        price_history_data: [{
+        price_history: [{
           price: newProduct.price,
           date: new Date().toISOString(),
         }],
@@ -426,9 +426,10 @@ export default function ProductsSectionEnhanced({
         // ✅ Write to both camelCase (runtime) and snake_case (DB type) for consistency
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (updates as any).priceHistory = newHistory;
-        updates.price_history_data = newHistory.map(h => ({ price: h.price, date: h.date }));
+        updates.price_history = newHistory.map(h => ({ price: h.price, date: h.date }));
         
         updates.original_price = currentProduct.price;
+        updates.last_price_change = new Date().toISOString();
         
         const changePercent = ((editingProduct.price! - currentProduct.price) / currentProduct.price) * 100;
         const direction = changePercent > 0 ? (t('priceIncreased') || 'Price increased') : (t('priceDecreased') || 'Price decreased');
@@ -872,11 +873,10 @@ export default function ProductsSectionEnhanced({
 
         if (existingProduct) {
           {
-            // ✅ ALWAYS update product from invoice — including 0 price (100% discount)
+            // ✅ FIX: Always update product from invoice — including 0 price (100% discount)
             const existingHistory = getProductPriceHistory(existingProduct);
             
-            // ✅ FIX: If history is empty, seed with old price first so PriceChangeIndicator
-            // has at least 2 entries to calculate the change percentage
+            // ✅ FIX: If history is empty, seed with old price first
             let newHistory: Array<{ price: number; date: string; reason?: string }>;
             if (existingHistory.length === 0) {
               newHistory = [
@@ -913,7 +913,7 @@ export default function ProductsSectionEnhanced({
               category: productCategory,
               code_description: productCodeDescription,
               notes: extracted.discount_percent > 0 ? `${t('discount') || 'Discount'} ${extracted.discount_percent}%` : existingProduct.notes,
-              price_history_data: newHistory.map(h => ({ price: h.price, date: h.date })),
+              price_history: newHistory.map(h => ({ price: h.price, date: h.date })),
               updated_at: new Date().toISOString(),
             };
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -956,7 +956,7 @@ export default function ProductsSectionEnhanced({
             code_description: productCodeDescription,  // ✅ NEW: Include code_description
             notes: extracted.discount_percent > 0 ? `${t('discount') || 'Discount'} ${extracted.discount_percent}%` : '',
             priceHistory: initialHistory,
-            price_history_data: initialHistory.map(h => ({ price: h.price, date: h.date })),
+            price_history: initialHistory.map(h => ({ price: h.price, date: h.date })),
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           };
@@ -1016,27 +1016,12 @@ export default function ProductsSectionEnhanced({
         }
       }
 
-      // ✅ Build a map of updates by id so we can merge priceHistory into DB results
-      const updatesMap = new Map<string, Partial<Product>>();
-      for (const { id, updates: u } of productsToUpdate) {
-        updatesMap.set(id, u);
-      }
-
       // BATCH UPDATE: All updates at once
       if (productsToUpdate.length > 0) {
         console.log(`🔄 [UPLOAD] Calling batchUpdateProducts with ${productsToUpdate.length} products`);
         const batchUpdated = await batchUpdateProducts(productsToUpdate);
         console.log(`✅ [UPLOAD] batchUpdateProducts returned ${batchUpdated.length} products`);
         for (const updated of batchUpdated) {
-          // ✅ FIX: Merge priceHistory from updates into DB result (DB does not return priceHistory)
-          const localUpdates = updatesMap.get(updated.id);
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const mergedHistory = (localUpdates as any)?.priceHistory || localUpdates?.price_history_data;
-          if (mergedHistory) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (updated as any).priceHistory = mergedHistory;
-            updated.price_history_data = mergedHistory.map((h: { price: number; date: string }) => ({ price: h.price, date: h.date }));
-          }
           savedProducts.push(updated);
         }
       }
@@ -1049,18 +1034,7 @@ export default function ProductsSectionEnhanced({
       for (const savedProduct of savedProducts) {
         const index = updatedProductsList.findIndex(p => p.id === savedProduct.id);
         if (index !== -1) {
-          // ✅ FIX: Merge instead of overwrite — preserve priceHistory from local updates
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const existingHistory = (updatedProductsList[index] as any).priceHistory || updatedProductsList[index].price_history_data;
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const incomingHistory = (savedProduct as any).priceHistory || savedProduct.price_history_data;
-          const finalHistory = incomingHistory || existingHistory;
-          updatedProductsList[index] = { ...updatedProductsList[index], ...savedProduct };
-          if (finalHistory) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (updatedProductsList[index] as any).priceHistory = finalHistory;
-            updatedProductsList[index].price_history_data = (finalHistory as Array<{ price: number; date: string }>).map(h => ({ price: h.price, date: h.date }));
-          }
+          updatedProductsList[index] = savedProduct;
         } else {
           updatedProductsList.push(savedProduct);
         }

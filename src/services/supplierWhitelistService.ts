@@ -15,7 +15,7 @@ export class SupplierWhitelistService {
       if (!user) throw new Error('User not authenticated');
 
       const { data, error } = await supabase
-        .from('supplier_whitelist')
+        .from('app_43909_supplier_whitelist')
         .insert({
           user_id: user.id,
           supplier_name: supplierName,
@@ -43,7 +43,7 @@ export class SupplierWhitelistService {
       if (!user) return [];
 
       let query = supabase
-        .from('supplier_whitelist')
+        .from('app_43909_supplier_whitelist')
         .select('*')
         .eq('user_id', user.id)
         .order('priority', { ascending: false })
@@ -71,7 +71,7 @@ export class SupplierWhitelistService {
       if (!user) return false;
 
       const { data, error } = await supabase
-        .from('supplier_whitelist')
+        .from('app_43909_supplier_whitelist')
         .select('id')
         .eq('user_id', user.id)
         .eq('supplier_name', supplierName)
@@ -98,7 +98,7 @@ export class SupplierWhitelistService {
       if (!user) return null;
 
       const { data, error } = await supabase
-        .from('supplier_whitelist')
+        .from('app_43909_supplier_whitelist')
         .update(updates)
         .eq('id', id)
         .eq('user_id', user.id)
@@ -123,7 +123,7 @@ export class SupplierWhitelistService {
 
       // Get current status
       const { data: current } = await supabase
-        .from('supplier_whitelist')
+        .from('app_43909_supplier_whitelist')
         .select('is_active')
         .eq('id', id)
         .eq('user_id', user.id)
@@ -133,7 +133,7 @@ export class SupplierWhitelistService {
 
       // Toggle status
       const { error } = await supabase
-        .from('supplier_whitelist')
+        .from('app_43909_supplier_whitelist')
         .update({ is_active: !current.is_active })
         .eq('id', id)
         .eq('user_id', user.id);
@@ -155,7 +155,7 @@ export class SupplierWhitelistService {
       if (!user) return false;
 
       const { error } = await supabase
-        .from('supplier_whitelist')
+        .from('app_43909_supplier_whitelist')
         .delete()
         .eq('id', id)
         .eq('user_id', user.id);
@@ -177,7 +177,7 @@ export class SupplierWhitelistService {
       if (!user) return 0;
 
       const { data, error } = await supabase
-        .from('supplier_whitelist')
+        .from('app_43909_supplier_whitelist')
         .select('priority')
         .eq('user_id', user.id)
         .eq('supplier_name', supplierName)

@@ -14,7 +14,7 @@ export interface Product {
   original_price?: number;
   discount?: number;
   notes?: string;
-  price_history_data?: Array<{ price: number; date: string }>;
+  price_history?: Array<{ price: number; date: string }>;
   last_price_change?: string;
   created_at: string;
   updated_at: string;

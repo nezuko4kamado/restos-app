@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -119,6 +119,8 @@ export function SettingsSection({ settings, onSettingsUpdate }: SettingsSectionP
     // Use trimmed comparison to avoid whitespace mismatches from DB storage
     const currentWhatsapp = (localSettings.messageTemplates?.whatsapp || '').trim();
     const currentEmail = (localSettings.messageTemplates?.email || '').trim();
+    const oldWhatsappTrimmed = oldDefaultTemplates.whatsapp.trim();
+    const oldEmailTrimmed = oldDefaultTemplates.email.trim();
     
     // Also check against ALL language defaults - if the template matches any language's default,
     // it should be considered "not customized" and should be updated
@@ -139,13 +141,13 @@ export function SettingsSection({ settings, onSettingsUpdate }: SettingsSectionP
 
     const updatedSettings = { ...localSettings, language: newLanguage, messageTemplates: updatedTemplates };
     setLocalSettings(updatedSettings);
-
-    // ✅ FIX: Update i18n context IMMEDIATELY (before async save) so UI re-renders right away
-    setI18nLanguage(newLanguage as Language);
     
     try {
-      // Save to storage
+      // First save to storage
       await saveSettings(updatedSettings);
+      
+      // Then update i18n context
+      setI18nLanguage(newLanguage as Language);
       
       if (onSettingsUpdate) {
         onSettingsUpdate(updatedSettings);
@@ -352,6 +354,9 @@ export function SettingsSection({ settings, onSettingsUpdate }: SettingsSectionP
     setIsDeleting(true);
     try {
       if (isSupabaseConfigured() && user) {
+        // Call the delete_user edge function which will:
+        // 1. Delete user data from user_subscriptions
+        // 2. Delete the user from auth.users using admin API
         const { data, error: fnError } = await supabase.functions.invoke('delete_user', {
           method: 'POST',
         });
@@ -363,6 +368,7 @@ export function SettingsSection({ settings, onSettingsUpdate }: SettingsSectionP
           return;
         }
 
+        // Check the response from the edge function
         if (data && !data.success) {
           console.error('delete_user function returned error:', data.error);
           toast.error(t('settingsSection.deleteAccountError'));
@@ -370,20 +376,25 @@ export function SettingsSection({ settings, onSettingsUpdate }: SettingsSectionP
           return;
         }
 
+        // Sign out locally after successful deletion
         try {
           await supabase.auth.signOut();
         } catch {
+          // User is already deleted from auth, signOut might fail - that's OK
           console.log('SignOut after deletion (expected to potentially fail)');
         }
       }
 
+      // Clear local data
       localStorage.clear();
 
       toast.success(t('settingsSection.deleteAccountSuccess'));
 
+      // Close dialog and reset state
       setDeleteDialogOpen(false);
       setDeleteConfirmWord('');
 
+      // Reload the page to reset app state
       setTimeout(() => {
         window.location.reload();
       }, 1500);
@@ -410,13 +421,33 @@ export function SettingsSection({ settings, onSettingsUpdate }: SettingsSectionP
           </div>
         </CardHeader>
         <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6">
+          {/* Country - Hidden: users can change currency directly */}
+          {/* <div className="space-y-2">
+            <Label htmlFor="country" className="text-sm sm:text-base font-semibold text-gray-700 dark:text-gray-300">
+              {t('settingsSection.country')}
+            </Label>
+            <Select value={localSettings.country} onValueChange={handleCountryChange}>
+              <SelectTrigger id="country" className="w-full border-2 border-purple-100 dark:border-purple-800 focus:border-purple-300 transition-colors">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="IT">{t('settingsSection.italy')}</SelectItem>
+                <SelectItem value="ES">{t('settingsSection.spain')}</SelectItem>
+                <SelectItem value="FR">{t('settingsSection.france')}</SelectItem>
+                <SelectItem value="DE">{t('settingsSection.germany')}</SelectItem>
+                <SelectItem value="GB">{t('settingsSection.uk')}</SelectItem>
+                <SelectItem value="LT">{t('settingsSection.lithuania')}</SelectItem>
+                <SelectItem value="US">{t('settingsSection.usa')}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div> */}
+
           {/* Language */}
           <div className="space-y-2">
             <Label htmlFor="language" className="text-sm sm:text-base font-semibold text-gray-700 dark:text-gray-300">
               {t('settingsSection.language')}
             </Label>
-            {/* ✅ FIX: use currentLanguage from i18n context as the controlled value */}
-            <Select value={currentLanguage} onValueChange={handleLanguageChange}>
+            <Select value={localSettings.language} onValueChange={handleLanguageChange}>
               <SelectTrigger id="language" className="w-full border-2 border-purple-100 dark:border-purple-800 focus:border-purple-300 transition-colors">
                 <SelectValue />
               </SelectTrigger>

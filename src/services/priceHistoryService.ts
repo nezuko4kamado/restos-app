@@ -24,7 +24,7 @@ export class PriceHistoryService {
       }
 
       const { data, error } = await supabase
-        .from('price_history')
+        .from('app_43909_price_history')
         .insert({
           user_id: user.id,
           product_id: productId,
@@ -58,7 +58,7 @@ export class PriceHistoryService {
       if (!user) return [];
 
       let query = supabase
-        .from('price_history')
+        .from('app_43909_price_history')
         .select('*')
         .eq('user_id', user.id)
         .eq('product_id', productId)
@@ -92,7 +92,7 @@ export class PriceHistoryService {
       cutoffDate.setDate(cutoffDate.getDate() - daysBack);
 
       const { data, error } = await supabase
-        .from('price_history')
+        .from('app_43909_price_history')
         .select('*')
         .eq('user_id', user.id)
         .gte('change_date', cutoffDate.toISOString())
@@ -136,7 +136,7 @@ export class PriceHistoryService {
       if (!user) return [];
 
       const { data, error } = await supabase
-        .from('price_history')
+        .from('app_43909_price_history')
         .select('*')
         .eq('user_id', user.id)
         .eq('supplier_name', supplierName)
@@ -163,7 +163,7 @@ export class PriceHistoryService {
       if (!user) return 0;
 
       const { data, error } = await supabase
-        .from('price_history')
+        .from('app_43909_price_history')
         .select('price_change_percent')
         .eq('user_id', user.id)
         .gte('change_date', startDate)
@@ -196,7 +196,7 @@ export class PriceHistoryService {
 
       // Get current product
       const { data: product } = await supabase
-        .from('products')
+        .from('app_43909_products')
         .select('price_history_data')
         .eq('id', productId)
         .eq('user_id', user.id)
@@ -218,7 +218,7 @@ export class PriceHistoryService {
 
       // Update product
       await supabase
-        .from('products')
+        .from('app_43909_products')
         .update({ price_history_data: trimmedHistory })
         .eq('id', productId)
         .eq('user_id', user.id);

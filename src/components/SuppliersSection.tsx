@@ -23,8 +23,6 @@ import type { InvoiceDataExtracted } from '@/lib/ocrService';
 import { InvoiceService } from '@/lib/invoiceService';
 import { formatPrice } from '@/lib/currency';
 
-import type { PriceAlert } from '@/lib/priceAlertService';
-
 interface SuppliersSectionProps {
   suppliers: Supplier[];
   setSuppliers: React.Dispatch<React.SetStateAction<Supplier[]>>;
@@ -36,7 +34,6 @@ interface SuppliersSectionProps {
   settings: Settings;
   pendingInvoice?: { supplierId: string; file: File; invoiceData?: InvoiceDataExtracted } | null;
   onInvoiceProcessed?: () => void;
-  onPriceAlertsUpdate?: (alerts: PriceAlert[]) => void;
 }
 
 interface SupplierWithVat extends Supplier {
@@ -53,8 +50,7 @@ export default function SuppliersSection({
   language,
   settings,
   pendingInvoice,
-  onInvoiceProcessed,
-  onPriceAlertsUpdate,
+  onInvoiceProcessed
 }: SuppliersSectionProps) {
   const t = useTranslations(language);
   const currency = settings.defaultCurrency || 'EUR';
@@ -447,7 +443,7 @@ export default function SuppliersSection({
         console.log('✅ Product updated in Supabase:', updatedProduct.id);
         
         // Update local state
-        setProducts(prev => prev.map(p => p.id === productId ? updatedProduct : p));
+        setProducts(products.map(p => p.id === productId ? updatedProduct : p));
       }
     } catch (error) {
       console.error('❌ Error updating product:', error);
@@ -457,7 +453,7 @@ export default function SuppliersSection({
 
   const handleUpdateProducts = () => {
     // Trigger a refresh by updating the products state
-    setProducts(prev => [...prev]);
+    setProducts([...products]);
   };
 
   const handleCloseInvoiceDialog = () => {
@@ -1209,7 +1205,6 @@ export default function SuppliersSection({
               setSuppliers([...suppliers, newSupplier]);
               return newSupplier;
             }}
-            onPriceAlertsUpdate={onPriceAlertsUpdate}
             isOpen={true}
             onClose={handleCloseInvoiceDialog}
             pendingInvoiceFile={pendingInvoice?.supplierId === invoiceDialogSupplierId ? pendingInvoice.file : undefined}

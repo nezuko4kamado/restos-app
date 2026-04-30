@@ -10,7 +10,7 @@ import { getCurrencySymbol } from '@/lib/currency'
 import { useSettings } from '@/hooks/useSettings'
 
 // ✅ CRITICAL: Must match the actual invoices table name used in storage.ts
-const INVOICES_TABLE = 'invoices'
+const INVOICES_TABLE = 'app_43909_invoices'
 
 interface PlanLimits {
   products: number

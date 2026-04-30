@@ -39,7 +39,7 @@ export const calculatePriceAlertsFromProducts = (
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const p = product as any;
     const history: Array<{ price: number; date: string }> =
-      p.price_history_data || p.priceHistory || [];
+      p.price_history || p.priceHistory || [];
 
     if (history.length < 2) continue;
 
@@ -106,7 +106,7 @@ export const calculatePriceAlerts = async (): Promise<number> => {
 
     // Fetch all invoices ordered by date (newest first)
     const { data: invoices, error } = await supabase
-      .from('invoices')
+      .from('app_43909_invoices')
       .select('*')
       .eq('user_id', user.id)
       .order('invoice_date', { ascending: false });
@@ -221,7 +221,7 @@ export const getDetailedPriceAlerts = async (): Promise<PriceAlert[]> => {
 
     // Fetch all invoices ordered by date (newest first)
     const { data: invoices, error } = await supabase
-      .from('invoices')
+      .from('app_43909_invoices')
       .select('*')
       .eq('user_id', user.id)
       .order('invoice_date', { ascending: false });

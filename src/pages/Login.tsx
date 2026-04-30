@@ -142,9 +142,9 @@ export default function Login() {
                 {showRegister ? t('registerDescription') : t('loginDescription')}
               </p>
               <div className="mt-3 inline-flex items-center gap-2 bg-green-50 border border-green-200 rounded-full px-4 py-1.5">
-                <span className="text-green-600 text-sm font-semibold">✓ {t('startFreeNow') || 'Start for free'}</span>
+                <span className="text-green-600 text-sm font-semibold">✓ Inizia subito gratuitamente</span>
                 <span className="text-gray-400 text-xs"> — </span>
-                <span className="text-gray-500 text-xs">{t('noHiddenCosts') || 'No hidden costs'}</span>
+                <span className="text-gray-500 text-xs">Nessun costo nascosto</span>
               </div>
             </div>
 

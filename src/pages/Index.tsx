@@ -38,7 +38,7 @@ import { supabase } from '@/lib/supabase';
 import { demoProducts, demoSuppliers, demoOrders, demoInvoices, demoSettings, demoPriceAlerts } from '@/lib/demoData';
 
 // CRITICAL FIX: Define the actual invoice table name (same as in storage.ts)
-const INVOICES_TABLE = 'invoices';
+const INVOICES_TABLE = 'app_43909_invoices';
 
 interface InvoiceItem {
   name: string;
@@ -1135,19 +1135,6 @@ export default function Index() {
               settings={settings}
               pendingInvoice={pendingInvoice}
               onInvoiceProcessed={handleInvoiceProcessed}
-              onPriceAlertsUpdate={(newAlerts) => {
-                setPriceAlerts(prev => {
-                  const merged = [...prev];
-                  newAlerts.forEach(alert => {
-                    const key = alert.productName.toLowerCase().trim();
-                    if (!merged.find(a => a.productName.toLowerCase().trim() === key)) {
-                      merged.push(alert);
-                    }
-                  });
-                  setPriceAlertsCount(merged.length);
-                  return merged;
-                });
-              }}
             />
           )}
 

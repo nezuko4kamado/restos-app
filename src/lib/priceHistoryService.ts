@@ -2,16 +2,16 @@ import { supabase } from './supabase';
 import { getCurrentUser } from './supabase';
 import type { Product } from '@/types';
 
-const PRICE_HISTORY_TABLE = 'app_43909_price_history';
-
 export interface PriceHistoryEntry {
   id: string;
   user_id: string;
   product_id: string;
   product_name: string;
+  supplier_name: string;
   old_price: number | null;
   new_price: number;
   price_change_percent: number | null;
+  invoice_id?: string;
   change_date: string;
   created_at: string;
 }
@@ -30,6 +30,7 @@ export interface PriceAlert {
 export class PriceHistoryService {
   /**
    * Track price change for a product
+   * Saves the price change to the price_history table
    */
   static async trackPriceChange(
     productId: string,
@@ -46,12 +47,14 @@ export class PriceHistoryService {
         return;
       }
 
+      // Calculate percentage change
       let priceChangePercent: number | null = null;
       if (oldPrice && oldPrice > 0 && newPrice !== oldPrice) {
         priceChangePercent = ((newPrice - oldPrice) / oldPrice) * 100;
-        priceChangePercent = Math.round(priceChangePercent * 100) / 100;
+        priceChangePercent = Math.round(priceChangePercent * 100) / 100; // Round to 2 decimals
       }
 
+      // Only track if there's an actual price change
       if (priceChangePercent === null || priceChangePercent === 0) {
         console.log(`📊 [PRICE HISTORY] No price change for product ${productName}, skipping`);
         return;
@@ -61,9 +64,11 @@ export class PriceHistoryService {
         user_id: user.id,
         product_id: productId,
         product_name: productName,
+        supplier_name: supplierName,
         old_price: oldPrice,
         new_price: newPrice,
         price_change_percent: priceChangePercent,
+        invoice_id: invoiceId || null,
         change_date: new Date().toISOString(),
         created_at: new Date().toISOString(),
       };
@@ -76,7 +81,7 @@ export class PriceHistoryService {
       });
 
       const { error } = await supabase
-        .from(PRICE_HISTORY_TABLE)
+        .from('price_history')
         .insert([historyEntry]);
 
       if (error) {
@@ -105,7 +110,7 @@ export class PriceHistoryService {
       }
 
       const { data, error } = await supabase
-        .from(PRICE_HISTORY_TABLE)
+        .from('price_history')
         .select('*')
         .eq('user_id', user.id)
         .eq('product_id', productId)
@@ -126,6 +131,7 @@ export class PriceHistoryService {
 
   /**
    * Get recent price changes (for alerts)
+   * Returns products with significant price changes in the last N days
    */
   static async getRecentPriceChanges(
     days: number = 7,
@@ -138,13 +144,14 @@ export class PriceHistoryService {
         return [];
       }
 
+      // Calculate date threshold
       const dateThreshold = new Date();
       dateThreshold.setDate(dateThreshold.getDate() - days);
 
       console.log(`📊 [PRICE HISTORY] Fetching price changes since ${dateThreshold.toISOString()}`);
 
       const { data, error } = await supabase
-        .from(PRICE_HISTORY_TABLE)
+        .from('price_history')
         .select('*')
         .eq('user_id', user.id)
         .gte('change_date', dateThreshold.toISOString())
@@ -155,6 +162,7 @@ export class PriceHistoryService {
         return [];
       }
 
+      // Filter by minimum change percentage and format as alerts
       const alerts: PriceAlert[] = (data || [])
         .filter(entry => {
           const absChange = Math.abs(entry.price_change_percent || 0);
@@ -163,7 +171,7 @@ export class PriceHistoryService {
         .map(entry => ({
           product_id: entry.product_id,
           product_name: entry.product_name,
-          supplier_name: '',
+          supplier_name: entry.supplier_name,
           old_price: entry.old_price || 0,
           new_price: entry.new_price,
           change_percent: entry.price_change_percent || 0,
@@ -198,18 +206,20 @@ export class PriceHistoryService {
         return [];
       }
 
+      // Get latest price change for each product
       const { data, error } = await supabase
-        .from(PRICE_HISTORY_TABLE)
+        .from('price_history')
         .select('*')
         .eq('user_id', user.id)
         .order('change_date', { ascending: false })
-        .limit(limit * 3);
+        .limit(limit * 3); // Fetch more to deduplicate
 
       if (error) {
         console.error('❌ [PRICE HISTORY] Error fetching price trends:', error);
         return [];
       }
 
+      // Group by product_id and get latest entry for each
       const latestByProduct = new Map<string, typeof data[0]>();
       (data || []).forEach(entry => {
         if (!latestByProduct.has(entry.product_id)) {
@@ -217,6 +227,7 @@ export class PriceHistoryService {
         }
       });
 
+      // Convert to trends
       const trends = Array.from(latestByProduct.values())
         .slice(0, limit)
         .map(entry => {
@@ -227,7 +238,7 @@ export class PriceHistoryService {
 
           return {
             product_name: entry.product_name,
-            supplier_name: '',
+            supplier_name: entry.supplier_name,
             trend,
             change_percent: changePercent,
             last_change_date: entry.change_date,
@@ -259,7 +270,7 @@ export class PriceHistoryService {
       }
 
       const { data, error } = await supabase
-        .from(PRICE_HISTORY_TABLE)
+        .from('price_history')
         .select('new_price, old_price')
         .eq('user_id', user.id)
         .eq('product_id', productId)
@@ -274,6 +285,7 @@ export class PriceHistoryService {
         return null;
       }
 
+      // Extract all prices
       const prices: number[] = [];
       data.forEach(entry => {
         if (entry.new_price) prices.push(entry.new_price);
@@ -288,6 +300,8 @@ export class PriceHistoryService {
       const minPrice = Math.min(...prices);
       const maxPrice = Math.max(...prices);
       const avgPrice = prices.reduce((sum, p) => sum + p, 0) / prices.length;
+
+      // Calculate volatility (standard deviation)
       const variance = prices.reduce((sum, p) => sum + Math.pow(p - avgPrice, 2), 0) / prices.length;
       const volatility = Math.sqrt(variance);
 
@@ -306,6 +320,7 @@ export class PriceHistoryService {
 
   /**
    * Bulk track price changes from invoice
+   * Used when processing invoice with multiple products
    */
   static async trackInvoicePrices(
     items: Array<{
@@ -328,12 +343,14 @@ export class PriceHistoryService {
 
       const historyEntries = items
         .map(item => {
+          // Calculate percentage change
           let priceChangePercent: number | null = null;
           if (item.old_price && item.old_price > 0 && item.new_price !== item.old_price) {
             priceChangePercent = ((item.new_price - item.old_price) / item.old_price) * 100;
             priceChangePercent = Math.round(priceChangePercent * 100) / 100;
           }
 
+          // Only include items with actual price changes
           if (priceChangePercent === null || priceChangePercent === 0) {
             return null;
           }
@@ -342,9 +359,11 @@ export class PriceHistoryService {
             user_id: user.id,
             product_id: item.product_id,
             product_name: item.product_name,
+            supplier_name: item.supplier_name,
             old_price: item.old_price,
             new_price: item.new_price,
             price_change_percent: priceChangePercent,
+            invoice_id: invoiceId,
             change_date: new Date().toISOString(),
             created_at: new Date().toISOString(),
           };
@@ -357,7 +376,7 @@ export class PriceHistoryService {
       }
 
       const { error } = await supabase
-        .from(PRICE_HISTORY_TABLE)
+        .from('price_history')
         .insert(historyEntries);
 
       if (error) {

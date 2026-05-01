@@ -873,79 +873,76 @@ export default function ProductsSectionEnhanced({
 
         if (existingProduct) {
           {
-            // ✅ FIX: Always update product from invoice — including 0 price (100% discount)
+            // ✅ Update existing product WITH price fields + price history tracking
+            const newPrice = (extracted.discounted_price && extracted.discounted_price > 0.001) ? extracted.discounted_price : (extracted.unit_price && extracted.unit_price > 0.001) ? extracted.unit_price : (extracted.total_amount && extracted.quantity && extracted.quantity > 0) ? extracted.total_amount / extracted.quantity : extracted.discounted_price;
+            const oldPrice = existingProduct.price;
+            const priceActuallyChanged = Math.abs(newPrice - oldPrice) > 0.001;
+
+            // Build updated price history
             const existingHistory = getProductPriceHistory(existingProduct);
-            
-            // ✅ FIX: If history is empty, seed with old price first
             let newHistory: Array<{ price: number; date: string; reason?: string }>;
-            if (existingHistory.length === 0) {
-              newHistory = [
-                {
-                  price: existingProduct.price,
-                  date: existingProduct.created_at || new Date().toISOString(),
-                  reason: t('originalPrice') || 'Original price'
-                },
-                {
-                  price: extracted.discounted_price,
-                  date: new Date().toISOString(),
-                  reason: t('updatedFromInvoice') || 'Updated from invoice'
-                }
-              ];
+            if (priceActuallyChanged) {
+              if (existingHistory.length === 0) {
+                newHistory = [
+                  { price: oldPrice, date: existingProduct.created_at || new Date().toISOString(), reason: 'Original price' },
+                  { price: newPrice, date: new Date().toISOString(), reason: 'Updated from invoice' },
+                ];
+              } else {
+                newHistory = [
+                  ...existingHistory,
+                  { price: newPrice, date: new Date().toISOString(), reason: 'Updated from invoice' },
+                ];
+              }
             } else {
-              newHistory = [
-                ...existingHistory,
-                {
-                  price: extracted.discounted_price,
-                  date: new Date().toISOString(),
-                  reason: t('updatedFromInvoice') || 'Updated from invoice'
-                }
+              newHistory = existingHistory.length > 0 ? existingHistory : [
+                { price: oldPrice, date: existingProduct.created_at || new Date().toISOString(), reason: 'Original price' },
               ];
             }
-            
+
             const updates: Partial<Product> = {
-              price: extracted.discounted_price,
+              price: newPrice,
               unit_price: extracted.unit_price,
               discounted_price: extracted.discounted_price,
               discount_amount: extracted.discount_amount,
               discount_percent: extracted.discount_percent,
+              previous_price: oldPrice,
               vat_rate: productVATRate,
               vatRate: productVATRate,
               category: productCategory,
               code_description: productCodeDescription,
-              notes: extracted.discount_percent > 0 ? `${t('discount') || 'Discount'} ${extracted.discount_percent}%` : existingProduct.notes,
-              price_history: newHistory.map(h => ({ price: h.price, date: h.date })),
               updated_at: new Date().toISOString(),
+              price_history: newHistory.map(h => ({ price: h.price, date: h.date })),
             };
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (updates as any).priceHistory = newHistory;
 
-            // ✅ PRICE CHANGE NOTIFICATION: Show toast only if price actually changed
-            if (existingProduct.price !== extracted.discounted_price) {
-              const oldPrice = existingProduct.price;
-              const newPrice = extracted.discounted_price;
-              const changePercent = ((newPrice - oldPrice) / oldPrice) * 100;
-              const arrow = changePercent > 0 ? '📈' : '📉';
-              toast.info(
-                `${arrow} ${extracted.name}: ${formatPrice(oldPrice, currency)} → ${formatPrice(newPrice, currency)} (${changePercent > 0 ? '+' : ''}${changePercent.toFixed(1)}%)`,
-                { duration: 5000 }
-              );
-            }
-
             productsToUpdate.push({ id: existingProduct.id, updates });
             updatedCount++;
+
+            // 🔔 Show price-change toast notification
+            if (priceActuallyChanged) {
+              const diff = newPrice - oldPrice;
+              const sign = diff > 0 ? '+' : '';
+              const currency2 = settings.defaultCurrency || 'EUR';
+              toast.info(
+                `💰 ${existingProduct.name}: ${formatPrice(oldPrice, currency2)} → ${formatPrice(newPrice, currency2)} (${sign}${formatPrice(diff, currency2)})`,
+                { duration: 6000 }
+              );
+            }
           }
         } else {
           const initialHistory = [{
-            price: extracted.discounted_price,
+            price: (extracted.discounted_price && extracted.discounted_price > 0.001) ? extracted.discounted_price : (extracted.unit_price && extracted.unit_price > 0.001) ? extracted.unit_price : (extracted.total_amount && extracted.quantity && extracted.quantity > 0) ? extracted.total_amount / extracted.quantity : extracted.discounted_price,
             date: new Date().toISOString(),
             reason: t('importedFromInvoice') || 'Imported from invoice'
           }];
           
+          const newProductPrice = (extracted.discounted_price && extracted.discounted_price > 0.001) ? extracted.discounted_price : (extracted.unit_price && extracted.unit_price > 0.001) ? extracted.unit_price : (extracted.total_amount && extracted.quantity && extracted.quantity > 0) ? extracted.total_amount / extracted.quantity : extracted.discounted_price;
           const productData: Omit<Product, 'id'> = {
             name: extracted.name,
-            price: extracted.discounted_price,
+            price: newProductPrice,
             unit_price: extracted.unit_price,
-            discounted_price: extracted.discounted_price,
+            discounted_price: newProductPrice,
             discount_amount: extracted.discount_amount,
             discount_percent: extracted.discount_percent,
             category: productCategory,  // ✅ FIX: Use empty string, not 'general'

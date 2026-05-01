@@ -767,8 +767,7 @@ function InvoiceManagement({
           };
           await onAddProduct(newProduct);
         } else if (item.matchedProductId) {
-          // 🔥 CRITICAL FIX: Update ALL matched products (price changed OR NOT)
-          // This ensures updated_at is ALWAYS set for products in the invoice
+          // 🔥 Update matched products: always update price + updated_at
           if (item.priceChanged) {
             console.log('🔄 [INVOICE] Updating product with price change:', item.name, 'from', item.oldPrice, 'to', item.price);
           } else {
@@ -777,11 +776,41 @@ function InvoiceManagement({
           console.log('🔄 [INVOICE] Setting updated_at for product:', item.name, 'at', currentTimestamp);
           
           if (onUpdateProduct) {
-            await onUpdateProduct(item.matchedProductId, {
+            // Build price history for this product
+            const matchedProduct = products.find(p => p.id === item.matchedProductId);
+            const existingHist: Array<{ price: number; date: string }> =
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (matchedProduct as any)?.priceHistory || matchedProduct?.price_history || [];
+            const newHist = item.priceChanged
+              ? [
+                  ...(existingHist.length === 0 && matchedProduct
+                    ? [{ price: matchedProduct.price, date: matchedProduct.created_at || currentTimestamp }]
+                    : existingHist),
+                  { price: item.price, date: currentTimestamp },
+                ]
+              : existingHist;
+
+            const priceUpdates: Partial<Product> = {
               price: item.price,
-              updated_at: currentTimestamp
-            });
-            console.log('✅ [INVOICE] Product updated in database with updated_at');
+              updated_at: currentTimestamp,
+              price_history: newHist,
+            };
+            if (item.priceChanged && matchedProduct) {
+              priceUpdates.previous_price = matchedProduct.price;
+            }
+
+            await onUpdateProduct(item.matchedProductId, priceUpdates);
+            console.log('✅ [INVOICE] Product updated in database with new price and updated_at');
+
+            // 🔔 Show price-change toast
+            if (item.priceChanged && item.oldPrice !== undefined) {
+              const diff = item.price - item.oldPrice;
+              const sign = diff > 0 ? '+' : '';
+              toast.info(
+                `💰 ${item.name}: €${item.oldPrice.toFixed(2)} → €${item.price.toFixed(2)} (${sign}€${diff.toFixed(2)})`,
+                { duration: 6000 }
+              );
+            }
           }
         }
       }

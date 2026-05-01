@@ -991,7 +991,8 @@ export const batchUpdateProducts = async (updates: { id: string; updates: Partia
         if (oldPrice && oldPrice > 0 && newPrice !== oldPrice) {
           const percentageChange = ((newPrice - oldPrice) / oldPrice) * 100;
           dbUpdate.price_difference = Math.round(percentageChange * 100) / 100; // Round to 2 decimals
-          
+          dbUpdate.previous_price = oldPrice; // ✅ FIX: persist old price
+
           console.log(`💰 [PRICE DIFF] Product ${id}:`);
           console.log(`   Old price: ${oldPrice} €`);
           console.log(`   New price: ${newPrice} €`);
@@ -1014,6 +1015,11 @@ export const batchUpdateProducts = async (updates: { id: string; updates: Partia
         
         // ✅ FIX: Update updated_at timestamp when price changes
         dbUpdate.updated_at = new Date().toISOString();
+      }
+
+      // ✅ FIX: persist previous_price if passed explicitly (e.g. from InvoiceManagement)
+      if ((productUpdates as Record<string, unknown>).previous_price !== undefined) {
+        dbUpdate.previous_price = (productUpdates as Record<string, unknown>).previous_price;
       }
       
       return dbUpdate;
@@ -1318,6 +1324,13 @@ export const updateProduct = async (id: string, updates: Partial<Product>): Prom
       dbUpdates.vat_rate = updates.vat_rate || extUpdates.vatRate;
     }
     if (updates.code_description !== undefined) dbUpdates.code_description = updates.code_description;
+    // ✅ FIX: persist previous_price when provided
+    if ((updates as Record<string, unknown>).previous_price !== undefined) {
+      dbUpdates.previous_price = (updates as Record<string, unknown>).previous_price;
+    } else if (updates.price !== undefined && oldProduct && updates.price !== oldProduct.price) {
+      // Auto-set previous_price when price changes
+      dbUpdates.previous_price = oldProduct.price;
+    }
 
     const { data, error } = await supabase
     .from('products')

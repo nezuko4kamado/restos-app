@@ -15,7 +15,7 @@ import { extractDataFromImage, type InvoiceDataExtracted } from '@/lib/ocrServic
 import { getVATRate, calculatePriceWithVAT } from '@/lib/vatUtils';
 import { getVATRateForProduct, isValidDiscountPercent, calculateDiscountAmount, calculateDiscountedPrice } from '@/lib/vatRates';
 import { useLanguage } from '@/lib/i18n';
-import { addProduct, updateProduct, deleteProduct, addSupplier, batchAddProducts, batchUpdateProducts, updateSupplier, saveProductComparison, checkScanLimit, incrementScanCount, checkProductLimitDetailed } from '@/lib/storage';
+import { addProduct, updateProduct, deleteProduct, addSupplier, batchAddProducts, batchUpdateProducts, updateSupplier, saveProductComparison, checkScanLimit, incrementScanCount, checkProductLimitDetailed, getProductByCode } from '@/lib/storage';
 import { exportProductsToExcel, exportProductsToPDF } from '@/lib/exportUtils';
 import { findSimilarSupplier } from '@/lib/supplierUtils';
 import PriceChangeIndicator from '@/components/PriceChangeIndicator';
@@ -850,18 +850,45 @@ export default function ProductsSectionEnhanced({
       const skippedCount = 0;
 
       for (const extracted of allExtractedProducts) {
-        // DEDUPLICATION FIX: Match by product code first (most reliable), then fall back to name+supplier
-        const existingProduct = products.find(p => {
-          const extractedCode = extracted.code_description?.trim();
-          const productCode = p.code_description?.trim();
-          if (extractedCode && productCode && extractedCode === productCode && p.supplier_id === supplierId) {
-            return true;
+        // DEDUPLICATION FIX: Match by product code first via DB (most reliable), then fall back to local array
+        const extractedCode = extracted.code_description?.trim();
+        let existingProduct: typeof products[0] | null | undefined = undefined;
+
+        // 🔑 STEP 1: Try direct DB lookup by code_description (bypasses stale local state)
+        if (extractedCode) {
+          console.log(`🔑 [CODE MATCH] Searching DB for code: "${extractedCode}" supplier: "${supplierId}"`);
+          const dbProduct = await getProductByCode(extractedCode, supplierId);
+          if (dbProduct) {
+            existingProduct = dbProduct;
+            console.log(`✅ [CODE MATCH] Found in DB: "${dbProduct.name}" id=${dbProduct.id}`);
+          } else {
+            // Try without supplier constraint
+            const dbProductAny = await getProductByCode(extractedCode);
+            if (dbProductAny) {
+              existingProduct = dbProductAny;
+              console.log(`✅ [CODE MATCH NO SUPPLIER] Found in DB: "${dbProductAny.name}" id=${dbProductAny.id}`);
+            }
           }
-          if (extractedCode && productCode && extractedCode === productCode) {
-            return true;
+        }
+
+        // 🔑 STEP 2: Fall back to local array matching if DB lookup found nothing
+        if (existingProduct === undefined) {
+          existingProduct = products.find(p => {
+            const productCode = p.code_description?.trim();
+            if (extractedCode && productCode && extractedCode === productCode && p.supplier_id === supplierId) {
+              return true;
+            }
+            if (extractedCode && productCode && extractedCode === productCode) {
+              return true;
+            }
+            return p.name.toLowerCase() === extracted.name.toLowerCase() && p.supplier_id === supplierId;
+          }) || null;
+          if (existingProduct) {
+            console.log(`✅ [LOCAL MATCH] Found in local array: "${existingProduct.name}" id=${existingProduct.id}`);
+          } else {
+            console.log(`❌ [NO MATCH] Product not found: "${extracted.name}" code="${extractedCode}"`);
           }
-          return p.name.toLowerCase() === extracted.name.toLowerCase() && p.supplier_id === supplierId;
-        });
+        }
 
         // ✅ TRUST KLIPPA'S VAT RATE, CATEGORY, AND CODE_DESCRIPTION - No recalculation, no default override!
         const productVATRate = extracted.vatRate || 0;

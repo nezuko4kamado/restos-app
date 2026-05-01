@@ -39,7 +39,7 @@ interface ProductWithExtendedFields extends Product {
 }
 
 // ✅ OPTIMIZED: Select only essential columns + price_difference + code_description + updated_at
-const PRODUCT_DB_COLUMNS = 'id,name,price,category,supplier_id,vat_rate,unit,discount_percent,discount_amount,unit_price,discounted_price,price_difference,code_description,price_history,created_at,updated_at';
+const PRODUCT_DB_COLUMNS = 'id,name,price,category,supplier_id,vat_rate,unit,discount_percent,discount_amount,unit_price,discounted_price,price_difference,code_description,previous_price,price_history,created_at,updated_at';
 
 // CRITICAL: Define the actual invoice table name
 const INVOICES_TABLE = 'app_43909_invoices';
@@ -1131,6 +1131,48 @@ export const addProduct = async (product: Omit<Product, 'id'>): Promise<Product 
   } catch (error) {
     console.error('❌ Exception adding product:', error);
     toast.error(`❌ Errore imprevisto: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    return null;
+  }
+};
+
+
+// ✅ NEW: Find product by code_description + supplier_id (most reliable matching)
+export const getProductByCode = async (codeDescription: string, supplierId?: string): Promise<Product | null> => {
+  if (!isSupabaseConfigured() || !codeDescription?.trim()) return null;
+  try {
+    const user = await getCurrentUser();
+    if (!user) return null;
+    let query = supabase
+      .from('products')
+      .select(PRODUCT_DB_COLUMNS)
+      .eq('user_id', user.id)
+      .ilike('code_description', codeDescription.trim());
+    if (supplierId) {
+      query = query.eq('supplier_id', supplierId);
+    }
+    const { data, error } = await query.limit(1).maybeSingle();
+    if (error || !data) return null;
+    return {
+      id: data.id,
+      name: data.name,
+      price: data.price,
+      category: data.category || '',
+      supplier_id: data.supplier_id,
+      vat_rate: data.vat_rate,
+      unit: data.unit,
+      discount_percent: data.discount_percent,
+      discount_amount: data.discount_amount,
+      unit_price: data.unit_price,
+      discounted_price: data.discounted_price,
+      price_difference: data.price_difference,
+      code_description: data.code_description || '',
+      previous_price: data.previous_price,
+      price_history: data.price_history,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+    } as Product;
+  } catch (e) {
+    console.error('❌ getProductByCode error:', e);
     return null;
   }
 };

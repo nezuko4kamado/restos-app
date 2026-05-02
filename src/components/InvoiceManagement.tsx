@@ -206,7 +206,9 @@ function InvoiceManagement({
         const matchResult = await ProductMatcher.matchProduct(
           item.name,
           undefined, // ean_code
-          targetSupplierName
+          targetSupplierName,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (item as any).sku || (item as any).code_description
         );
         
         if (matchResult.matched && matchResult.product && matchResult.confidence >= 70) {
@@ -327,7 +329,9 @@ function InvoiceManagement({
               const matchResult = await ProductMatcher.matchProduct(
                 item.name,
                 undefined,
-                supplierName
+                supplierName,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (item as any).sku || (item as any).code_description
               );
               
               if (matchResult.matched && matchResult.product && matchResult.confidence >= 70) {
@@ -390,7 +394,9 @@ function InvoiceManagement({
               const matchResult = await ProductMatcher.matchProduct(
                 item.name,
                 undefined,
-                supplierName
+                supplierName,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (item as any).sku || (item as any).code_description
               );
               
               if (matchResult.matched && matchResult.product && matchResult.confidence >= 70) {

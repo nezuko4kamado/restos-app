@@ -72,12 +72,13 @@ function levenshteinDistance(str1: string, str2: string): number {
 }
 
 /**
- * Match product by name and optional EAN code
+ * Match product by name and optional EAN code or code_description
  */
 async function matchProduct(
   productName: string,
   eanCode?: string,
-  supplierName?: string
+  supplierName?: string,
+  codeDescription?: string
 ): Promise<MatchResult> {
   try {
     // CRITICAL FIX: Use correct table name 'products' instead of 'app_43909_products'
@@ -92,6 +93,26 @@ async function matchProduct(
 
     if (!existingProducts || existingProducts.length === 0) {
       return { matched: false, confidence: 0 };
+    }
+
+    // ✅ Match by code_description (exact then partial) — highest priority after EAN
+    if (codeDescription && codeDescription.trim()) {
+      const codeNorm = codeDescription.toLowerCase().trim();
+      for (const product of existingProducts) {
+        if (product.code_description && product.code_description.trim()) {
+          const prodCode = product.code_description.toLowerCase().trim();
+          // Exact match
+          if (prodCode === codeNorm) {
+            console.log('✅ [MATCHER] Exact code_description match:', codeDescription, '->', product.name);
+            return { matched: true, product, confidence: 100, matchType: 'exact' };
+          }
+          // Partial match (one contains the other)
+          if (prodCode.includes(codeNorm) || codeNorm.includes(prodCode)) {
+            console.log('✅ [MATCHER] Partial code_description match:', codeDescription, '->', product.code_description, '(', product.name, ')');
+            return { matched: true, product, confidence: 95, matchType: 'exact' };
+          }
+        }
+      }
     }
 
     // Find best match
@@ -213,7 +234,8 @@ export async function matchProductBySupplier(
 
 // Export as ProductMatcher object to match the import pattern in InvoiceManagement.tsx
 export const ProductMatcher = {
-  matchProduct,
+  matchProduct: (productName: string, eanCode?: string, supplierName?: string, codeDescription?: string) =>
+    matchProduct(productName, eanCode, supplierName, codeDescription),
   matchProductByName,
   matchProductBySupplier
 };

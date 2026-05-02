@@ -97,6 +97,7 @@ export interface ExtractedInvoiceItem {
   unit?: string;
   vatRate?: number;
   sku?: string;
+  code_description?: string;
 }
 
 interface KlippaProduct {

@@ -193,7 +193,9 @@ export async function extractDataFromImage(
           name: p.name || '',
           description: p.name || '',
           code: p.sku || '',
-          code_description: p.code_description || '', // ✅ FIX: Keep code_description separate from code
+          // ✅ FIX: Use sku as code_description fallback when code_description is empty
+          // Klippa often returns the product code in 'sku' field, not 'code_description'
+          code_description: p.code_description?.trim() || p.sku?.trim() || '',
           quantity: p.quantity || 0,
           quantity_unit: p.unit || 'U',
           // ✅ CRITICAL: Use Klippa's values DIRECTLY, no fallbacks that could cause calculations

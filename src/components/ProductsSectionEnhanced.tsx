@@ -56,7 +56,7 @@ function getProductPriceHistory(product: Product | Partial<Product>): Array<{ pr
   return p.priceHistory || p.price_history || [];
 }
 
-const ProductCard = memo(({ 
+function ProductCard({ 
   product, 
   suppliers, 
   countryVATRate, 
@@ -74,7 +74,7 @@ const ProductCard = memo(({
   onEdit: (product: Product) => void;
   onDelete: (id: string) => void;
   onOpenCompareDialog: (product: Product) => void;
-}) => {
+}) {
   // ✅ DEBUG: Log product data to check code_description
   console.log(`🔍 [PRODUCT CARD] Rendering product "${product.name}":`, {
     id: product.id,
@@ -177,9 +177,7 @@ const ProductCard = memo(({
       </div>
     </div>
   );
-});
-
-ProductCard.displayName = 'ProductCard';
+}
 
 export default function ProductsSectionEnhanced({ 
   products, 
@@ -380,11 +378,14 @@ export default function ProductsSectionEnhanced({
 
     try {
       const currentProduct = products.find(p => p.id === editingId);
+      // ✅ FIX: HTML inputs always return strings; parse explicitly to avoid
+      // string-typed prices slipping through (e.g. "10.00" !== 10).
+      const parsedPrice = parseFloat(String(editingProduct.price)) || 0;
       const updates: Partial<Product> = {
         name: editingProduct.name,
-        price: editingProduct.price,
-        unit_price: editingProduct.price,
-        discounted_price: editingProduct.price,
+        price: parsedPrice,
+        unit_price: parsedPrice,
+        discounted_price: parsedPrice,
         discount_amount: 0,
         discount_percent: 0,
         unit: editingProduct.unit,
@@ -394,15 +395,12 @@ export default function ProductsSectionEnhanced({
         updated_at: new Date().toISOString(),
       };
 
-      if (currentProduct && currentProduct.price !== editingProduct.price) {
+      if (currentProduct && currentProduct.price !== parsedPrice) {
         // ✅ FIX: Read from both camelCase and snake_case history fields
         const existingHistory = getProductPriceHistory(currentProduct);
         
-        // ✅ FIX: If history is empty, seed it with the OLD price first so PriceChangeIndicator
-        // has at least 2 entries (old price + new price) to calculate the change percentage
         let newHistory: Array<{ price: number; date: string; reason?: string }>;
         if (existingHistory.length === 0) {
-          // No history at all — insert old price as the first entry
           newHistory = [
             {
               price: currentProduct.price,
@@ -410,24 +408,22 @@ export default function ProductsSectionEnhanced({
               reason: t('originalPrice') || 'Original price'
             },
             {
-              price: editingProduct.price!,
+              price: parsedPrice,
               date: new Date().toISOString(),
               reason: t('manualEdit') || 'Manual edit'
             }
           ];
         } else {
-          // History exists — just append the new price
           newHistory = [
             ...existingHistory,
             {
-              price: editingProduct.price!,
+              price: parsedPrice,
               date: new Date().toISOString(),
               reason: t('manualEdit') || 'Manual edit'
             }
           ];
         }
         
-        // ✅ Write to both camelCase (runtime) and snake_case (DB type) for consistency
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (updates as any).priceHistory = newHistory;
         updates.price_history = newHistory.map(h => ({ price: h.price, date: h.date }));
@@ -435,7 +431,7 @@ export default function ProductsSectionEnhanced({
         updates.original_price = currentProduct.price;
         updates.last_price_change = new Date().toISOString();
         
-        const changePercent = ((editingProduct.price! - currentProduct.price) / currentProduct.price) * 100;
+        const changePercent = ((parsedPrice - currentProduct.price) / currentProduct.price) * 100;
         const direction = changePercent > 0 ? (t('priceIncreased') || 'Price increased') : (t('priceDecreased') || 'Price decreased');
         toast.info(
           `${t('price') || 'Price'} ${direction} ${Math.abs(changePercent).toFixed(1)}%`,

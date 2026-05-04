@@ -981,6 +981,8 @@ export const batchUpdateProducts = async (updates: { id: string; updates: Partia
         dbUpdate.vat_rate = productUpdates.vat_rate || extUpdates.vatRate;
       }
       if (productUpdates.code_description !== undefined) dbUpdate.code_description = productUpdates.code_description;
+      // ✅ FIX: persist price_history to DB when provided
+      if (productUpdates.price_history !== undefined) dbUpdate.price_history = productUpdates.price_history;
 
       // ✅ CALCULATE PRICE DIFFERENCE PERCENTAGE & PREPARE PRICE HISTORY
       if (productUpdates.price !== undefined) {
@@ -1055,6 +1057,8 @@ export const batchUpdateProducts = async (updates: { id: string; updates: Partia
       discount_amount: product.discount_amount || 0,
       price_difference: product.price_difference || 0,
       code_description: product.code_description || '',
+      previous_price: product.previous_price,
+      price_history: product.price_history,
       updated_at: product.updated_at || product.created_at || new Date().toISOString(),
     }));
 
@@ -1366,6 +1370,8 @@ export const updateProduct = async (id: string, updates: Partial<Product>): Prom
       dbUpdates.vat_rate = updates.vat_rate || extUpdates.vatRate;
     }
     if (updates.code_description !== undefined) dbUpdates.code_description = updates.code_description;
+    // ✅ FIX: persist price_history to DB when provided
+    if (updates.price_history !== undefined) dbUpdates.price_history = updates.price_history;
     // ✅ FIX: persist previous_price when provided
     if ((updates as Record<string, unknown>).previous_price !== undefined) {
       dbUpdates.previous_price = (updates as Record<string, unknown>).previous_price;
@@ -1414,7 +1420,13 @@ export const updateProduct = async (id: string, updates: Partial<Product>): Prom
       vatRate: data.vat_rate,
       price_difference: data.price_difference || 0,
       code_description: data.code_description || '',
+      previous_price: data.previous_price,
+      price_history: data.price_history,
       updated_at: data.updated_at || data.created_at || new Date().toISOString(),
+      // ✅ FIX: Explicitly map discounted_price and unit_price so they are never
+      // lost when the DB returns a stale/null value — fall back to the updates we sent.
+      discounted_price: data.discounted_price ?? (updates as Record<string, unknown>).discounted_price ?? data.price,
+      unit_price: data.unit_price ?? (updates as Record<string, unknown>).unit_price ?? data.price,
     };
 
   } catch (error) {

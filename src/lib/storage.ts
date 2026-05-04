@@ -1182,16 +1182,22 @@ export const getProductByCode = async (codeDescription: string, supplierId?: str
   try {
     const user = await getCurrentUser();
     if (!user) return null;
+    // ✅ FIX: Use safe columns to avoid DB errors for columns not yet migrated
+    const SAFE_COLS = 'id,name,price,category,supplier_id,vat_rate,unit,code_description,previous_price,created_at,updated_at';
     let query = supabase
       .from('products')
-      .select(PRODUCT_DB_COLUMNS)
+      .select(SAFE_COLS)
       .eq('user_id', user.id)
       .ilike('code_description', codeDescription.trim());
     if (supplierId) {
       query = query.eq('supplier_id', supplierId);
     }
     const { data, error } = await query.limit(1).maybeSingle();
-    if (error || !data) return null;
+    if (error) {
+      console.error('❌ getProductByCode DB error:', error.message);
+      return null;
+    }
+    if (!data) return null;
     return {
       id: data.id,
       name: data.name,
@@ -1199,15 +1205,10 @@ export const getProductByCode = async (codeDescription: string, supplierId?: str
       category: data.category || '',
       supplier_id: data.supplier_id,
       vat_rate: data.vat_rate,
+      vatRate: data.vat_rate,
       unit: data.unit,
-      discount_percent: data.discount_percent,
-      discount_amount: data.discount_amount,
-      unit_price: data.unit_price,
-      discounted_price: data.discounted_price,
-      price_difference: data.price_difference,
       code_description: data.code_description || '',
       previous_price: data.previous_price,
-      price_history: data.price_history,
       created_at: data.created_at,
       updated_at: data.updated_at,
     } as Product;
@@ -1222,16 +1223,22 @@ export const getProductByName = async (name: string, supplierId?: string): Promi
   try {
     const user = await getCurrentUser();
     if (!user) return null;
+    // ✅ FIX: Use safe columns to avoid DB errors for columns not yet migrated
+    const SAFE_COLS = 'id,name,price,category,supplier_id,vat_rate,unit,code_description,previous_price,created_at,updated_at';
     let query = supabase
       .from('products')
-      .select(PRODUCT_DB_COLUMNS)
+      .select(SAFE_COLS)
       .eq('user_id', user.id)
       .ilike('name', name.trim());
     if (supplierId) {
       query = query.eq('supplier_id', supplierId);
     }
     const { data, error } = await query.limit(1).maybeSingle();
-    if (error || !data) return null;
+    if (error) {
+      console.error('❌ getProductByName DB error:', error.message);
+      return null;
+    }
+    if (!data) return null;
     return {
       id: data.id,
       name: data.name,
@@ -1239,15 +1246,10 @@ export const getProductByName = async (name: string, supplierId?: string): Promi
       category: data.category || '',
       supplier_id: data.supplier_id,
       vat_rate: data.vat_rate,
+      vatRate: data.vat_rate,
       unit: data.unit,
-      discount_percent: data.discount_percent,
-      discount_amount: data.discount_amount,
-      unit_price: data.unit_price,
-      discounted_price: data.discounted_price,
-      price_difference: data.price_difference,
       code_description: data.code_description || '',
       previous_price: data.previous_price,
-      price_history: data.price_history,
       created_at: data.created_at,
       updated_at: data.updated_at,
     } as Product;

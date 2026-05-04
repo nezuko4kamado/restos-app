@@ -16,6 +16,13 @@ export interface Product {
   notes?: string;
   price_history?: Array<{ price: number; date: string }>;
   last_price_change?: string;
+  previous_price?: number;
+  unit_price?: number;
+  discounted_price?: number;
+  discount_percent?: number;
+  discount_amount?: number;
+  price_difference?: number;
+  priceHistory?: Array<{ price: number; date: string; reason?: string }>;
   created_at: string;
   updated_at: string;
   user_id?: string;

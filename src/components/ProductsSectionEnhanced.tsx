@@ -15,7 +15,7 @@ import { extractDataFromImage, type InvoiceDataExtracted } from '@/lib/ocrServic
 import { getVATRate, calculatePriceWithVAT } from '@/lib/vatUtils';
 import { getVATRateForProduct, isValidDiscountPercent, calculateDiscountAmount, calculateDiscountedPrice } from '@/lib/vatRates';
 import { useLanguage } from '@/lib/i18n';
-import { addProduct, updateProduct, deleteProduct, addSupplier, batchAddProducts, batchUpdateProducts, updateSupplier, saveProductComparison, checkScanLimit, incrementScanCount, checkProductLimitDetailed, getProductByCode } from '@/lib/storage';
+import { addProduct, updateProduct, deleteProduct, addSupplier, batchAddProducts, batchUpdateProducts, updateSupplier, saveProductComparison, checkScanLimit, incrementScanCount, checkProductLimitDetailed, getProductByCode, getProductByName } from '@/lib/storage';
 import { exportProductsToExcel, exportProductsToPDF } from '@/lib/exportUtils';
 import { findSimilarSupplier } from '@/lib/supplierUtils';
 import PriceChangeIndicator from '@/components/PriceChangeIndicator';
@@ -601,6 +601,14 @@ export default function ProductsSectionEnhanced({
       return;
     }
     
+    // ✅ FIX: Auto-clear stale sessionStorage lock (older than 5 minutes)
+    const lockTimestamp = sessionStorage.getItem('isProcessingUploadTimestamp');
+    if (lockTimestamp && Date.now() - parseInt(lockTimestamp) > 5 * 60 * 1000) {
+      console.warn('⚠️ [UPLOAD] Stale lock detected, clearing...');
+      sessionStorage.removeItem('isProcessingUpload');
+      sessionStorage.removeItem('isProcessingUploadTimestamp');
+    }
+
     // ✅ FIX: Use sessionStorage for global lock that persists across component remounts
     const isProcessing = sessionStorage.getItem('isProcessingUpload') === 'true';
     if (isProcessing) {
@@ -635,6 +643,7 @@ export default function ProductsSectionEnhanced({
     // ✅ FIX: Set global lock EARLY using sessionStorage
     console.log('🔒 [UPLOAD] Setting global lock: isProcessingUpload = true');
     sessionStorage.setItem('isProcessingUpload', 'true');
+    sessionStorage.setItem('isProcessingUploadTimestamp', Date.now().toString());
     setUploading(true);
     setTotalPages(uniqueFiles.length);
     setCurrentPage(0);
@@ -877,36 +886,78 @@ export default function ProductsSectionEnhanced({
         // 🔑 STEP 1: Try direct DB lookup by code_description (bypasses stale local state)
         if (extractedCode) {
           console.log(`🔑 [CODE MATCH] Searching DB for code: "${extractedCode}" supplier: "${supplierId}"`);
-          const dbProduct = await getProductByCode(extractedCode, supplierId);
-          if (dbProduct) {
-            existingProduct = dbProduct;
-            console.log(`✅ [CODE MATCH] Found in DB: "${dbProduct.name}" id=${dbProduct.id}`);
-          } else {
-            // Try without supplier constraint
-            const dbProductAny = await getProductByCode(extractedCode);
-            if (dbProductAny) {
-              existingProduct = dbProductAny;
-              console.log(`✅ [CODE MATCH NO SUPPLIER] Found in DB: "${dbProductAny.name}" id=${dbProductAny.id}`);
+          try {
+            const dbProduct = await getProductByCode(extractedCode, supplierId);
+            if (dbProduct) {
+              existingProduct = dbProduct;
+              console.log(`✅ [CODE MATCH] Found in DB: "${dbProduct.name}" id=${dbProduct.id}`);
+            } else {
+              // Try without supplier constraint
+              const dbProductAny = await getProductByCode(extractedCode);
+              if (dbProductAny) {
+                existingProduct = dbProductAny;
+                console.log(`✅ [CODE MATCH NO SUPPLIER] Found in DB: "${dbProductAny.name}" id=${dbProductAny.id}`);
+              }
             }
+          } catch (e) {
+            console.error('❌ [CODE MATCH] DB lookup failed, continuing with local match:', e);
+          }
+        }
+
+        // 🔑 STEP 1b: If code lookup failed, try DB lookup by name (fixes "Polpa" and products without code)
+        if (existingProduct === undefined && extracted.name?.trim()) {
+          console.log(`🔑 [NAME MATCH DB] No code match — searching DB by name: "${extracted.name}" supplier: "${supplierId}"`);
+          try {
+            const dbByName = await getProductByName(extracted.name.trim(), supplierId);
+            if (dbByName) {
+              existingProduct = dbByName;
+              console.log(`✅ [NAME MATCH DB+SUPPLIER] Found in DB by name: "${dbByName.name}" id=${dbByName.id}`);
+            } else {
+              // Try without supplier constraint
+              const dbByNameAny = await getProductByName(extracted.name.trim());
+              if (dbByNameAny) {
+                existingProduct = dbByNameAny;
+                console.log(`✅ [NAME MATCH DB NO SUPPLIER] Found in DB by name: "${dbByNameAny.name}" id=${dbByNameAny.id}`);
+              }
+            }
+          } catch (e) {
+            console.error('❌ [NAME MATCH] DB lookup failed, continuing with local match:', e);
           }
         }
 
         // 🔑 STEP 2: Fall back to local array matching if DB lookup found nothing
         if (existingProduct === undefined) {
+          // Priority 1: code_description + supplier_id (most precise)
           existingProduct = products.find(p => {
             const productCode = p.code_description?.trim();
-            if (extractedCode && productCode && extractedCode === productCode && p.supplier_id === supplierId) {
-              return true;
-            }
-            if (extractedCode && productCode && extractedCode === productCode) {
-              return true;
-            }
-            return p.name.toLowerCase() === extracted.name.toLowerCase() && p.supplier_id === supplierId;
-          }) || null;
-          if (existingProduct) {
-            console.log(`✅ [LOCAL MATCH] Found in local array: "${existingProduct.name}" id=${existingProduct.id}`);
-          } else {
-            console.log(`❌ [NO MATCH] Product not found: "${extracted.name}" code="${extractedCode}"`);
+            return extractedCode && productCode && extractedCode === productCode && p.supplier_id === supplierId;
+          }) ?? null;
+          if (existingProduct) console.log(`✅ [LOCAL MATCH P1] Found by code+supplier: "${existingProduct.name}" id=${existingProduct.id}`);
+
+          // Priority 2: code_description only (different supplier)
+          if (!existingProduct && extractedCode) {
+            existingProduct = products.find(p => {
+              const productCode = p.code_description?.trim();
+              return productCode && extractedCode === productCode;
+            }) ?? null;
+            if (existingProduct) console.log(`✅ [LOCAL MATCH P2] Found by code (no supplier filter): "${existingProduct.name}" id=${existingProduct.id}`);
+          }
+
+          // Priority 3: name + supplier_id
+          if (!existingProduct) {
+            existingProduct = products.find(p =>
+              p.name.toLowerCase() === extracted.name.toLowerCase() && p.supplier_id === supplierId
+            ) ?? null;
+            if (existingProduct) console.log(`✅ [LOCAL MATCH P3] Found by name+supplier: "${existingProduct.name}" id=${existingProduct.id}`);
+          }
+
+          // Priority 4: name only — CRITICAL FIX for existing products like "Polpa" with different/missing supplier_id
+          if (!existingProduct) {
+            existingProduct = products.find(p =>
+              p.name.toLowerCase() === extracted.name.toLowerCase()
+            ) ?? null;
+            if (existingProduct) console.log(`✅ [LOCAL MATCH P4] Found by name only (no supplier filter): "${existingProduct.name}" id=${existingProduct.id}`);
+            else console.log(`❌ [NO MATCH] Product not found: "${extracted.name}" code="${extractedCode}"`);
           }
         }
 
@@ -1192,6 +1243,7 @@ export default function ProductsSectionEnhanced({
       console.log('🔓 [UPLOAD] Releasing global lock: isProcessingUpload = false');
       // ✅ FIX: Release global lock using sessionStorage
       sessionStorage.removeItem('isProcessingUpload');
+      sessionStorage.removeItem('isProcessingUploadTimestamp');
       setUploading(false);
       setCurrentPage(0);
       setTotalPages(0);

@@ -41,6 +41,10 @@ interface ProductWithExtendedFields extends Product {
 // ✅ OPTIMIZED: Select only essential columns + price_difference + code_description + updated_at
 const PRODUCT_DB_COLUMNS = 'id,name,price,category,supplier_id,vat_rate,unit,discount_percent,discount_amount,unit_price,discounted_price,price_difference,code_description,previous_price,price_history,created_at,updated_at';
 
+// Safe column list that works even if some columns don't exist yet in the DB
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const PRODUCT_DB_COLUMNS_SAFE = 'id,name,price,category,supplier_id,vat_rate,unit,code_description,previous_price,created_at,updated_at';
+
 // CRITICAL: Define the actual invoice table name
 const INVOICES_TABLE = 'app_43909_invoices';
 
@@ -1027,6 +1031,8 @@ export const batchUpdateProducts = async (updates: { id: string; updates: Partia
       return dbUpdate;
     });
 
+    console.log('🔄 [DB] batchUpdateProducts - dbUpdates sample:', JSON.stringify(dbUpdates[0], null, 2));
+
     const { data, error } = await supabase
       .from('products')
       .upsert(dbUpdates, { onConflict: 'id' })
@@ -1037,6 +1043,36 @@ export const batchUpdateProducts = async (updates: { id: string; updates: Partia
 
     if (error) {
       console.error('❌ Error batch updating products:', error);
+      console.error('❌ [DB] batchUpdateProducts Supabase error details:', JSON.stringify(error, null, 2));
+
+      // ✅ FALLBACK: If error is about missing columns, retry with minimal columns
+      if (error.message && (error.message.includes('column') || error.message.includes('does not exist'))) {
+        console.warn('⚠️ [FALLBACK] Retrying batchUpdateProducts with minimal columns (DB may be missing columns)');
+        const MINIMAL_COLUMNS = 'id,name,price,category,supplier_id,vat_rate,unit,code_description,previous_price,created_at,updated_at';
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('products')
+          .upsert(dbUpdates, { onConflict: 'id' })
+          .select(MINIMAL_COLUMNS);
+
+        if (fallbackError) {
+          console.error('❌ Fallback also failed:', fallbackError);
+          return [];
+        }
+        console.log(`✅ [FALLBACK] batchUpdateProducts succeeded with minimal columns: ${fallbackData?.length} products`);
+        return (fallbackData || []).map(product => ({
+          ...product,
+          vatRate: product.vat_rate,
+          unit_price: undefined,
+          discounted_price: undefined,
+          discount_percent: undefined,
+          discount_amount: 0,
+          price_difference: 0,
+          previous_price: product.previous_price,
+          price_history: [],
+          updated_at: product.updated_at || new Date().toISOString(),
+        }));
+      }
+
       return [];
     }
 
@@ -1177,6 +1213,46 @@ export const getProductByCode = async (codeDescription: string, supplierId?: str
     } as Product;
   } catch (e) {
     console.error('❌ getProductByCode error:', e);
+    return null;
+  }
+};
+
+export const getProductByName = async (name: string, supplierId?: string): Promise<Product | null> => {
+  if (!isSupabaseConfigured() || !name?.trim()) return null;
+  try {
+    const user = await getCurrentUser();
+    if (!user) return null;
+    let query = supabase
+      .from('products')
+      .select(PRODUCT_DB_COLUMNS)
+      .eq('user_id', user.id)
+      .ilike('name', name.trim());
+    if (supplierId) {
+      query = query.eq('supplier_id', supplierId);
+    }
+    const { data, error } = await query.limit(1).maybeSingle();
+    if (error || !data) return null;
+    return {
+      id: data.id,
+      name: data.name,
+      price: data.price,
+      category: data.category || '',
+      supplier_id: data.supplier_id,
+      vat_rate: data.vat_rate,
+      unit: data.unit,
+      discount_percent: data.discount_percent,
+      discount_amount: data.discount_amount,
+      unit_price: data.unit_price,
+      discounted_price: data.discounted_price,
+      price_difference: data.price_difference,
+      code_description: data.code_description || '',
+      previous_price: data.previous_price,
+      price_history: data.price_history,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+    } as Product;
+  } catch (e) {
+    console.error('❌ getProductByName error:', e);
     return null;
   }
 };

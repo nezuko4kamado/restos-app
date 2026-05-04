@@ -15,7 +15,7 @@ import { extractDataFromImage, type InvoiceDataExtracted } from '@/lib/ocrServic
 import { getVATRate, calculatePriceWithVAT } from '@/lib/vatUtils';
 import { getVATRateForProduct, isValidDiscountPercent, calculateDiscountAmount, calculateDiscountedPrice } from '@/lib/vatRates';
 import { useLanguage } from '@/lib/i18n';
-import { addProduct, updateProduct, deleteProduct, addSupplier, batchAddProducts, batchUpdateProducts, updateSupplier, saveProductComparison, checkScanLimit, incrementScanCount, checkProductLimitDetailed, getProductByCode, getProductByName } from '@/lib/storage';
+import { addProduct, updateProduct, deleteProduct, addSupplier, batchAddProducts, batchUpdateProducts, updateSupplier, saveProductComparison, checkScanLimit, incrementScanCount, checkProductLimitDetailed, getProductsBySupplier } from '@/lib/storage';
 import { exportProductsToExcel, exportProductsToPDF } from '@/lib/exportUtils';
 import { findSimilarSupplier } from '@/lib/supplierUtils';
 import PriceChangeIndicator from '@/components/PriceChangeIndicator';
@@ -883,87 +883,64 @@ export default function ProductsSectionEnhanced({
       let updatedCount = 0;
       const skippedCount = 0;
 
+      // ✅ FIX: BATCH FETCH — single DB call to get all products for this supplier
+      // Replaces 2-4 sequential DB calls per product (was 80 calls for 20 products → now 1)
+      let allKnownProducts: Product[] = [...products];
+      try {
+        console.log(`🚀 [BATCH FETCH] Fetching all products for supplier ${supplierId} in ONE DB call...`);
+        const supplierProducts = await getProductsBySupplier(supplierId);
+        console.log(`✅ [BATCH FETCH] Loaded ${supplierProducts.length} products for supplier ${supplierId}`);
+        // Also fetch all user products (no supplier filter) for cross-supplier name matching
+        const allUserProducts = supplierId ? await getProductsBySupplier() : supplierProducts;
+        console.log(`✅ [BATCH FETCH] Loaded ${allUserProducts.length} total user products`);
+        // Merge: start with allUserProducts, then override with local state (most up-to-date)
+        const mergedMap = new Map<string, Product>();
+        for (const p of allUserProducts) mergedMap.set(p.id, p);
+        for (const p of products) mergedMap.set(p.id, p); // local state wins
+        allKnownProducts = Array.from(mergedMap.values());
+        console.log(`✅ [BATCH FETCH] Merged pool: ${allKnownProducts.length} products`);
+      } catch (e) {
+        console.error('❌ [BATCH FETCH] Failed, falling back to local products array:', e);
+        allKnownProducts = [...products];
+      }
+
       for (const extracted of allExtractedProducts) {
-        // DEDUPLICATION FIX: Match by product code first via DB (most reliable), then fall back to local array
         const extractedCode = extracted.code_description?.trim();
-        let existingProduct: typeof products[0] | null | undefined = undefined;
+        let existingProduct: Product | null | undefined = undefined;
 
-        // 🔑 STEP 1: Try direct DB lookup by code_description (bypasses stale local state)
+        // Priority 1: code_description + supplier_id (most precise)
         if (extractedCode) {
-          console.log(`🔑 [CODE MATCH] Searching DB for code: "${extractedCode}" supplier: "${supplierId}"`);
-          try {
-            const dbProduct = await getProductByCode(extractedCode, supplierId);
-            if (dbProduct) {
-              existingProduct = dbProduct;
-              console.log(`✅ [CODE MATCH] Found in DB: "${dbProduct.name}" id=${dbProduct.id}`);
-            } else {
-              // Try without supplier constraint
-              const dbProductAny = await getProductByCode(extractedCode);
-              if (dbProductAny) {
-                existingProduct = dbProductAny;
-                console.log(`✅ [CODE MATCH NO SUPPLIER] Found in DB: "${dbProductAny.name}" id=${dbProductAny.id}`);
-              }
-            }
-          } catch (e) {
-            console.error('❌ [CODE MATCH] DB lookup failed, continuing with local match:', e);
-          }
-        }
-
-        // 🔑 STEP 1b: If code lookup failed, try DB lookup by name (fixes "Polpa" and products without code)
-        if (existingProduct === undefined && extracted.name?.trim()) {
-          console.log(`🔑 [NAME MATCH DB] No code match — searching DB by name: "${extracted.name}" supplier: "${supplierId}"`);
-          try {
-            const dbByName = await getProductByName(extracted.name.trim(), supplierId);
-            if (dbByName) {
-              existingProduct = dbByName;
-              console.log(`✅ [NAME MATCH DB+SUPPLIER] Found in DB by name: "${dbByName.name}" id=${dbByName.id}`);
-            } else {
-              // Try without supplier constraint
-              const dbByNameAny = await getProductByName(extracted.name.trim());
-              if (dbByNameAny) {
-                existingProduct = dbByNameAny;
-                console.log(`✅ [NAME MATCH DB NO SUPPLIER] Found in DB by name: "${dbByNameAny.name}" id=${dbByNameAny.id}`);
-              }
-            }
-          } catch (e) {
-            console.error('❌ [NAME MATCH] DB lookup failed, continuing with local match:', e);
-          }
-        }
-
-        // 🔑 STEP 2: Fall back to local array matching if DB lookup found nothing
-        if (existingProduct === undefined) {
-          // Priority 1: code_description + supplier_id (most precise)
-          existingProduct = products.find(p => {
+          existingProduct = allKnownProducts.find(p => {
             const productCode = p.code_description?.trim();
-            return extractedCode && productCode && extractedCode === productCode && p.supplier_id === supplierId;
+            return productCode && extractedCode === productCode && p.supplier_id === supplierId;
           }) ?? null;
-          if (existingProduct) console.log(`✅ [LOCAL MATCH P1] Found by code+supplier: "${existingProduct.name}" id=${existingProduct.id}`);
+          if (existingProduct) console.log(`✅ [MATCH P1] Found by code+supplier: "${existingProduct.name}" id=${existingProduct.id}`);
+        }
 
-          // Priority 2: code_description only (different supplier)
-          if (!existingProduct && extractedCode) {
-            existingProduct = products.find(p => {
-              const productCode = p.code_description?.trim();
-              return productCode && extractedCode === productCode;
-            }) ?? null;
-            if (existingProduct) console.log(`✅ [LOCAL MATCH P2] Found by code (no supplier filter): "${existingProduct.name}" id=${existingProduct.id}`);
-          }
+        // Priority 2: code_description only (any supplier)
+        if (!existingProduct && extractedCode) {
+          existingProduct = allKnownProducts.find(p => {
+            const productCode = p.code_description?.trim();
+            return productCode && extractedCode === productCode;
+          }) ?? null;
+          if (existingProduct) console.log(`✅ [MATCH P2] Found by code (any supplier): "${existingProduct.name}" id=${existingProduct.id}`);
+        }
 
-          // Priority 3: name + supplier_id
-          if (!existingProduct) {
-            existingProduct = products.find(p =>
-              p.name.toLowerCase() === extracted.name.toLowerCase() && p.supplier_id === supplierId
-            ) ?? null;
-            if (existingProduct) console.log(`✅ [LOCAL MATCH P3] Found by name+supplier: "${existingProduct.name}" id=${existingProduct.id}`);
-          }
+        // Priority 3: name + supplier_id
+        if (!existingProduct) {
+          existingProduct = allKnownProducts.find(p =>
+            p.name.toLowerCase() === extracted.name.toLowerCase() && p.supplier_id === supplierId
+          ) ?? null;
+          if (existingProduct) console.log(`✅ [MATCH P3] Found by name+supplier: "${existingProduct.name}" id=${existingProduct.id}`);
+        }
 
-          // Priority 4: name only — CRITICAL FIX for existing products like "Polpa" with different/missing supplier_id
-          if (!existingProduct) {
-            existingProduct = products.find(p =>
-              p.name.toLowerCase() === extracted.name.toLowerCase()
-            ) ?? null;
-            if (existingProduct) console.log(`✅ [LOCAL MATCH P4] Found by name only (no supplier filter): "${existingProduct.name}" id=${existingProduct.id}`);
-            else console.log(`❌ [NO MATCH] Product not found: "${extracted.name}" code="${extractedCode}"`);
-          }
+        // Priority 4: name only (any supplier)
+        if (!existingProduct) {
+          existingProduct = allKnownProducts.find(p =>
+            p.name.toLowerCase() === extracted.name.toLowerCase()
+          ) ?? null;
+          if (existingProduct) console.log(`✅ [MATCH P4] Found by name only: "${existingProduct.name}" id=${existingProduct.id}`);
+          else console.log(`❌ [NO MATCH] Product not found: "${extracted.name}" code="${extractedCode}"`);
         }
 
         // ✅ TRUST KLIPPA'S VAT RATE, CATEGORY, AND CODE_DESCRIPTION - No recalculation, no default override!
@@ -997,8 +974,12 @@ export default function ProductsSectionEnhanced({
                 ];
               }
             } else {
-              newHistory = existingHistory.length > 0 ? existingHistory : [
-                { price: oldPrice, date: existingProduct.created_at || new Date().toISOString(), reason: 'Original price' },
+              // ✅ FIX: Price unchanged — add "Confirmed from invoice" entry to clear manual-change notifications
+              newHistory = [
+                ...(existingHistory.length > 0 ? existingHistory : [
+                  { price: oldPrice, date: existingProduct.created_at || new Date().toISOString(), reason: 'Original price' },
+                ]),
+                { price: oldPrice, date: new Date().toISOString(), reason: 'Confirmed from invoice' },
               ];
             }
 
@@ -1012,8 +993,24 @@ export default function ProductsSectionEnhanced({
                 category: productCategory,
                 code_description: productCodeDescription,
                 updated_at: new Date().toISOString(),
+                price_history: newHistory.map(h => ({ price: h.price, date: h.date })),
               };
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (nonPriceUpdates as any).priceHistory = newHistory;
               productsToUpdate.push({ id: existingProduct.id, updates: nonPriceUpdates });
+            } else if (!priceActuallyChanged) {
+              // ✅ FIX: Price confirmed same from invoice — update price_history to clear manual notifications
+              const confirmedUpdates: Partial<Product> = {
+                vat_rate: productVATRate,
+                vatRate: productVATRate,
+                category: productCategory,
+                code_description: productCodeDescription,
+                updated_at: new Date().toISOString(),
+                price_history: newHistory.map(h => ({ price: h.price, date: h.date })),
+              };
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (confirmedUpdates as any).priceHistory = newHistory;
+              productsToUpdate.push({ id: existingProduct.id, updates: confirmedUpdates });
             } else {
               const updates: Partial<Product> = {
                 price: newPrice,

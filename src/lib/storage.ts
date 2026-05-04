@@ -1218,6 +1218,49 @@ export const getProductByCode = async (codeDescription: string, supplierId?: str
   }
 };
 
+/**
+ * BATCH: Fetch all products for a given supplier (or all user products) in ONE DB call.
+ * Used by handleFileUpload to replace per-product sequential DB lookups.
+ */
+export const getProductsBySupplier = async (supplierId?: string): Promise<Product[]> => {
+  if (!isSupabaseConfigured()) return [];
+  try {
+    const user = await getCurrentUser();
+    if (!user) return [];
+    const SAFE_COLS = 'id,name,price,category,supplier_id,vat_rate,unit,code_description,previous_price,price_history,created_at,updated_at';
+    let query = supabase
+      .from('products')
+      .select(SAFE_COLS)
+      .eq('user_id', user.id);
+    if (supplierId) {
+      query = query.eq('supplier_id', supplierId);
+    }
+    const { data, error } = await query;
+    if (error) {
+      console.error('❌ getProductsBySupplier DB error:', error.message);
+      return [];
+    }
+    return (data || []).map(p => ({
+      id: p.id,
+      name: p.name,
+      price: p.price,
+      category: p.category || '',
+      supplier_id: p.supplier_id,
+      vat_rate: p.vat_rate,
+      vatRate: p.vat_rate,
+      unit: p.unit,
+      code_description: p.code_description || '',
+      previous_price: p.previous_price,
+      price_history: p.price_history,
+      created_at: p.created_at,
+      updated_at: p.updated_at,
+    } as Product));
+  } catch (e) {
+    console.error('❌ getProductsBySupplier error:', e);
+    return [];
+  }
+};
+
 export const getProductByName = async (name: string, supplierId?: string): Promise<Product | null> => {
   if (!isSupabaseConfigured() || !name?.trim()) return null;
   try {

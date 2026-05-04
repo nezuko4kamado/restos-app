@@ -94,6 +94,10 @@ export interface ExtractedInvoiceItem {
   name: string;
   quantity: number;
   price: number;
+  unit_price?: number;
+  discounted_price?: number;
+  discount_amount?: number;
+  discount_percent?: number;
   unit?: string;
   vatRate?: number;
   sku?: string;
@@ -448,8 +452,12 @@ export async function extractInvoiceData(file: File): Promise<InvoiceDataExtract
       const rawItems = (result.data.products || []).map((product: any) => ({
         name: product.name || '',
         quantity: product.quantity || 0,
-        price: product.discounted_price || 0,
-        unit: product.unit || '',
+        price: product.discounted_price || product.unit_price || 0,
+        unit_price: product.unit_price || 0,
+        discounted_price: product.discounted_price || 0,
+        discount_amount: product.discount_amount || 0,
+        discount_percent: product.discount_percent || 0,
+        unit: product.unit || product.quantity_unit || '',
         vatRate: product.vatRate || product.vat_rate || 0,
         sku: product.code || product.sku || '',
         code_description: product.code_description || product.code || product.sku || '',
@@ -485,6 +493,10 @@ export async function extractInvoiceItems(file: File): Promise<ExtractedInvoiceI
       name: item.name,
       quantity: item.quantity,
       price: item.price,
+      unit_price: item.unit_price || 0,
+      discounted_price: item.discounted_price || 0,
+      discount_amount: item.discount_amount || 0,
+      discount_percent: item.discount_percent || 0,
       unit: item.unit,
       vatRate: item.vatRate,
       sku: item.sku || '',

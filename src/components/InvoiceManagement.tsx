@@ -798,6 +798,14 @@ function InvoiceManagement({
 
             const priceUpdates: Partial<Product> = {
               price: item.price,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              unit_price: (item as any).unit_price ?? item.price,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              discounted_price: (item as any).discounted_price ?? item.price,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              discount_amount: (item as any).discount_amount ?? 0,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              discount_percent: (item as any).discount_percent ?? 0,
               updated_at: currentTimestamp,
               price_history: newHist,
             };

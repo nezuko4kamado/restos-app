@@ -214,10 +214,15 @@ export default function ProductsSectionEnhanced({
   const countryVATRate = getVATRate(settings.country);
   const currency = settings.defaultCurrency || 'EUR';
 
-  // ✅ Component mount/unmount logging
+  // ✅ Component mount/unmount logging + stale lock reset
   useEffect(() => {
     console.log('🎨 [COMPONENT] ProductsSectionEnhanced mounted');
     console.log('🎨 [COMPONENT] onSaveInvoiceRequest function:', typeof onSaveInvoiceRequest, onSaveInvoiceRequest ? 'DEFINED' : 'UNDEFINED');
+
+    // ✅ FIX: Always reset stale upload lock on component mount
+    sessionStorage.removeItem('isProcessingUpload');
+    sessionStorage.removeItem('isProcessingUploadTimestamp');
+    console.log('🔓 [MOUNT] Cleared any stale upload lock from sessionStorage');
     
     // ✅ DEBUG: Log all products with their code_description on mount
     console.log('🔍 [PRODUCTS DEBUG] All products on mount:', products.map(p => ({
@@ -1300,30 +1305,31 @@ export default function ProductsSectionEnhanced({
               <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />
               <span className="truncate">{t('addProduct') || 'Add'}</span>
             </Button>
-            <label htmlFor="invoice-upload" className="w-full">
-              <Button 
+            <div className="w-full">
+              <input 
+                id="invoice-upload"
+                type="file" 
+                className="hidden" 
+                accept="image/*"
+                multiple
+                onChange={handleFileUpload}
+              />
+              <Button
                 data-tour="upload-invoice"
-                variant="outline" 
-                size="sm" 
-                asChild 
+                variant="outline"
+                size="sm"
                 disabled={uploading}
+                onClick={() => {
+                  if (!uploading) {
+                    document.getElementById('invoice-upload')?.click();
+                  }
+                }}
                 className="w-full border-2 hover:border-blue-500 hover:text-blue-600 transition-all min-h-[40px] sm:min-h-[44px] text-[11px] sm:text-sm dark:border-slate-700 dark:hover:border-blue-500 px-2 sm:px-3"
               >
-                <span>
-                  <Upload className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />
-                  <span className="truncate">{uploading ? (t('loading') || 'Loading') + '...' : t('uploadInvoice')}</span>
-                  <input 
-                    id="invoice-upload"
-                    type="file" 
-                    className="hidden" 
-                    accept="image/*"
-                    multiple
-                    onChange={handleFileUpload}
-                    disabled={uploading}
-                  />
-                </span>
+                <Upload className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />
+                <span className="truncate">{uploading ? (t('loading') || 'Loading') + '...' : t('uploadInvoice')}</span>
               </Button>
-            </label>
+            </div>
           </div>
         </div>
         

@@ -912,198 +912,145 @@ export const getProductById = async (productId: string): Promise<Product | null>
 
 /**
  * OPTIMIZED: Batch update multiple products at once
- * ✅ UPDATED: Now calculates and saves price_difference percentage + tracks price history
- * ✅ NEW: Include code_description field
+ * REWRITTEN: Uses .update() per-product (not upsert) with full payload + safe-column fallback
+ * Runs all updates in parallel with Promise.all for maximum speed
+ * Gracefully handles missing optional columns (HTTP 400) by retrying with safe columns only
  */
 export const batchUpdateProducts = async (updates: { id: string; updates: Partial<Product> }[]): Promise<Product[]> => {
   if (!isSupabaseConfigured()) {
-    console.warn('⚠️ Supabase not configured, products NOT updated');
+    console.warn('Supabase not configured, products NOT updated');
     return [];
   }
 
   try {
     const perfStart = performance.now();
-    
-    // ✅ STEP 1: Fetch old prices and supplier info for all products being updated
+    const SAFE_COLS = 'id,name,price,category,supplier_id,vat_rate,unit,code_description,previous_price,updated_at';
+
+    // Fetch old prices for price_difference calculation
     const productIds = updates.map(u => u.id);
-    const { data: existingProducts, error: fetchError } = await supabase
+    const { data: existingProducts } = await supabase
       .from('products')
       .select('id,name,price,supplier_id')
       .in('id', productIds);
 
-    if (fetchError) {
-      console.error('❌ Error fetching existing products:', fetchError);
-      return [];
-    }
+    const oldProductsMap = new Map<string, { id: string; name: string; price: number; supplier_id: string }>();
+    (existingProducts || []).forEach(p => oldProductsMap.set(p.id, p));
 
-    const oldProductsMap = new Map<string, typeof existingProducts[0]>();
-    (existingProducts || []).forEach(p => {
-      oldProductsMap.set(p.id, p);
-    });
-
-    console.log('💰 [PRICE DIFF] Old prices fetched:', Object.fromEntries(
-      Array.from(oldProductsMap.entries()).map(([id, p]) => [id, p.price])
-    ));
-
-    // Get supplier names for price history
-    const supplierIds = Array.from(new Set(
-      (existingProducts || []).map(p => p.supplier_id).filter(Boolean)
-    ));
-    const { data: suppliers } = await supabase
-      .from('suppliers')
-      .select('id,name')
-      .in('id', supplierIds);
-    
-    const supplierNamesMap = new Map<string, string>();
-    (suppliers || []).forEach(s => {
-      supplierNamesMap.set(s.id, s.name);
-    });
-
-    // ✅ STEP 2: Calculate price_difference for each update and prepare price history data
-    const priceHistoryItems: Array<{
-      product_id: string;
-      product_name: string;
-      supplier_name: string;
-      old_price: number | null;
-      new_price: number;
-    }> = [];
-
-    const dbUpdates = updates.map(({ id, updates: productUpdates }) => {
-      const dbUpdate: Record<string, unknown> = { id };
+    // Process all updates in parallel
+    const results = await Promise.all(updates.map(async ({ id, updates: productUpdates }) => {
       const extUpdates = productUpdates as ProductWithExtendedFields;
-      
-      if (productUpdates.name !== undefined) dbUpdate.name = productUpdates.name;
-      if (productUpdates.price !== undefined) dbUpdate.price = productUpdates.price;
-      if (productUpdates.category !== undefined) dbUpdate.category = productUpdates.category || '';
-      if (extUpdates.unit_price !== undefined) dbUpdate.unit_price = extUpdates.unit_price;
-      if (extUpdates.discounted_price !== undefined) dbUpdate.discounted_price = extUpdates.discounted_price;
-      if (extUpdates.discount_percent !== undefined) dbUpdate.discount_percent = extUpdates.discount_percent;
-      if (extUpdates.discount_amount !== undefined) dbUpdate.discount_amount = extUpdates.discount_amount;
-      if (productUpdates.unit !== undefined) dbUpdate.unit = productUpdates.unit;
-      if (productUpdates.supplier_id !== undefined) dbUpdate.supplier_id = productUpdates.supplier_id;
+      const oldProduct = oldProductsMap.get(id);
+      const newPrice = productUpdates.price;
+      const oldPrice = oldProduct?.price;
+
+      // Build FULL payload (includes optional columns that may not exist in DB)
+      const fullPayload: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (productUpdates.name !== undefined) fullPayload.name = productUpdates.name;
+      if (newPrice !== undefined) fullPayload.price = newPrice;
+      if (productUpdates.category !== undefined) fullPayload.category = productUpdates.category || '';
       if (productUpdates.vat_rate !== undefined || extUpdates.vatRate !== undefined) {
-        dbUpdate.vat_rate = productUpdates.vat_rate || extUpdates.vatRate;
+        fullPayload.vat_rate = productUpdates.vat_rate ?? extUpdates.vatRate;
       }
-      if (productUpdates.code_description !== undefined) dbUpdate.code_description = productUpdates.code_description;
-      // ✅ FIX: persist price_history to DB when provided
-      if (productUpdates.price_history !== undefined) dbUpdate.price_history = productUpdates.price_history;
+      if (productUpdates.unit !== undefined) fullPayload.unit = productUpdates.unit;
+      if (productUpdates.supplier_id !== undefined) fullPayload.supplier_id = productUpdates.supplier_id;
+      if (productUpdates.code_description !== undefined) fullPayload.code_description = productUpdates.code_description;
 
-      // ✅ CALCULATE PRICE DIFFERENCE PERCENTAGE & PREPARE PRICE HISTORY
-      if (productUpdates.price !== undefined) {
-        const oldProduct = oldProductsMap.get(id);
-        const oldPrice = oldProduct?.price;
-        const newPrice = productUpdates.price;
-
-        if (oldPrice && oldPrice > 0 && newPrice !== oldPrice) {
-          const percentageChange = ((newPrice - oldPrice) / oldPrice) * 100;
-          dbUpdate.price_difference = Math.round(percentageChange * 100) / 100; // Round to 2 decimals
-          dbUpdate.previous_price = oldPrice; // ✅ FIX: persist old price
-
-          console.log(`💰 [PRICE DIFF] Product ${id}:`);
-          console.log(`   Old price: ${oldPrice} €`);
-          console.log(`   New price: ${newPrice} €`);
-          console.log(`   Difference: ${percentageChange > 0 ? '+' : ''}${dbUpdate.price_difference}%`);
-
-          // Prepare price history data
-          if (oldProduct) {
-            const supplierName = supplierNamesMap.get(oldProduct.supplier_id) || 'Unknown Supplier';
-            priceHistoryItems.push({
-              product_id: id,
-              product_name: oldProduct.name,
-              supplier_name: supplierName,
-              old_price: oldPrice,
-              new_price: newPrice,
-            });
-          }
-        } else {
-          dbUpdate.price_difference = 0;
-        }
-        
-        // ✅ FIX: Update updated_at timestamp when price changes
-        dbUpdate.updated_at = new Date().toISOString();
-      }
-
-      // ✅ FIX: persist previous_price if passed explicitly (e.g. from InvoiceManagement)
+      // previous_price: explicit or computed
       if ((productUpdates as Record<string, unknown>).previous_price !== undefined) {
-        dbUpdate.previous_price = (productUpdates as Record<string, unknown>).previous_price;
+        fullPayload.previous_price = (productUpdates as Record<string, unknown>).previous_price;
+      } else if (newPrice !== undefined && oldPrice && oldPrice > 0 && newPrice !== oldPrice) {
+        fullPayload.previous_price = oldPrice;
       }
-      
-      return dbUpdate;
-    });
 
-    console.log('🔄 [DB] batchUpdateProducts - dbUpdates sample:', JSON.stringify(dbUpdates[0], null, 2));
-
-    const { data, error } = await supabase
-      .from('products')
-      .upsert(dbUpdates, { onConflict: 'id' })
-      .select(PRODUCT_DB_COLUMNS);
-
-    const perfEnd = performance.now();
-    console.log(`⏱️ [DB] batchUpdateProducts: ${(perfEnd - perfStart).toFixed(0)}ms for ${updates.length} products`);
-
-    if (error) {
-      console.error('❌ Error batch updating products:', error);
-      console.error('❌ [DB] batchUpdateProducts Supabase error details:', JSON.stringify(error, null, 2));
-
-      // ✅ FALLBACK: If error is about missing columns, retry with minimal columns
-      if (error.message && (error.message.includes('column') || error.message.includes('does not exist'))) {
-        console.warn('⚠️ [FALLBACK] Retrying batchUpdateProducts with minimal columns (DB may be missing columns)');
-        const MINIMAL_COLUMNS = 'id,name,price,category,supplier_id,vat_rate,unit,code_description,previous_price,created_at,updated_at';
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('products')
-          .upsert(dbUpdates, { onConflict: 'id' })
-          .select(MINIMAL_COLUMNS);
-
-        if (fallbackError) {
-          console.error('❌ Fallback also failed:', fallbackError);
-          return [];
+      // Optional columns (may not exist in DB -- will trigger 400 if missing)
+      if (extUpdates.unit_price !== undefined) fullPayload.unit_price = extUpdates.unit_price;
+      if (extUpdates.discounted_price !== undefined) fullPayload.discounted_price = extUpdates.discounted_price;
+      if (extUpdates.discount_percent !== undefined) fullPayload.discount_percent = extUpdates.discount_percent;
+      if (extUpdates.discount_amount !== undefined) fullPayload.discount_amount = extUpdates.discount_amount;
+      if (newPrice !== undefined && oldPrice && oldPrice > 0) {
+        fullPayload.price_difference = newPrice !== oldPrice
+          ? Math.round(((newPrice - oldPrice) / oldPrice) * 10000) / 100
+          : 0;
+        if (newPrice !== oldPrice) {
+          console.log('[PRICE DIFF] Product ' + id + ': ' + oldPrice + ' -> ' + newPrice + ' (' + fullPayload.price_difference + '%)');
         }
-        console.log(`✅ [FALLBACK] batchUpdateProducts succeeded with minimal columns: ${fallbackData?.length} products`);
-        return (fallbackData || []).map(product => ({
-          ...product,
-          vatRate: product.vat_rate,
-          unit_price: undefined,
-          discounted_price: undefined,
-          discount_percent: undefined,
-          discount_amount: 0,
-          price_difference: 0,
-          previous_price: product.previous_price,
-          price_history: [],
-          updated_at: product.updated_at || new Date().toISOString(),
-        }));
+      }
+      if (productUpdates.price_history !== undefined) fullPayload.price_history = productUpdates.price_history;
+
+      // Try full update first
+      const { data: fullData, error: fullError } = await supabase
+        .from('products')
+        .update(fullPayload)
+        .eq('id', id)
+        .select(SAFE_COLS)
+        .single();
+
+      if (!fullError && fullData) {
+        console.log('[UPDATE] Product ' + id + ' updated (full payload)');
+        return {
+          ...fullData,
+          vatRate: fullData.vat_rate,
+          unit_price: extUpdates.unit_price,
+          discounted_price: extUpdates.discounted_price,
+          discount_percent: extUpdates.discount_percent,
+          discount_amount: extUpdates.discount_amount || 0,
+          price_difference: (fullPayload.price_difference as number) || 0,
+          price_history: productUpdates.price_history || [],
+          updated_at: fullData.updated_at || new Date().toISOString(),
+        } as Product;
       }
 
-      return [];
-    }
+      console.warn('[UPDATE] Full payload failed for ' + id + ' (' + fullError?.message + ') -- retrying with safe columns');
 
-    // ✅ STEP 3: Track price changes in price_history (async, don't wait)
-    if (priceHistoryItems.length > 0) {
-      // Use a dummy invoice ID for batch updates (not from invoice)
-      PriceHistoryService.trackInvoicePrices(priceHistoryItems, 'batch-update').catch(err => {
-        console.error('❌ Error tracking price history:', err);
-      });
-    }
+      // Fallback: safe columns only
+      const safePayload: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (productUpdates.name !== undefined) safePayload.name = productUpdates.name;
+      if (newPrice !== undefined) safePayload.price = newPrice;
+      if (productUpdates.category !== undefined) safePayload.category = productUpdates.category || '';
+      if (productUpdates.vat_rate !== undefined || extUpdates.vatRate !== undefined) {
+        safePayload.vat_rate = productUpdates.vat_rate ?? extUpdates.vatRate;
+      }
+      if (productUpdates.unit !== undefined) safePayload.unit = productUpdates.unit;
+      if (productUpdates.supplier_id !== undefined) safePayload.supplier_id = productUpdates.supplier_id;
+      if (productUpdates.code_description !== undefined) safePayload.code_description = productUpdates.code_description;
+      if (fullPayload.previous_price !== undefined) safePayload.previous_price = fullPayload.previous_price;
 
-    return (data || []).map(product => ({
-      ...product,
-      vatRate: product.vat_rate,
-      unit_price: product.unit_price,
-      discounted_price: product.discounted_price,
-      discount_percent: product.discount_percent,
-      discount_amount: product.discount_amount || 0,
-      price_difference: product.price_difference || 0,
-      code_description: product.code_description || '',
-      previous_price: product.previous_price,
-      price_history: product.price_history,
-      updated_at: product.updated_at || product.created_at || new Date().toISOString(),
+      const { data: safeData, error: safeError } = await supabase
+        .from('products')
+        .update(safePayload)
+        .eq('id', id)
+        .select(SAFE_COLS)
+        .single();
+
+      if (safeError) {
+        console.error('[UPDATE] Safe fallback also failed for ' + id + ':', safeError.message);
+        return null;
+      }
+
+      console.log('[UPDATE SAFE] Product ' + id + ' updated (safe columns only)');
+      return {
+        ...safeData,
+        vatRate: safeData.vat_rate,
+        unit_price: extUpdates.unit_price,
+        discounted_price: extUpdates.discounted_price,
+        discount_percent: extUpdates.discount_percent,
+        discount_amount: extUpdates.discount_amount || 0,
+        price_difference: (fullPayload.price_difference as number) || 0,
+        price_history: productUpdates.price_history || [],
+        updated_at: safeData.updated_at || new Date().toISOString(),
+      } as Product;
     }));
 
+    const perfEnd = performance.now();
+    console.log('[DB] batchUpdateProducts: ' + (perfEnd - perfStart).toFixed(0) + 'ms for ' + updates.length + ' products');
+
+    return results.filter(Boolean) as Product[];
+
   } catch (error) {
-    console.error('❌ Exception batch updating products:', error);
+    console.error('Exception batch updating products:', error);
     return [];
   }
 };
-
 export const addProduct = async (product: Omit<Product, 'id'>): Promise<Product | null> => {
   if (!isSupabaseConfigured()) {
     console.warn('⚠️ Supabase not configured, product NOT saved to cloud');

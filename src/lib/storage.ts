@@ -975,7 +975,7 @@ export const batchUpdateProducts = async (updates: { id: string; updates: Partia
           console.log('[PRICE DIFF] Product ' + id + ': ' + oldPrice + ' -> ' + newPrice + ' (' + fullPayload.price_difference + '%)');
         }
       }
-      if (productUpdates.price_history !== undefined) fullPayload.price_history = productUpdates.price_history;
+      // price_history handled separately after main update (column may not exist in DB)
 
       // Try full update first
       const { data: fullData, error: fullError } = await supabase
@@ -987,6 +987,14 @@ export const batchUpdateProducts = async (updates: { id: string; updates: Partia
 
       if (!fullError && fullData) {
         console.log('[UPDATE] Product ' + id + ' updated (full payload)');
+        // Try to update price_history separately (column may not exist in DB)
+        if (productUpdates.price_history !== undefined) {
+          supabase.from('products').update({ price_history: productUpdates.price_history }).eq('id', id)
+            .then(({ error: phErr }) => {
+              if (phErr) console.warn('[price_history] Column may not exist:', phErr.message);
+              else console.log('[price_history] Updated for product', id);
+            });
+        }
         return {
           ...fullData,
           vatRate: fullData.vat_rate,
@@ -1028,6 +1036,14 @@ export const batchUpdateProducts = async (updates: { id: string; updates: Partia
       }
 
       console.log('[UPDATE SAFE] Product ' + id + ' updated (safe columns only)');
+      // Try to update price_history separately (column may not exist in DB)
+      if (productUpdates.price_history !== undefined) {
+        supabase.from('products').update({ price_history: productUpdates.price_history }).eq('id', id)
+          .then(({ error: phErr }) => {
+            if (phErr) console.warn('[price_history] Column may not exist:', phErr.message);
+            else console.log('[price_history] Updated for product', id);
+          });
+      }
       return {
         ...safeData,
         vatRate: safeData.vat_rate,

@@ -1377,40 +1377,39 @@ export const saveProducts = async (products: Product[]): Promise<boolean> => {
       return false;
     }
 
-    for (const product of products) {
-      const category = product.category || '';
+    // Use .update() with safe columns only (no upsert) to avoid HTTP 400
+    // from optional columns that may not exist in the DB yet.
+    const results = await Promise.all(products.map(async (product) => {
       const extProduct = product as ProductWithExtendedFields;
-      
-      const dbProduct = {
-        id: product.id,
+      const safePayload = {
         name: product.name,
         price: product.price,
-        category: category,
-        unit_price: extProduct.unit_price,
-        discounted_price: extProduct.discounted_price,
-        discount_percent: extProduct.discount_percent,
-        discount_amount: extProduct.discount_amount || 0,
+        category: product.category || '',
         unit: product.unit || 'kg',
         supplier_id: product.supplier_id,
         vat_rate: product.vat_rate || extProduct.vatRate,
-        price_difference: extProduct.price_difference || 0,
         code_description: product.code_description || '',
-        user_id: user.id,
         updated_at: new Date().toISOString(),
       };
 
       const { error } = await supabase
         .from('products')
-        .upsert(dbProduct, { onConflict: 'id' });
+        .update(safePayload)
+        .eq('id', product.id)
+        .eq('user_id', user.id);
 
       if (error) {
         console.error('❌ Error saving product:', error);
-        toast.error(`❌ Errore salvando prodotto "${product.name}": ${error.message}`);
         return false;
       }
-    }
+      return true;
+    }));
 
-    return true;
+    const allOk = results.every(r => r === true);
+    if (!allOk) {
+      toast.error('❌ Errore salvando alcuni prodotti');
+    }
+    return allOk;
 
   } catch (error) {
     console.error('❌ Exception saving products:', error);

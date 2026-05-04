@@ -443,11 +443,31 @@ export default function ProductsSectionEnhanced({
         );
       }
 
-      await updateProduct(editingId!, updates);
+      const savedProduct = await updateProduct(editingId!, updates);
 
-      const updatedProducts = products.map((p) => 
-        p.id === editingId ? { ...p, ...updates } : p
-      );
+      const updatedProducts = products.map((p) => {
+        if (p.id === editingId) {
+          // ✅ FIX: `updates` must always win — it contains the user's intended values.
+          // `savedProduct` from DB may have stale discounted_price/unit_price if the DB
+          // trigger hasn't run yet. Merge order: base → DB result → local updates.
+          const merged = savedProduct
+            ? { ...p, ...savedProduct, ...updates }
+            : { ...p, ...updates };
+
+          // ✅ SAFETY: Ensure discounted_price and unit_price are never zero/undefined
+          // so ProductCard always shows the correct price.
+          const safePrice = updates.price ?? p.price;
+          if (!merged.discounted_price || merged.discounted_price <= 0) {
+            merged.discounted_price = safePrice;
+          }
+          if (!merged.unit_price || merged.unit_price <= 0) {
+            merged.unit_price = safePrice;
+          }
+          // Force a new object reference so React.memo detects the change
+          return { ...merged };
+        }
+        return p;
+      });
       setProducts(updatedProducts);
       
       setEditingId(null);

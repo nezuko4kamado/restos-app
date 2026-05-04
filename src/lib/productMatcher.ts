@@ -41,6 +41,27 @@ function calculateSimilarity(str1: string, str2: string): number {
 }
 
 /**
+ * Calculate word overlap between two strings.
+ * Returns a score 0-100 based on the fraction of meaningful words shared.
+ * Words shorter than 2 characters are ignored.
+ */
+function calculateWordOverlap(str1: string, str2: string): number {
+  const tokenize = (s: string) =>
+    s.toLowerCase().trim().split(/[\s*x()/,]+/).filter(w => w.length >= 2);
+
+  const words1 = tokenize(str1);
+  const words2 = tokenize(str2);
+
+  if (words1.length === 0 || words2.length === 0) return 0;
+
+  const set2 = new Set(words2);
+  const matches = words1.filter(w => set2.has(w)).length;
+  const overlap = matches / Math.max(words1.length, words2.length);
+
+  return overlap * 100;
+}
+
+/**
  * Calculate Levenshtein distance between two strings
  */
 function levenshteinDistance(str1: string, str2: string): number {
@@ -98,12 +119,19 @@ async function matchProduct(
     // ✅ Match by code_description (exact then partial) — highest priority after EAN
     if (codeDescription && codeDescription.trim()) {
       const codeNorm = codeDescription.toLowerCase().trim();
+      const isPureNumeric = /^\d+$/.test(codeNorm);
+
       for (const product of existingProducts) {
         if (product.code_description && product.code_description.trim()) {
           const prodCode = product.code_description.toLowerCase().trim();
           // Exact match
           if (prodCode === codeNorm) {
             console.log('✅ [MATCHER] Exact code_description match:', codeDescription, '->', product.name);
+            return { matched: true, product, confidence: 100, matchType: 'exact' };
+          }
+          // Numeric code exact match (e.g. "13010" vs "13010")
+          if (isPureNumeric && /^\d+$/.test(prodCode) && prodCode === codeNorm) {
+            console.log('✅ [MATCHER] Numeric code exact match:', codeDescription, '->', product.name);
             return { matched: true, product, confidence: 100, matchType: 'exact' };
           }
           // Partial match (one contains the other)
@@ -115,9 +143,9 @@ async function matchProduct(
       }
     }
 
-    // Find best match
+    // Find best match using combined Levenshtein + word overlap score
     let bestMatch: MatchResult = { matched: false, confidence: 0 };
-    let highestSimilarity = 0;
+    let highestScore = 0;
 
     for (const product of existingProducts) {
       // Exact match by EAN code (if provided)
@@ -130,11 +158,13 @@ async function matchProduct(
         };
       }
 
-      // Match by name similarity
-      const similarity = calculateSimilarity(productName, product.name);
-      
+      // Match by name similarity — combine Levenshtein and word overlap
+      const levenSimilarity = calculateSimilarity(productName, product.name);
+      const wordOverlap = calculateWordOverlap(productName, product.name);
+      const combinedScore = Math.max(levenSimilarity, wordOverlap);
+
       // Exact name match
-      if (similarity === 100) {
+      if (levenSimilarity === 100) {
         return {
           matched: true,
           product,
@@ -142,14 +172,18 @@ async function matchProduct(
           matchType: 'exact'
         };
       }
-      
-      // Fuzzy match: > 80% similarity
-      if (similarity > 80 && similarity > highestSimilarity) {
-        highestSimilarity = similarity;
+
+      // Fuzzy match: lowered threshold to 65% to catch variants like
+      // "POLPA TORRENTE 5 KG*3 S/P" vs "POLPA TORRENTE 5 KG X 3 (UN) S/P"
+      if (combinedScore > 65 && combinedScore > highestScore) {
+        highestScore = combinedScore;
+        const confidence = wordOverlap >= 60 && levenSimilarity < 65
+          ? 75  // word-overlap-only match gets capped at 75
+          : Math.round(combinedScore);
         bestMatch = {
           matched: true,
           product,
-          confidence: Math.round(similarity),
+          confidence,
           matchType: 'fuzzy'
         };
       }
@@ -198,14 +232,16 @@ export async function matchProductBySupplier(
       return { matched: false, confidence: 0 };
     }
 
-    // Find best match
+    // Find best match using combined Levenshtein + word overlap score
     let bestMatch: MatchResult = { matched: false, confidence: 0 };
-    let highestSimilarity = 0;
+    let highestScore = 0;
 
     for (const product of existingProducts) {
-      const similarity = calculateSimilarity(extractedProduct.name, product.name);
-      
-      if (similarity === 100) {
+      const levenSimilarity = calculateSimilarity(extractedProduct.name, product.name);
+      const wordOverlap = calculateWordOverlap(extractedProduct.name, product.name);
+      const combinedScore = Math.max(levenSimilarity, wordOverlap);
+
+      if (levenSimilarity === 100) {
         return {
           matched: true,
           product,
@@ -214,12 +250,15 @@ export async function matchProductBySupplier(
         };
       }
       
-      if (similarity > 80 && similarity > highestSimilarity) {
-        highestSimilarity = similarity;
+      if (combinedScore > 65 && combinedScore > highestScore) {
+        highestScore = combinedScore;
+        const confidence = wordOverlap >= 60 && levenSimilarity < 65
+          ? 75
+          : Math.round(combinedScore);
         bestMatch = {
           matched: true,
           product,
-          confidence: Math.round(similarity),
+          confidence,
           matchType: 'fuzzy'
         };
       }

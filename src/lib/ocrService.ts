@@ -444,12 +444,15 @@ export async function extractInvoiceData(file: File): Promise<InvoiceDataExtract
     const result = await extractDataFromImage(file, 'invoice');
     
     if (result.success && result.data) {
-      const rawItems = (result.data.products || []).map((product: KlippaProduct) => ({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rawItems = (result.data.products || []).map((product: any) => ({
         name: product.name || '',
         quantity: product.quantity || 0,
         price: product.discounted_price || 0,
         unit: product.unit || '',
-        vatRate: product.vatRate || product.vat_rate || 0
+        vatRate: product.vatRate || product.vat_rate || 0,
+        sku: product.code || product.sku || '',
+        code_description: product.code_description || product.code || product.sku || '',
       }));
 
       return {
@@ -477,13 +480,15 @@ export async function extractInvoiceData(file: File): Promise<InvoiceDataExtract
 export async function extractInvoiceItems(file: File): Promise<ExtractedInvoiceItem[]> {
   try {
     const result = await extractInvoiceData(file);
-    return result.items.map(item => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return result.items.map((item: any) => ({
       name: item.name,
       quantity: item.quantity,
       price: item.price,
       unit: item.unit,
       vatRate: item.vatRate,
-      sku: ''
+      sku: item.sku || '',
+      code_description: item.code_description || item.sku || '',
     }));
   } catch (error) {
     console.error('❌ [OCR] extractInvoiceItems fallback:', error);

@@ -81,7 +81,7 @@ export class PriceHistoryService {
       });
 
       const { error } = await supabase
-        .from('price_history')
+        .from('app_43909_price_history')
         .insert([historyEntry]);
 
       if (error) {
@@ -110,7 +110,7 @@ export class PriceHistoryService {
       }
 
       const { data, error } = await supabase
-        .from('price_history')
+        .from('app_43909_price_history')
         .select('*')
         .eq('user_id', user.id)
         .eq('product_id', productId)
@@ -151,7 +151,7 @@ export class PriceHistoryService {
       console.log(`📊 [PRICE HISTORY] Fetching price changes since ${dateThreshold.toISOString()}`);
 
       const { data, error } = await supabase
-        .from('price_history')
+        .from('app_43909_price_history')
         .select('*')
         .eq('user_id', user.id)
         .gte('change_date', dateThreshold.toISOString())
@@ -208,7 +208,7 @@ export class PriceHistoryService {
 
       // Get latest price change for each product
       const { data, error } = await supabase
-        .from('price_history')
+        .from('app_43909_price_history')
         .select('*')
         .eq('user_id', user.id)
         .order('change_date', { ascending: false })
@@ -270,7 +270,7 @@ export class PriceHistoryService {
       }
 
       const { data, error } = await supabase
-        .from('price_history')
+        .from('app_43909_price_history')
         .select('new_price, old_price')
         .eq('user_id', user.id)
         .eq('product_id', productId)
@@ -376,7 +376,7 @@ export class PriceHistoryService {
       }
 
       const { error } = await supabase
-        .from('price_history')
+        .from('app_43909_price_history')
         .insert(historyEntries);
 
       if (error) {

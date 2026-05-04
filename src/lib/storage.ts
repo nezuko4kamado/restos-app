@@ -39,7 +39,7 @@ interface ProductWithExtendedFields extends Product {
 }
 
 // ✅ OPTIMIZED: Select only essential columns + price_difference + code_description + updated_at
-const PRODUCT_DB_COLUMNS = 'id,name,price,category,supplier_id,vat_rate,unit,discount_percent,discount_amount,unit_price,discounted_price,price_difference,code_description,previous_price,price_history,created_at,updated_at';
+const PRODUCT_DB_COLUMNS = 'id,name,price,category,supplier_id,vat_rate,unit,discount_percent,discount_amount,unit_price,discounted_price,price_difference,code_description,previous_price,created_at,updated_at';
 
 // Safe column list that works even if some columns don't exist yet in the DB
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -920,7 +920,7 @@ export const batchUpdateProducts = async (updates: { id: string; updates: Partia
 
   try {
     const perfStart = performance.now();
-    const SAFE_COLS = 'id,name,price,category,supplier_id,vat_rate,unit,code_description,previous_price,updated_at';
+    const SAFE_COLS = 'id,name,price,category,supplier_id,vat_rate,unit,code_description,previous_price,created_at,updated_at';
 
     // Fetch old prices for price_difference calculation
     const productIds = updates.map(u => u.id);
@@ -959,9 +959,8 @@ export const batchUpdateProducts = async (updates: { id: string; updates: Partia
       }
 
       // IMPORTANT: optional columns (unit_price, discounted_price, discount_percent,
-      // discount_amount, price_difference, price_history) are NOT included in fullPayload
+      // discount_amount, price_difference) are NOT included in fullPayload
       // to avoid HTTP 400 when those columns don't exist in the DB yet.
-      // They are applied in a separate fire-and-forget update after the main update succeeds.
       // Compute price_difference locally for return value only (not sent in main payload).
       let computedPriceDiff = 0;
       if (newPrice !== undefined && oldPrice && oldPrice > 0) {
@@ -990,7 +989,6 @@ export const batchUpdateProducts = async (updates: { id: string; updates: Partia
         if (extUpdates.discount_percent !== undefined) optionalPayload.discount_percent = extUpdates.discount_percent;
         if (extUpdates.discount_amount !== undefined) optionalPayload.discount_amount = extUpdates.discount_amount;
         if (newPrice !== undefined && oldPrice !== undefined) optionalPayload.price_difference = computedPriceDiff;
-        if (productUpdates.price_history !== undefined) optionalPayload.price_history = productUpdates.price_history;
         if (Object.keys(optionalPayload).length > 0) {
           supabase.from('products').update(optionalPayload).eq('id', id)
             .then(({ error: optErr }) => {
@@ -1006,17 +1004,13 @@ export const batchUpdateProducts = async (updates: { id: string; updates: Partia
           discount_percent: extUpdates.discount_percent,
           discount_amount: extUpdates.discount_amount || 0,
           price_difference: computedPriceDiff,
-          price_history: productUpdates.price_history || [],
           updated_at: fullData.updated_at || new Date().toISOString(),
         } as Product;
       }
-
-      console.warn('[UPDATE] Full payload failed for ' + id + ' (' + fullError?.message + ') -- retrying with safe columns');
-
-      // Fallback: safe columns only
+      // Fallback: full update failed, try safe columns only
       const safePayload: Record<string, unknown> = { updated_at: new Date().toISOString() };
       if (productUpdates.name !== undefined) safePayload.name = productUpdates.name;
-      if (newPrice !== undefined) safePayload.price = newPrice;
+      if (productUpdates.price !== undefined) safePayload.price = productUpdates.price;
       if (productUpdates.category !== undefined) safePayload.category = productUpdates.category || '';
       if (productUpdates.vat_rate !== undefined || extUpdates.vatRate !== undefined) {
         safePayload.vat_rate = productUpdates.vat_rate ?? extUpdates.vatRate;
@@ -1024,7 +1018,6 @@ export const batchUpdateProducts = async (updates: { id: string; updates: Partia
       if (productUpdates.unit !== undefined) safePayload.unit = productUpdates.unit;
       if (productUpdates.supplier_id !== undefined) safePayload.supplier_id = productUpdates.supplier_id;
       if (productUpdates.code_description !== undefined) safePayload.code_description = productUpdates.code_description;
-      if (fullPayload.previous_price !== undefined) safePayload.previous_price = fullPayload.previous_price;
 
       const { data: safeData, error: safeError } = await supabase
         .from('products')
@@ -1033,38 +1026,18 @@ export const batchUpdateProducts = async (updates: { id: string; updates: Partia
         .select(SAFE_COLS)
         .single();
 
-      if (safeError) {
-        console.error('[UPDATE] Safe fallback also failed for ' + id + ':', safeError.message);
-        return null;
+      if (!safeError && safeData) {
+        console.log('[UPDATE] Product ' + id + ' updated (safe payload fallback)');
+        return {
+          ...safeData,
+          vatRate: safeData.vat_rate,
+          price_difference: computedPriceDiff,
+          updated_at: safeData.updated_at || new Date().toISOString(),
+        } as Product;
       }
 
-      console.log('[UPDATE SAFE] Product ' + id + ' updated (safe columns only)');
-      // Fire-and-forget: update optional columns separately (may not exist in DB)
-      const optionalPayloadSafe: Record<string, unknown> = {};
-      if (extUpdates.unit_price !== undefined) optionalPayloadSafe.unit_price = extUpdates.unit_price;
-      if (extUpdates.discounted_price !== undefined) optionalPayloadSafe.discounted_price = extUpdates.discounted_price;
-      if (extUpdates.discount_percent !== undefined) optionalPayloadSafe.discount_percent = extUpdates.discount_percent;
-      if (extUpdates.discount_amount !== undefined) optionalPayloadSafe.discount_amount = extUpdates.discount_amount;
-      if (newPrice !== undefined && oldPrice !== undefined) optionalPayloadSafe.price_difference = computedPriceDiff;
-      if (productUpdates.price_history !== undefined) optionalPayloadSafe.price_history = productUpdates.price_history;
-      if (Object.keys(optionalPayloadSafe).length > 0) {
-        supabase.from('products').update(optionalPayloadSafe).eq('id', id)
-          .then(({ error: optErr }) => {
-            if (optErr) console.warn('[optional cols safe] Some columns may not exist in DB:', optErr.message);
-            else console.log('[optional cols safe] Updated for product', id);
-          });
-      }
-      return {
-        ...safeData,
-        vatRate: safeData.vat_rate,
-        unit_price: extUpdates.unit_price,
-        discounted_price: extUpdates.discounted_price,
-        discount_percent: extUpdates.discount_percent,
-        discount_amount: extUpdates.discount_amount || 0,
-        price_difference: computedPriceDiff,
-        price_history: productUpdates.price_history || [],
-        updated_at: safeData.updated_at || new Date().toISOString(),
-      } as Product;
+      console.error('[UPDATE] Failed to update product ' + id + ':', safeError?.message);
+      return null;
     }));
 
     const perfEnd = performance.now();
@@ -1200,7 +1173,7 @@ export const getProductsBySupplier = async (supplierId?: string): Promise<Produc
   try {
     const user = await getCurrentUser();
     if (!user) return [];
-    const SAFE_COLS = 'id,name,price,category,supplier_id,vat_rate,unit,code_description,previous_price,price_history,created_at,updated_at';
+    const SAFE_COLS = 'id,name,price,category,supplier_id,vat_rate,unit,code_description,previous_price,created_at,updated_at';
     let query = supabase
       .from('products')
       .select(SAFE_COLS)
@@ -1224,7 +1197,6 @@ export const getProductsBySupplier = async (supplierId?: string): Promise<Produc
       unit: p.unit,
       code_description: p.code_description || '',
       previous_price: p.previous_price,
-      price_history: p.price_history,
       created_at: p.created_at,
       updated_at: p.updated_at,
     } as Product));
@@ -1463,8 +1435,6 @@ export const updateProduct = async (id: string, updates: Partial<Product>): Prom
       dbUpdates.vat_rate = updates.vat_rate || extUpdates.vatRate;
     }
     if (updates.code_description !== undefined) dbUpdates.code_description = updates.code_description;
-    // ✅ FIX: persist price_history to DB when provided
-    if (updates.price_history !== undefined) dbUpdates.price_history = updates.price_history;
     // ✅ FIX: persist previous_price when provided
     if ((updates as Record<string, unknown>).previous_price !== undefined) {
       dbUpdates.previous_price = (updates as Record<string, unknown>).previous_price;
@@ -1514,7 +1484,6 @@ export const updateProduct = async (id: string, updates: Partial<Product>): Prom
       price_difference: data.price_difference || 0,
       code_description: data.code_description || '',
       previous_price: data.previous_price,
-      price_history: data.price_history,
       updated_at: data.updated_at || data.created_at || new Date().toISOString(),
       // ✅ FIX: Explicitly map discounted_price and unit_price so they are never
       // lost when the DB returns a stale/null value — fall back to the updates we sent.

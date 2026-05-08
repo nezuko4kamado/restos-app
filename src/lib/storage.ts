@@ -920,6 +920,14 @@ export const batchUpdateProducts = async (updates: { id: string; updates: Partia
 
   try {
     const perfStart = performance.now();
+    // Strip price_history AND priceHistory (camelCase) from all updates to prevent HTTP 400
+    updates = updates.map(u => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { price_history, priceHistory, ...cleanUpdates } = u.updates as Record<string, unknown>;
+      void price_history;
+      void priceHistory;
+      return { id: u.id, updates: cleanUpdates };
+    });
     const SAFE_COLS = 'id,name,price,category,supplier_id,vat_rate,unit,code_description,previous_price,created_at,updated_at';
 
     // Fetch old prices for price_difference calculation
@@ -983,11 +991,13 @@ export const batchUpdateProducts = async (updates: { id: string; updates: Partia
       if (!fullError && fullData) {
         console.log('[UPDATE] Product ' + id + ' updated (full payload)');
         // Fire-and-forget: update optional columns separately (may not exist in DB)
+        // ✅ FIX: Only write unit_price/discounted_price/discount_percent/discount_amount
+        // when they are valid (> 0) to avoid overwriting good DB values with zeros from OCR.
         const optionalPayload: Record<string, unknown> = {};
-        if (extUpdates.unit_price !== undefined) optionalPayload.unit_price = extUpdates.unit_price;
-        if (extUpdates.discounted_price !== undefined) optionalPayload.discounted_price = extUpdates.discounted_price;
-        if (extUpdates.discount_percent !== undefined) optionalPayload.discount_percent = extUpdates.discount_percent;
-        if (extUpdates.discount_amount !== undefined) optionalPayload.discount_amount = extUpdates.discount_amount;
+        if (extUpdates.unit_price !== undefined && (extUpdates.unit_price as number) > 0) optionalPayload.unit_price = extUpdates.unit_price;
+        if (extUpdates.discounted_price !== undefined && (extUpdates.discounted_price as number) > 0) optionalPayload.discounted_price = extUpdates.discounted_price;
+        if (extUpdates.discount_percent !== undefined && (extUpdates.discount_percent as number) > 0) optionalPayload.discount_percent = extUpdates.discount_percent;
+        if (extUpdates.discount_amount !== undefined && (extUpdates.discount_amount as number) > 0) optionalPayload.discount_amount = extUpdates.discount_amount;
         if (newPrice !== undefined && oldPrice !== undefined) optionalPayload.price_difference = computedPriceDiff;
         if (Object.keys(optionalPayload).length > 0) {
           supabase.from('products').update(optionalPayload).eq('id', id)
@@ -996,13 +1006,19 @@ export const batchUpdateProducts = async (updates: { id: string; updates: Partia
               else console.log('[optional cols] Updated for product', id);
             });
         }
+        // ✅ FIX: Only inject unit_price/discounted_price/discount_percent from OCR
+        // if they are valid (> 0), otherwise keep DB values to avoid overwriting with zeros.
+        const validUnitPrice = extUpdates.unit_price && (extUpdates.unit_price as number) > 0;
+        const validDiscountedPrice = extUpdates.discounted_price && (extUpdates.discounted_price as number) > 0;
+        const validDiscountPercent = extUpdates.discount_percent && (extUpdates.discount_percent as number) > 0;
+        const validDiscountAmount = extUpdates.discount_amount && (extUpdates.discount_amount as number) > 0;
         return {
           ...fullData,
           vatRate: fullData.vat_rate,
-          unit_price: extUpdates.unit_price,
-          discounted_price: extUpdates.discounted_price,
-          discount_percent: extUpdates.discount_percent,
-          discount_amount: extUpdates.discount_amount || 0,
+          ...(validUnitPrice ? { unit_price: extUpdates.unit_price } : {}),
+          ...(validDiscountedPrice ? { discounted_price: extUpdates.discounted_price } : {}),
+          ...(validDiscountPercent ? { discount_percent: extUpdates.discount_percent } : {}),
+          discount_amount: validDiscountAmount ? extUpdates.discount_amount : 0,
           price_difference: computedPriceDiff,
           updated_at: fullData.updated_at || new Date().toISOString(),
         } as Product;
@@ -1018,6 +1034,12 @@ export const batchUpdateProducts = async (updates: { id: string; updates: Partia
       if (productUpdates.unit !== undefined) safePayload.unit = productUpdates.unit;
       if (productUpdates.supplier_id !== undefined) safePayload.supplier_id = productUpdates.supplier_id;
       if (productUpdates.code_description !== undefined) safePayload.code_description = productUpdates.code_description;
+      // ✅ FIX: include previous_price in safePayload
+      if ((productUpdates as Record<string, unknown>).previous_price !== undefined) {
+        safePayload.previous_price = (productUpdates as Record<string, unknown>).previous_price;
+      } else if (newPrice !== undefined && oldPrice && oldPrice > 0 && newPrice !== oldPrice) {
+        safePayload.previous_price = oldPrice;
+      }
 
       const { data: safeData, error: safeError } = await supabase
         .from('products')
@@ -1398,20 +1420,30 @@ export const updateProduct = async (id: string, updates: Partial<Product>): Prom
   }
 
   try {
+    // Strip price_history to prevent HTTP 400
+    const { price_history: _ph, ...safeUpdates } = updates as Record<string, unknown>;
+    updates = safeUpdates as Partial<Product>;
+
     // ✅ STEP 1: Fetch old product data if price is being updated
     let priceDifference = 0;
     let oldProduct: Product | null = null;
     
     if (updates.price !== undefined) {
-      oldProduct = await getProductById(id);
-      if (oldProduct && oldProduct.price > 0 && updates.price !== oldProduct.price) {
-        priceDifference = ((updates.price - oldProduct.price) / oldProduct.price) * 100;
-        priceDifference = Math.round(priceDifference * 100) / 100; // Round to 2 decimals
-        
-        console.log(`💰 [PRICE DIFF] Manual update for product ${id}:`);
-        console.log(`   Old price: ${oldProduct.price} €`);
-        console.log(`   New price: ${updates.price} €`);
-        console.log(`   Difference: ${priceDifference > 0 ? '+' : ''}${priceDifference}%`);
+      const explicitPrevPrice = (updates as Record<string, unknown>).previous_price as number | undefined;
+      if (explicitPrevPrice !== undefined && explicitPrevPrice > 0) {
+        // Fast path: previous_price already provided (e.g. from invoice save) — skip extra DB fetch
+        oldProduct = { price: explicitPrevPrice } as Product;
+        if (updates.price !== explicitPrevPrice) {
+          priceDifference = Math.round(((updates.price - explicitPrevPrice) / explicitPrevPrice) * 10000) / 100;
+          console.log(`💰 [PRICE DIFF] Invoice update for product ${id}: ${explicitPrevPrice} → ${updates.price} (${priceDifference > 0 ? '+' : ''}${priceDifference}%)`);
+        }
+      } else {
+        // Slow path: manual update — fetch from DB to compute diff
+        oldProduct = await getProductById(id);
+        if (oldProduct && oldProduct.price > 0 && updates.price !== oldProduct.price) {
+          priceDifference = Math.round(((updates.price - oldProduct.price) / oldProduct.price) * 10000) / 100;
+          console.log(`💰 [PRICE DIFF] Manual update for product ${id}: ${oldProduct.price} → ${updates.price} (${priceDifference > 0 ? '+' : ''}${priceDifference}%)`);
+        }
       }
     }
 
@@ -1421,14 +1453,12 @@ export const updateProduct = async (id: string, updates: Partial<Product>): Prom
     if (updates.name !== undefined) dbUpdates.name = updates.name;
     if (updates.price !== undefined) {
       dbUpdates.price = updates.price;
-      dbUpdates.price_difference = priceDifference;
+      // price_difference goes to the optional fire-and-forget path below to avoid HTTP 400
       dbUpdates.updated_at = new Date().toISOString();
     }
     if (updates.category !== undefined) dbUpdates.category = updates.category || '';
-    if (extUpdates.unit_price !== undefined) dbUpdates.unit_price = extUpdates.unit_price;
-    if (extUpdates.discounted_price !== undefined) dbUpdates.discounted_price = extUpdates.discounted_price;
-    if (extUpdates.discount_percent !== undefined) dbUpdates.discount_percent = extUpdates.discount_percent;
-    if (extUpdates.discount_amount !== undefined) dbUpdates.discount_amount = extUpdates.discount_amount;
+    // unit_price, discounted_price, discount_percent, discount_amount are optional columns
+    // that may not exist in the DB yet — handled in the fire-and-forget path below.
     if (updates.unit !== undefined) dbUpdates.unit = updates.unit;
     if (updates.supplier_id !== undefined) dbUpdates.supplier_id = updates.supplier_id;
     if (updates.vat_rate !== undefined || extUpdates.vatRate !== undefined) {
@@ -1443,17 +1473,33 @@ export const updateProduct = async (id: string, updates: Partial<Product>): Prom
       dbUpdates.previous_price = oldProduct.price;
     }
 
+    // ✅ FIX: Use SAFE columns first to avoid HTTP 400 when optional columns don't exist
     const { data, error } = await supabase
     .from('products')
     .update(dbUpdates)
     .eq('id', id)
-    .select(PRODUCT_DB_COLUMNS)
+    .select(PRODUCT_DB_COLUMNS_SAFE)
     .single();
 
     if (error) {
       console.error('❌ Error updating product:', error);
       toast.error(`❌ Errore aggiornando prodotto: ${error.message}`);
       return null;
+    }
+
+    // Fire-and-forget: update optional columns separately (may not exist in DB)
+    const optionalPayload: Record<string, unknown> = {};
+    if ((updates as Record<string, unknown>).unit_price !== undefined) optionalPayload.unit_price = (updates as Record<string, unknown>).unit_price;
+    if ((updates as Record<string, unknown>).discounted_price !== undefined) optionalPayload.discounted_price = (updates as Record<string, unknown>).discounted_price;
+    if ((updates as Record<string, unknown>).discount_percent !== undefined) optionalPayload.discount_percent = (updates as Record<string, unknown>).discount_percent;
+    if ((updates as Record<string, unknown>).discount_amount !== undefined) optionalPayload.discount_amount = (updates as Record<string, unknown>).discount_amount;
+    if (priceDifference !== 0) optionalPayload.price_difference = priceDifference;
+    if (Object.keys(optionalPayload).length > 0) {
+      supabase.from('products').update(optionalPayload).eq('id', id)
+        .then(({ error: optErr }) => {
+          if (optErr) console.warn('[optional cols] Some columns may not exist in DB:', optErr.message);
+          else console.log('[optional cols] Updated for product', id);
+        });
     }
 
     // ✅ STEP 2: Track price change in price_history (async, don't wait)
@@ -2304,18 +2350,9 @@ export const addInvoice = async (invoice: Omit<Invoice, 'id'>): Promise<Invoice 
       return null;
     }
 
-    let supplierName = 'Unknown Supplier';
-    if (invoice.supplier_id) {
-      const { data: supplierData } = await supabase
-        .from('suppliers')
-        .select('name')
-        .eq('id', invoice.supplier_id)
-        .single();
-      
-      if (supplierData) {
-        supplierName = supplierData.name;
-      }
-    }
+    // Use supplier_name already on the invoice — no extra DB round-trip needed.
+    // Caller (handleAddInvoice) always sets supplier_name via suppliersRef.
+    const supplierName = invoice.supplier_name || 'Unknown Supplier';
 
     const itemsJsonb = typeof invoice.items === 'string' 
       ? JSON.parse(invoice.items) 
@@ -2331,7 +2368,7 @@ export const addInvoice = async (invoice: Omit<Invoice, 'id'>): Promise<Invoice 
       total_amount: parseFloat(String(invoice.amount)),
       is_paid: invoice.paid || false,
       payment_date: null,
-      notes: '',
+      notes: invoice.notes || '',
       items: itemsJsonb,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -2355,11 +2392,13 @@ export const addInvoice = async (invoice: Omit<Invoice, 'id'>): Promise<Invoice 
     const savedInvoice: Invoice = {
       id: data.id,
       supplier_id: invoice.supplier_id,
+      supplier_name: data.supplier_name || supplierName,
       invoice_number: data.invoice_number,
       date: data.date,
       amount: parseFloat(String(data.total_amount)),
-      items: data.items,
+      items: data.items || [],
       paid: data.is_paid,
+      notes: data.notes || '',
       created_at: data.created_at,
       updated_at: data.updated_at,
       user_id: data.user_id
@@ -2399,14 +2438,12 @@ export const getInvoices = async (): Promise<Invoice[]> => {
       return [];
     }
 
-    const suppliers = await getSuppliers();
-    
+    // FIX: Removed getSuppliers() call — supplier_name is already on the invoice row.
+    // This eliminates an extra DB round-trip on every getInvoices() call.
     const invoices: Invoice[] = (data || []).map(dbInvoice => {
-      const matchedSupplier = suppliers.find(s => s.name === dbInvoice.supplier_name);
-      
       return {
         id: dbInvoice.id,
-        supplier_id: matchedSupplier?.id || '',
+        supplier_id: '',
         supplier_name: dbInvoice.supplier_name,
         invoice_number: dbInvoice.invoice_number,
         date: dbInvoice.date,
@@ -2434,6 +2471,8 @@ export const getInvoices = async (): Promise<Invoice[]> => {
   }
 };
 
+
+
 export const saveInvoices = async (invoices: Invoice[]): Promise<boolean> => {
   if (!isSupabaseConfigured()) {
     console.warn('⚠️ Supabase not configured, invoices NOT saved');
@@ -2447,49 +2486,38 @@ export const saveInvoices = async (invoices: Invoice[]): Promise<boolean> => {
       return false;
     }
 
-    for (const invoice of invoices) {
-      let supplierName = 'Unknown Supplier';
-      if (invoice.supplier_id) {
-        const { data: supplierData } = await supabase
-          .from('suppliers')
-          .select('name')
-          .eq('id', invoice.supplier_id)
-          .single();
-        
-        if (supplierData) {
-          supplierName = supplierData.name;
-        }
-      }
+    // Build all DB rows first — use supplier_name already on the invoice, no extra lookups
+    const dbInvoices = invoices.map(invoice => ({
+      id: invoice.id,
+      user_id: user.id,
+      invoice_number: invoice.invoice_number,
+      supplier_name: invoice.supplier_name || 'Unknown Supplier',
+      date: convertDateToISO(invoice.date),
+      total_amount: parseFloat(String(invoice.amount || invoice.total_amount || 0)),
+      is_paid: invoice.paid || invoice.is_paid || false,
+      payment_date: invoice.payment_date || null,
+      items: typeof invoice.items === 'string' ? JSON.parse(invoice.items) : (invoice.items || []),
+      notes: invoice.notes || '',
+      updated_at: new Date().toISOString(),
+    }));
 
-      const dbInvoice = {
-        id: invoice.id,
-        user_id: user.id,
-        invoice_number: invoice.invoice_number,
-        supplier_name: supplierName,
-        date: convertDateToISO(invoice.date),
-        total_amount: parseFloat(String(invoice.amount)),
-        is_paid: invoice.paid || invoice.is_paid || false,
-        payment_date: invoice.payment_date || invoice.paymentDate || null,
-        items: typeof invoice.items === 'string' ? JSON.parse(invoice.items) : invoice.items,
-        updated_at: new Date().toISOString(),
-      };
+    const { error } = await supabase
+      .from(INVOICES_TABLE)
+      .upsert(dbInvoices, { onConflict: 'id' });
 
-      const { error } = await supabase
-        .from(INVOICES_TABLE)
-        .upsert(dbInvoice, { onConflict: 'id' });
-
-      if (error) {
-        console.error('❌ Error saving invoice:', error);
-        toast.error(`❌ Errore salvando fattura: ${error.message}`);
-        return false;
-      }
+    if (error) {
+      const errMsg = error.message || error.details || error.hint || JSON.stringify(error);
+      console.error('❌ Error saving invoices:', errMsg, '| Full error:', JSON.stringify(error, null, 2));
+      toast.error(`❌ Errore salvando fatture: ${errMsg}`);
+      return false;
     }
 
     return true;
 
   } catch (error) {
-    console.error('❌ Exception saving invoices:', error);
-    toast.error(`❌ Errore imprevisto salvando fatture: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    const errMsg = error instanceof Error ? error.message : JSON.stringify(error);
+    console.error('❌ Exception saving invoices:', errMsg);
+    toast.error(`❌ Errore imprevisto salvando fatture: ${errMsg}`);
     return false;
   }
 };
@@ -2512,14 +2540,20 @@ export const updateInvoice = async (id: string, updates: Partial<Invoice>): Prom
     if (updates.items) dbUpdates.items = typeof updates.items === 'string' ? JSON.parse(updates.items) : updates.items;
     
     if (updates.supplier_id) {
-      const { data: supplierData } = await supabase
-        .from('suppliers')
-        .select('name')
-        .eq('id', updates.supplier_id)
-        .single();
-      
-      if (supplierData) {
-        dbUpdates.supplier_name = supplierData.name;
+      // CRITICAL FIX: Use supplier_name already on the updates object if available.
+      // Avoid an extra GET to suppliers table per invoice (was causing N+1 requests).
+      if (updates.supplier_name) {
+        dbUpdates.supplier_name = updates.supplier_name;
+      } else {
+        // Only fall back to DB lookup when supplier_name is not provided
+        const { data: supplierData } = await supabase
+          .from('suppliers')
+          .select('name')
+          .eq('id', updates.supplier_id)
+          .single();
+        if (supplierData) {
+          dbUpdates.supplier_name = supplierData.name;
+        }
       }
     }
     
@@ -2538,12 +2572,10 @@ export const updateInvoice = async (id: string, updates: Partial<Invoice>): Prom
       return null;
     }
 
-    const suppliers = await getSuppliers();
-    const matchedSupplier = suppliers.find(s => s.name === data.supplier_name);
-    
+    // Use supplier_id from updates — no extra getSuppliers() round-trip needed.
     const updatedInvoice: Invoice = {
       id: data.id,
-      supplier_id: matchedSupplier?.id || updates.supplier_id || '',
+      supplier_id: updates.supplier_id || '',
       supplier_name: data.supplier_name,
       invoice_number: data.invoice_number,
       date: data.date,

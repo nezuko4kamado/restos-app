@@ -27,6 +27,10 @@ interface InvoiceItem {
  * Calculate price alerts from product price_history field.
  * For each product that has 2+ entries in price_history, compare the last two entries.
  * Returns both the count and the detailed alerts array.
+ *
+ * FIXED: Ignores "Confirmed from invoice" and "Original price" entries as the latest
+ * entry, so they don't generate false alerts. Uses tolerance (> 0.01) instead of
+ * strict equality to avoid floating-point false positives.
  */
 export const calculatePriceAlertsFromProducts = (
   products: Product[],
@@ -35,46 +39,55 @@ export const calculatePriceAlertsFromProducts = (
   const alerts: PriceAlert[] = [];
 
   for (const product of products) {
-    // Support both camelCase and snake_case
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const p = product as any;
-    const history: Array<{ price: number; date: string }> =
+    const history: Array<{ price: number; date: string; reason?: string }> =
       p.price_history || p.priceHistory || [];
 
     if (history.length < 2) continue;
 
-    // Compare the last two entries
-    const previous = history[history.length - 2];
-    const latest = history[history.length - 1];
+    // Non-alert reasons: these entries should never be the "latest real change"
+    const NON_ALERT_REASONS = ['Confirmed from invoice', 'Original price'];
+
+    // Find the most recent entry that represents a REAL price change
+    const latestRealChange = [...history]
+      .reverse()
+      .find(entry => !NON_ALERT_REASONS.includes(entry.reason || ''));
+
+    if (!latestRealChange) continue;
+
+    // Find its index in the original (non-reversed) history array
+    const latestIndex = history.findIndex(
+      e => e.date === latestRealChange.date && e.price === latestRealChange.price
+    );
+    if (latestIndex <= 0) continue;
+
+    // Get the entry immediately before this real change
+    const previous = history[latestIndex - 1];
 
     if (
       previous == null ||
-      latest == null ||
       previous.price == null ||
-      latest.price == null ||
+      latestRealChange.price == null ||
       previous.price <= 0
-    ) {
-      continue;
-    }
+    ) continue;
 
-    // Only alert if the price actually changed
-    if (latest.price === previous.price) continue;
+    // Use tolerance to avoid floating-point false positives
+    if (Math.abs(latestRealChange.price - previous.price) <= 0.01) continue;
 
     const changePercent =
-      ((latest.price - previous.price) / previous.price) * 100;
+      ((latestRealChange.price - previous.price) / previous.price) * 100;
 
     const supplierName =
-      suppliers.find(
-        (s) => s.id === product.supplier_id
-      )?.name || '';
+      suppliers.find((s) => s.id === product.supplier_id)?.name || '';
 
     alerts.push({
       productName: product.name,
       supplierName,
       oldPrice: previous.price,
-      newPrice: latest.price,
+      newPrice: latestRealChange.price,
       changePercent: Math.round(changePercent * 100) / 100,
-      invoiceDate: latest.date || new Date().toISOString(),
+      invoiceDate: latestRealChange.date || new Date().toISOString(),
       source: 'product_history',
     });
   }

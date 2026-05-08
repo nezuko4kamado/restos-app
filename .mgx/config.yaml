@@ -1,4 +1,4 @@
 build: null
-build_path: dist
+build_path: /workspace/shadcn-ui/dist
 dev: null
 install: null

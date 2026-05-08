@@ -79,13 +79,22 @@ export interface InvoiceDataExtracted {
     mobile?: string;
     email?: string;
     address?: string;
+    vat_number?: string;
   };
+  invoiceNumber?: string;
+  date?: string;
   items: Array<{
     name: string;
     quantity: number;
     price: number;
+    unit_price?: number;
+    discounted_price?: number;
+    discount_amount?: number;
+    discount_percent?: number;
     unit?: string;
     vatRate?: number;
+    sku?: string;
+    code_description?: string;
   }>;
   totalAmount?: number;
 }

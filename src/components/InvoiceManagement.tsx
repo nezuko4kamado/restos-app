@@ -1,5 +1,5 @@
 import { generateUUID } from "@/lib/uuid";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import type { Invoice, Product, Supplier, ExtractedInvoiceItem } from '@/types';
 import { extractInvoiceData, extractInvoiceItems, type InvoiceDataExtracted } from '@/lib/ocrService';
 import { ProductMatcher } from '@/lib/productMatcher';
+import { supabase } from '@/lib/supabase';
 import { calculateInvoiceStats, formatCurrency } from '@/lib/invoiceStats';
 import { useTranslations, type Language } from '@/lib/i18n';
 import { InvoiceUploadWithLimits } from '@/components/InvoiceUploadWithLimits';
@@ -68,6 +69,16 @@ function InvoiceManagement({
   language = 'it',
 }: InvoiceManagementProps) {
   const t = useTranslations(language);
+  // Guard: prevent concurrent/duplicate saves from re-renders or double-clicks
+  const isSavingRef = useRef(false);
+  const [userId, setUserId] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUserId(data.user?.id);
+    });
+  }, []);
+
   const [newInvoice, setNewInvoice] = useState({
     invoiceNumber: '',
     date: new Date().toISOString().split('T')[0],
@@ -207,8 +218,8 @@ function InvoiceManagement({
           item.name,
           undefined, // ean_code
           targetSupplierName,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (item as any).sku || (item as any).code_description
+          item.sku || item.code_description,
+          userId
         );
         
         if (matchResult.matched && matchResult.product && matchResult.confidence >= 70) {
@@ -222,9 +233,13 @@ function InvoiceManagement({
             name: item.name,
             quantity: item.quantity,
             price: item.price,
-            originalPrice: item.originalPrice,
-            discountPercent: item.discountPercent,
+            unit_price: item.unit_price,
+            discounted_price: item.discounted_price,
+            discount_amount: item.discount_amount,
+            discount_percent: item.discount_percent,
             vatRate: item.vatRate,
+            sku: item.sku,
+            code_description: item.code_description,
             matchedProductId: matchedProduct.id,
             matchScore: matchResult.confidence,
             matchStatus: matchResult.confidence >= 90 ? 'matched' : 'partial',
@@ -242,9 +257,13 @@ function InvoiceManagement({
             name: item.name,
             quantity: item.quantity,
             price: item.price,
-            originalPrice: item.originalPrice,
-            discountPercent: item.discountPercent,
+            unit_price: item.unit_price,
+            discounted_price: item.discounted_price,
+            discount_amount: item.discount_amount,
+            discount_percent: item.discount_percent,
             vatRate: item.vatRate,
+            sku: item.sku,
+            code_description: item.code_description,
             matchStatus: 'new' as const,
             updated_at: currentTimestamp,
           };
@@ -330,8 +349,8 @@ function InvoiceManagement({
                 item.name,
                 undefined,
                 supplierName,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (item as any).sku || (item as any).code_description
+                item.sku || item.code_description,
+                userId
               );
               
               if (matchResult.matched && matchResult.product && matchResult.confidence >= 70) {
@@ -345,9 +364,13 @@ function InvoiceManagement({
                   name: item.name,
                   quantity: item.quantity,
                   price: item.price,
-                  originalPrice: item.originalPrice,
-                  discountPercent: item.discountPercent,
+                  unit_price: item.unit_price,
+                  discounted_price: item.discounted_price,
+                  discount_amount: item.discount_amount,
+                  discount_percent: item.discount_percent,
                   vatRate: item.vatRate,
+                  sku: item.sku,
+                  code_description: item.code_description,
                   matchedProductId: matchedProduct.id,
                   matchScore: matchResult.confidence,
                   matchStatus: matchResult.confidence >= 90 ? 'matched' : 'partial',
@@ -365,9 +388,13 @@ function InvoiceManagement({
                   name: item.name,
                   quantity: item.quantity,
                   price: item.price,
-                  originalPrice: item.originalPrice,
-                  discountPercent: item.discountPercent,
+                  unit_price: item.unit_price,
+                  discounted_price: item.discounted_price,
+                  discount_amount: item.discount_amount,
+                  discount_percent: item.discount_percent,
                   vatRate: item.vatRate,
+                  sku: item.sku,
+                  code_description: item.code_description,
                   matchStatus: 'new' as const,
                   updated_at: currentTimestamp,
                 };
@@ -395,8 +422,8 @@ function InvoiceManagement({
                 item.name,
                 undefined,
                 supplierName,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (item as any).sku || (item as any).code_description
+                item.sku || item.code_description,
+                userId
               );
               
               if (matchResult.matched && matchResult.product && matchResult.confidence >= 70) {
@@ -410,9 +437,13 @@ function InvoiceManagement({
                   name: item.name,
                   quantity: item.quantity,
                   price: item.price,
-                  originalPrice: item.originalPrice,
-                  discountPercent: item.discountPercent,
+                  unit_price: item.unit_price,
+                  discounted_price: item.discounted_price,
+                  discount_amount: item.discount_amount,
+                  discount_percent: item.discount_percent,
                   vatRate: item.vatRate,
+                  sku: item.sku,
+                  code_description: item.code_description,
                   matchedProductId: matchedProduct.id,
                   matchScore: matchResult.confidence,
                   matchStatus: matchResult.confidence >= 90 ? 'matched' : 'partial',
@@ -427,9 +458,13 @@ function InvoiceManagement({
                   name: item.name,
                   quantity: item.quantity,
                   price: item.price,
-                  originalPrice: item.originalPrice,
-                  discountPercent: item.discountPercent,
+                  unit_price: item.unit_price,
+                  discounted_price: item.discounted_price,
+                  discount_amount: item.discount_amount,
+                  discount_percent: item.discount_percent,
                   vatRate: item.vatRate,
+                  sku: item.sku,
+                  code_description: item.code_description,
                   matchStatus: 'new' as const,
                   updated_at: currentTimestamp,
                 });
@@ -458,9 +493,13 @@ function InvoiceManagement({
           name: item.name,
           quantity: item.quantity,
           price: item.price,
-          originalPrice: item.originalPrice,
-          discountPercent: item.discountPercent,
+          unit_price: item.unit_price,
+          discounted_price: item.discounted_price,
+          discount_amount: item.discount_amount,
+          discount_percent: item.discount_percent,
           vatRate: item.vatRate,
+          sku: item.sku,
+          code_description: item.code_description,
         }))
       };
       
@@ -623,26 +662,26 @@ function InvoiceManagement({
       toast.error(t('fillRequiredFields'));
       return;
     }
-
+    // Re-entrancy guard: prevent duplicate saves from re-renders or double-clicks
+    if (isSavingRef.current) {
+      console.log('⏸️ [MANUAL SAVE] Already saving, skipping duplicate call');
+      return;
+    }
+    isSavingRef.current = true;
     console.log('💾 Creating manual invoice...');
 
-    const parsedAmount = parseFloat(newInvoice.amount);
-    
     const invoice: Invoice = {
-      id: generateUUID(),
-      supplier_name: supplierName,
-      invoiceNumber: newInvoice.invoiceNumber,
+      id: crypto.randomUUID(),
       invoice_number: newInvoice.invoiceNumber,
+      supplier_id: supplierId,
+      supplier_name: supplierName,
       date: newInvoice.date,
-      amount: parsedAmount,
-      total_amount: parsedAmount,
-      totalAmount: parsedAmount,
-      notes: newInvoice.notes,
+      amount: parseFloat(newInvoice.amount) || 0,
       items: [],
-      isPaid: false,
-      is_paid: false,
+      paid: false,
+      notes: newInvoice.notes || '',
       created_at: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     };
 
     try {
@@ -661,177 +700,83 @@ function InvoiceManagement({
       } else {
         toast.error(t('invoiceAddError'));
       }
+    } finally {
+      isSavingRef.current = false;
     }
   };
 
   const handleAddExtractedInvoice = async () => {
+    // Re-entrancy guard: prevent duplicate saves from re-renders or double-clicks
+    if (isSavingRef.current) {
+      console.log('⏸️ [EXTRACTED SAVE] Already saving, skipping duplicate call');
+      return;
+    }
+    isSavingRef.current = true;
+
     console.log('💾 [SAVE] ===== START SAVE PROCESS =====');
     console.log('💾 [SAVE] extractedData:', extractedData);
     console.log('💾 [SAVE] newInvoice object:', JSON.stringify(newInvoice, null, 2));
     console.log('💾 [SAVE] newInvoice.amount:', newInvoice.amount);
     console.log('💾 [SAVE] typeof newInvoice.amount:', typeof newInvoice.amount);
     console.log('💾 [SAVE] newInvoice.invoiceNumber:', newInvoice.invoiceNumber);
-    
+
     if (!extractedData || !newInvoice.invoiceNumber) {
-      console.error('❌ [SAVE] Missing required data!');
-      console.error('  - extractedData:', extractedData);
-      console.error('  - newInvoice.invoiceNumber:', newInvoice.invoiceNumber);
-      toast.error(t('incompleteInvoiceData'));
+      toast.error(t('fillRequiredFields'));
+      isSavingRef.current = false;
       return;
     }
 
-    if (!newInvoice.amount || newInvoice.amount === '' || newInvoice.amount === '0') {
-      console.error('❌ [SAVE] Amount is missing or zero!');
-      console.error('  - newInvoice.amount:', newInvoice.amount);
-      toast.error('Errore: Il totale della fattura è mancante o zero. Verifica i dati estratti.');
-      return;
-    }
+    const amountValue = typeof newInvoice.amount === 'string'
+      ? parseFloat(newInvoice.amount) || 0
+      : (newInvoice.amount as number) || 0;
 
-    console.log('🔍 [STEP 1] Current state values:');
-    console.log('  - confirmedSupplierName (state):', confirmedSupplierName);
-    console.log('  - supplierName (prop):', supplierName);
-
-    // CRITICAL FIX: Use confirmed supplier name if available, otherwise use current supplier name
-    const targetSupplierName = confirmedSupplierName || supplierName;
-    
-    console.log('🔍 [STEP 2] Determined target supplier name:', targetSupplierName);
-    console.log('  - Logic: confirmedSupplierName || supplierName');
-    console.log('  - Result:', targetSupplierName);
-
-    if (!targetSupplierName) {
-      console.error('❌ [CRITICAL ERROR] No supplier name available!');
-      console.error('  - confirmedSupplierName:', confirmedSupplierName);
-      console.error('  - supplierName:', supplierName);
-      toast.error('Errore: Nome fornitore mancante. Riprova.');
-      return;
-    }
+    const invoice: Invoice = {
+      id: crypto.randomUUID(),
+      invoice_number: newInvoice.invoiceNumber,
+      supplier_id: supplierId,
+      supplier_name: supplierName,
+      date: newInvoice.date,
+      amount: amountValue,
+      items: extractedItems.map(item => ({
+        product_id: item.matchedProductId || '',
+        quantity: item.quantity || 1,
+        price: item.unit_price || item.price || 0,
+        custom_product_name: item.name || '',
+      })),
+      paid: false,
+      notes: newInvoice.notes || '',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
 
     try {
-      const parsedAmount = parseFloat(newInvoice.amount || '0');
-      console.log('💰 [SAVE] Parsed amount:', parsedAmount);
-      console.log('💰 [SAVE] Is parsedAmount valid?', !isNaN(parsedAmount) && parsedAmount > 0);
-      
-      // CRITICAL FIX: Create invoice object with ALL required fields
-      const invoice: Invoice = {
-        id: generateUUID(),
-        supplier_name: targetSupplierName,
-        invoiceNumber: newInvoice.invoiceNumber,
-        invoice_number: newInvoice.invoiceNumber,
-        date: newInvoice.date,
-        amount: parsedAmount,
-        total_amount: parsedAmount,
-        totalAmount: parsedAmount,
-        notes: newInvoice.notes,
-        items: extractedItems,
-        isPaid: false,
-        is_paid: false,
-        created_at: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-      };
-
-      console.log('🔍 [STEP 3] Created invoice object:');
-      console.log('  - invoice.id:', invoice.id);
-      console.log('  - invoice.supplier_name:', invoice.supplier_name);
-      console.log('  - invoice.invoiceNumber:', invoice.invoiceNumber);
-      console.log('  - invoice.invoice_number:', invoice.invoice_number);
-      console.log('  - invoice.date:', invoice.date);
-      console.log('  - invoice.amount:', invoice.amount);
-      console.log('  - invoice.total_amount:', invoice.total_amount);
-      console.log('  - invoice.totalAmount:', invoice.totalAmount);
-      console.log('  - typeof invoice.amount:', typeof invoice.amount);
-      console.log('  - invoice.items.length:', invoice.items?.length || 0);
-      console.log('  - Full invoice object:', JSON.stringify(invoice, null, 2));
-
-      // Save invoice
-      console.log('🔍 [STEP 4] Calling onAddInvoice with invoice...');
       await onAddInvoice(invoice);
-      console.log('✅ [STEP 5] Invoice saved successfully');
 
-      // 🔥 CRITICAL FIX: Update updated_at for ALL extracted products (new, matched, price changed or not)
-      // Find the supplier by name to get the supplierId
-      const targetSupplier = suppliers.find(s => s.name === targetSupplierName);
-      const targetSupplierId = targetSupplier?.id || supplierId;
-      
-      const currentTimestamp = new Date().toISOString();
-
-      for (const item of extractedItems) {
-        if (item.matchStatus === 'new') {
-          // Add new product with updated_at
-          console.log('➕ [INVOICE] Adding new product:', item.name);
-          console.log('🔄 [INVOICE] Setting updated_at for new product:', item.name, 'at', currentTimestamp);
-          const newProduct: Omit<Product, 'id'> = {
-            name: item.name,
-            price: item.price,
-            supplierId: targetSupplierId,
-            supplier_id: targetSupplierId,
-            vatRate: item.vatRate,
-            vat_rate: item.vatRate,
-            discountPercent: item.discountPercent,
-            originalPrice: item.originalPrice,
-            created_at: currentTimestamp,
-            updated_at: currentTimestamp,
-          };
-          await onAddProduct(newProduct);
-        } else if (item.matchedProductId) {
-          // 🔥 Update matched products: always update price + updated_at
-          if (item.priceChanged) {
-            console.log('🔄 [INVOICE] Updating product with price change:', item.name, 'from', item.oldPrice, 'to', item.price);
-          } else {
-            console.log('🔄 [INVOICE] Updating product with SAME price:', item.name, 'price:', item.price);
+      // 🔥 CRITICAL FIX: Update product prices for items where price changed
+      const itemsWithPriceChange = extractedItems.filter(item => item.priceChanged && item.matchedProductId);
+      if (itemsWithPriceChange.length > 0 && onUpdateProduct) {
+        console.log('💰 [PRICE UPDATE] Updating prices for', itemsWithPriceChange.length, 'products');
+        const priceUpdatePromises = itemsWithPriceChange.map(async (item) => {
+          try {
+            const newPrice = item.unit_price || item.price || 0;
+            const oldPrice = item.oldPrice || 0;
+            console.log(`💰 [PRICE UPDATE] Product ${item.matchedProductId}: €${oldPrice} → €${newPrice}`);
+            await onUpdateProduct(item.matchedProductId!, {
+              price: newPrice,
+              previous_price: oldPrice,
+              updated_at: new Date().toISOString(),
+            });
+            console.log(`✅ [PRICE UPDATE] Updated product ${item.matchedProductId} price to €${newPrice}`);
+          } catch (priceError) {
+            console.error(`❌ [PRICE UPDATE] Failed to update product ${item.matchedProductId}:`, priceError);
           }
-          console.log('🔄 [INVOICE] Setting updated_at for product:', item.name, 'at', currentTimestamp);
-          
-          if (onUpdateProduct) {
-            // Build price history for this product
-            const matchedProduct = products.find(p => p.id === item.matchedProductId);
-            const existingHist: Array<{ price: number; date: string }> =
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (matchedProduct as any)?.priceHistory || matchedProduct?.price_history || [];
-            const newHist = item.priceChanged
-              ? [
-                  ...(existingHist.length === 0 && matchedProduct
-                    ? [{ price: matchedProduct.price, date: matchedProduct.created_at || currentTimestamp }]
-                    : existingHist),
-                  { price: item.price, date: currentTimestamp },
-                ]
-              : existingHist;
-
-            const priceUpdates: Partial<Product> = {
-              price: item.price,
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              unit_price: (item as any).unit_price ?? item.price,
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              discounted_price: (item as any).discounted_price ?? item.price,
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              discount_amount: (item as any).discount_amount ?? 0,
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              discount_percent: (item as any).discount_percent ?? 0,
-              updated_at: currentTimestamp,
-              price_history: newHist,
-            };
-            if (item.priceChanged && matchedProduct) {
-              priceUpdates.previous_price = matchedProduct.price;
-            }
-
-            await onUpdateProduct(item.matchedProductId, priceUpdates);
-            console.log('✅ [INVOICE] Product updated in database with new price and updated_at');
-
-            // 🔔 Show price-change toast
-            if (item.priceChanged && item.oldPrice !== undefined) {
-              const diff = item.price - item.oldPrice;
-              const sign = diff > 0 ? '+' : '';
-              toast.info(
-                `💰 ${item.name}: €${item.oldPrice.toFixed(2)} → €${item.price.toFixed(2)} (${sign}€${diff.toFixed(2)})`,
-                { duration: 6000 }
-              );
-            }
-          }
-        }
+        });
+        await Promise.all(priceUpdatePromises);
+        console.log('✅ [PRICE UPDATE] All price updates completed');
+        // Reload products to reflect new prices
+        onUpdateProducts();
       }
 
-      onUpdateProducts();
-      
-      // Reset form and states
       setNewInvoice({
         invoiceNumber: '',
         date: new Date().toISOString().split('T')[0],
@@ -840,13 +785,11 @@ function InvoiceManagement({
       });
       setExtractedData(null);
       setExtractedItems([]);
-      setSelectedFiles([]);
-      
-      console.log('🔍 [STEP 6] Resetting confirmed supplier states');
-      setConfirmedSupplierName('');
-      
+      const priceUpdateMsg = itemsWithPriceChange.length > 0 
+        ? ` | ${itemsWithPriceChange.length} prezzi aggiornati` 
+        : '';
+      toast.success(`✅ ${t('invoiceAddedSuccess')}${priceUpdateMsg}`);
       console.log('💾 [SAVE] ===== END SAVE PROCESS (SUCCESS) =====');
-      toast.success(`✅ ${t('invoiceAddedSuccess')}`);
     } catch (error) {
       console.error('❌ [ERROR] Errore salvataggio fattura:', error);
       console.error('❌ Error details:', {
@@ -860,6 +803,8 @@ function InvoiceManagement({
       } else {
         toast.error(t('invoiceAddError'));
       }
+    } finally {
+      isSavingRef.current = false;
     }
   };
 
@@ -1176,9 +1121,9 @@ function InvoiceManagement({
                                   <div className="flex items-center gap-4 text-sm">
                                     <span className="text-slate-600">{t('qty')}: {item.quantity}</span>
                                     <span className="font-bold text-slate-800">€{(Number(item.price) || 0).toFixed(2)}</span>
-                                    {item.discountPercent && (
+                                    {item.discount_percent && (
                                       <span className="text-xs bg-green-100 text-green-600 px-2 py-1 rounded">
-                                        -{item.discountPercent}%
+                                        -{item.discount_percent}%
                                       </span>
                                     )}
                                   </div>

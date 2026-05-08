@@ -344,10 +344,6 @@ export default function ProductsSectionEnhanced({
           date: new Date().toISOString(),
           reason: t('productCreated') || 'Product created'
         }],
-        price_history: [{
-          price: newProduct.price,
-          date: new Date().toISOString(),
-        }],
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -431,7 +427,6 @@ export default function ProductsSectionEnhanced({
         
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (updates as any).priceHistory = newHistory;
-        updates.price_history = newHistory.map(h => ({ price: h.price, date: h.date }));
         
         updates.original_price = currentProduct.price;
         updates.last_price_change = new Date().toISOString();
@@ -986,17 +981,16 @@ export default function ProductsSectionEnhanced({
             // ✅ GUARD: Only update price if we got a valid price from the invoice
             if (newPrice <= 0.001) {
               console.warn(`⚠️ [PRICE] Skipping price update for "${existingProduct.name}" — newPrice is 0 or invalid (discounted_price=${extracted.discounted_price}, unit_price=${extracted.unit_price}, price=${extracted.price})`);
-              // Still update non-price fields (category, vat, code_description) but keep existing price
+              // Still update non-price fields (category, vat, code_description) but keep existing price.
+              // ✅ FIX: Do NOT touch priceHistory when price is invalid — leave history unchanged
+              // so no spurious "Confirmed from invoice" entry masks a real prior price change.
               const nonPriceUpdates: Partial<Product> = {
                 vat_rate: productVATRate,
                 vatRate: productVATRate,
                 category: productCategory,
                 code_description: productCodeDescription,
                 updated_at: new Date().toISOString(),
-                price_history: newHistory.map(h => ({ price: h.price, date: h.date })),
               };
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (nonPriceUpdates as any).priceHistory = newHistory;
               productsToUpdate.push({ id: existingProduct.id, updates: nonPriceUpdates });
             } else if (!priceActuallyChanged) {
               // ✅ FIX: Price confirmed same from invoice — update price_history to clear manual notifications
@@ -1006,25 +1000,25 @@ export default function ProductsSectionEnhanced({
                 category: productCategory,
                 code_description: productCodeDescription,
                 updated_at: new Date().toISOString(),
-                price_history: newHistory.map(h => ({ price: h.price, date: h.date })),
               };
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               (confirmedUpdates as any).priceHistory = newHistory;
               productsToUpdate.push({ id: existingProduct.id, updates: confirmedUpdates });
             } else {
+              // ✅ FIX: Only include unit_price/discounted_price/discount_amount/discount_percent
+              // when they are valid (> 0) to avoid overwriting good DB values with OCR zeros.
               const updates: Partial<Product> = {
                 price: newPrice,
-                unit_price: extracted.unit_price,
-                discounted_price: extracted.discounted_price,
-                discount_amount: extracted.discount_amount,
-                discount_percent: extracted.discount_percent,
+                ...(extracted.unit_price && extracted.unit_price > 0.001 ? { unit_price: extracted.unit_price } : {}),
+                ...(extracted.discounted_price && extracted.discounted_price > 0.001 ? { discounted_price: extracted.discounted_price } : {}),
+                ...(extracted.discount_amount && extracted.discount_amount > 0 ? { discount_amount: extracted.discount_amount } : {}),
+                ...(extracted.discount_percent && extracted.discount_percent > 0 ? { discount_percent: extracted.discount_percent } : {}),
                 previous_price: oldPrice,
                 vat_rate: productVATRate,
                 vatRate: productVATRate,
                 category: productCategory,
                 code_description: productCodeDescription,
                 updated_at: new Date().toISOString(),
-                price_history: newHistory.map(h => ({ price: h.price, date: h.date })),
               };
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               (updates as any).priceHistory = newHistory;
@@ -1052,13 +1046,14 @@ export default function ProductsSectionEnhanced({
           }];
           
           const newProductPrice = (extracted.discounted_price && extracted.discounted_price > 0.001) ? extracted.discounted_price : (extracted.unit_price && extracted.unit_price > 0.001) ? extracted.unit_price : (extracted.price && extracted.price > 0.001) ? extracted.price : 0;
+          // ✅ FIX: Only set unit_price/discount fields when valid (> 0)
           const productData: Omit<Product, 'id'> = {
             name: extracted.name,
             price: newProductPrice,
-            unit_price: extracted.unit_price,
-            discounted_price: newProductPrice,
-            discount_amount: extracted.discount_amount,
-            discount_percent: extracted.discount_percent,
+            ...(extracted.unit_price && extracted.unit_price > 0.001 ? { unit_price: extracted.unit_price } : {}),
+            discounted_price: newProductPrice > 0 ? newProductPrice : undefined,
+            ...(extracted.discount_amount && extracted.discount_amount > 0 ? { discount_amount: extracted.discount_amount } : {}),
+            ...(extracted.discount_percent && extracted.discount_percent > 0 ? { discount_percent: extracted.discount_percent } : {}),
             category: productCategory,  // ✅ FIX: Use empty string, not 'general'
             unit: 'kg',
             supplier_id: supplierId,
@@ -1067,7 +1062,6 @@ export default function ProductsSectionEnhanced({
             code_description: productCodeDescription,  // ✅ NEW: Include code_description
             notes: extracted.discount_percent > 0 ? `${t('discount') || 'Discount'} ${extracted.discount_percent}%` : '',
             priceHistory: initialHistory,
-            price_history: initialHistory.map(h => ({ price: h.price, date: h.date })),
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           };
@@ -1132,7 +1126,27 @@ export default function ProductsSectionEnhanced({
         console.log(`🔄 [UPLOAD] Calling batchUpdateProducts with ${productsToUpdate.length} products`);
         const batchUpdated = await batchUpdateProducts(productsToUpdate);
         console.log(`✅ [UPLOAD] batchUpdateProducts returned ${batchUpdated.length} products`);
+
+        // ✅ FIX: batchUpdateProducts strips priceHistory from DB updates (to avoid HTTP 400).
+        // Re-attach the locally-built priceHistory so that:
+        //   1. PriceChangeIndicator shows the % badge on the product card
+        //   2. calculateAllPriceAlerts (Index.tsx useEffect) detects the change and fires notifications
+        const priceHistoryMap = new Map<string, Array<{ price: number; date: string; reason?: string }>>();
+        for (const u of productsToUpdate) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const h = (u.updates as any).priceHistory;
+          if (h && Array.isArray(h) && h.length > 0) {
+            priceHistoryMap.set(u.id, h);
+          }
+        }
+
         for (const updated of batchUpdated) {
+          const localHistory = priceHistoryMap.get(updated.id);
+          if (localHistory) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (updated as any).priceHistory = localHistory;
+            console.log(`✅ [UPLOAD] Re-attached priceHistory for "${updated.name}" (${localHistory.length} entries)`);
+          }
           savedProducts.push(updated);
         }
       }

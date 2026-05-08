@@ -60,6 +60,10 @@ export default function Index() {
   const previousUserIdRef = useRef<string | null>(null);
   // Track if signOut is in progress to prevent auth listener conflicts
   const isSigningOutRef = useRef(false);
+  // Guard against concurrent/re-entrant price-alert calculations
+  const isCalculatingAlertsRef = useRef(false);
+  // Stable ref for dismissedAlerts to avoid re-creating calculateAllPriceAlerts on every dismiss
+  const dismissedAlertsRef = useRef<Record<string, string>>({});
   
   // FIXED: Initialize with null to distinguish between "not loaded yet" and "loaded with defaults"
   const [products, setProducts] = useState<Product[]>([]);
@@ -72,6 +76,13 @@ export default function Index() {
   // ✅ FIX: Use PriceAlert[] from priceAlertService instead of custom type
   const [priceAlerts, setPriceAlerts] = useState<PriceAlert[]>([]);
   const [priceAlertsCount, setPriceAlertsCount] = useState<number>(0);
+  const [dismissedAlerts, setDismissedAlerts] = useState<Record<string, string>>(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('dismissedPriceAlerts') || '{}');
+      dismissedAlertsRef.current = stored;
+      return stored;
+    } catch { return {}; }
+  });
   const [showClearDataDialog, setShowClearDataDialog] = useState(false);
   const [dataLoaded, setDataLoaded] = useState(false);
   
@@ -95,9 +106,16 @@ export default function Index() {
   } | null>(null);
 
   // ✅ NEW: Combined price alerts calculation from BOTH invoices AND product price_history
+  // Uses dismissedAlertsRef (not state) so this callback is stable and never recreated on dismiss.
   const calculateAllPriceAlerts = useCallback(async (currentProducts: Product[], currentSuppliers: Supplier[]) => {
     // Skip for demo mode — use static demo alerts
     if (isDemoMode) return;
+    // Re-entrancy guard: skip if already running to prevent loop
+    if (isCalculatingAlertsRef.current) {
+      console.log('⏸️ [INDEX] calculateAllPriceAlerts already running, skipping');
+      return;
+    }
+    isCalculatingAlertsRef.current = true;
     try {
       console.log('🔔 [INDEX] Calculating ALL price alerts (invoices + product history)...');
       
@@ -138,18 +156,30 @@ export default function Index() {
       
       // Sort by absolute change percent (highest first)
       mergedAlerts.sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent));
+
+      // Filter out alerts that were already dismissed — read from REF (stable, no re-render dependency)
+      const currentDismissed = dismissedAlertsRef.current;
+      const filteredAlerts = mergedAlerts.filter(alert => {
+        const key = alert.productName.toLowerCase().trim();
+        const dismissedDate = currentDismissed[key];
+        if (!dismissedDate) return true; // not dismissed
+        // Show again only if the alert date is NEWER than when it was dismissed
+        return new Date(alert.invoiceDate) > new Date(dismissedDate);
+      });
       
-      console.log(`🔔 [INDEX] Total merged alerts: ${mergedAlerts.length}`);
+      console.log(`🔔 [INDEX] Total merged alerts: ${mergedAlerts.length}, after dismissed filter: ${filteredAlerts.length}`);
       
       // Set BOTH the detailed alerts array AND the count
-      setPriceAlerts(mergedAlerts);
-      setPriceAlertsCount(mergedAlerts.length);
+      setPriceAlerts(filteredAlerts);
+      setPriceAlertsCount(filteredAlerts.length);
     } catch (error) {
       console.error('❌ [INDEX] Error calculating price alerts:', error);
       setPriceAlerts([]);
       setPriceAlertsCount(0);
+    } finally {
+      isCalculatingAlertsRef.current = false;
     }
-  }, [isDemoMode]);
+  }, [isDemoMode]); // ← stable: no state deps, uses refs only
 
   // DEMO MODE: Load demo data immediately when entering demo mode
   useEffect(() => {
@@ -180,6 +210,10 @@ export default function Index() {
       console.log('✅ [INDEX] Demo data loaded');
     }
   }, [isDemoMode]);
+
+  // Stable ref to always point at the latest calculateAllPriceAlerts without adding it to loadAllData deps
+  const calculateAllPriceAlertsRef = useRef(calculateAllPriceAlerts);
+  useEffect(() => { calculateAllPriceAlertsRef.current = calculateAllPriceAlerts; }, [calculateAllPriceAlerts]);
 
   // CRITICAL FIX: Load data ONCE using refs (not module-level globals)
   const loadAllData = useCallback(async () => {
@@ -217,7 +251,8 @@ export default function Index() {
       setDataLoaded(true);
       
       // ✅ NEW: Calculate ALL price alerts (invoices + product history) after loading
-      await calculateAllPriceAlerts(loadedProducts, loadedSuppliers);
+      // Use ref so loadAllData doesn't depend on calculateAllPriceAlerts (prevents recreation loop)
+      await calculateAllPriceAlertsRef.current(loadedProducts, loadedSuppliers);
       
       // CRITICAL FIX: After initial load completes, allow auto-save after a short delay
       setTimeout(() => {
@@ -237,11 +272,37 @@ export default function Index() {
     } catch (error) {
       console.error('❌ Error loading data:', error);
       toast.error(t('indexPage.errorLoadingData'));
-      // Set dataLoaded to true even on error to prevent infinite loading
+      // CRITICAL FIX: Set default settings to prevent infinite spinner
+      setSettings(prev => prev ?? {
+        country: 'IT',
+        defaultCurrency: 'EUR',
+        storeName: 'Il Mio Negozio',
+        theme: 'light',
+        language: 'it',
+      });
       setDataLoaded(true);
       setIsInitialLoad(false);
     }
-  }, [isDemoMode, calculateAllPriceAlerts, t]);
+  }, [isDemoMode, t]); // calculateAllPriceAlerts accessed via ref — no dep needed
+
+  // CRITICAL SAFETY NET: Force exit infinite spinner after 8s
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!dataLoaded) {
+        console.warn('⚠️ [INDEX] Safety timeout: forcing dataLoaded=true after 8s');
+        setSettings(prev => prev ?? {
+          country: 'IT',
+          defaultCurrency: 'EUR',
+          storeName: 'Il Mio Negozio',
+          theme: 'light',
+          language: 'it',
+        });
+        setDataLoaded(true);
+        setIsInitialLoad(false);
+      }
+    }, 8000);
+    return () => clearTimeout(timer);
+  }, [dataLoaded]);
 
   // CRITICAL FIX: Load data with proper dependency tracking for logout/login
   useEffect(() => {
@@ -308,13 +369,19 @@ export default function Index() {
   }, [authLoading, user, isDemoMode, loadAllData]);
 
   // ✅ NEW: Recalculate price alerts when products or suppliers change (after initial load)
+  // NOTE: `invoices` intentionally excluded — calculateAllPriceAlerts queries DB directly,
+  // including it would cause a loop: save invoice → setInvoices → effect fires → DB query → setPriceAlerts → re-render → repeat
+  // CRITICAL FIX: Use calculateAllPriceAlertsRef.current (not the callback itself) so this effect
+  // does NOT re-fire when calculateAllPriceAlerts is recreated (e.g. after setPriceAlerts triggers re-render).
   useEffect(() => {
     if (isDemoMode) return; // Demo mode uses static alerts
-    if (dataLoaded && !isInitialLoad && (products.length > 0 || invoices.length > 0)) {
-      console.log('🔔 [INDEX] Products/invoices changed, recalculating ALL price alerts...');
-      calculateAllPriceAlerts(products, suppliers);
+    if (dataLoaded && !isInitialLoad && products.length > 0) {
+      console.log('🔔 [INDEX] Products/suppliers changed, recalculating ALL price alerts...');
+      calculateAllPriceAlertsRef.current(products, suppliers);
     }
-  }, [products, suppliers, invoices, dataLoaded, isInitialLoad, isDemoMode, calculateAllPriceAlerts]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products, suppliers, dataLoaded, isInitialLoad, isDemoMode]);
+  // ↑ calculateAllPriceAlerts intentionally excluded — accessed via stable ref to break the loop
 
   // CRITICAL FIX: Add browser back button listener to reload settings
   useEffect(() => {
@@ -349,22 +416,27 @@ export default function Index() {
     return () => window.removeEventListener('navigateToComparison', handleNavigateToComparison as EventListener);
   }, []);
 
+  // Stable refs for products and suppliers — lets handleInvoicesChanged read latest values
+  // without being recreated every time products/suppliers state changes (prevents infinite loop)
+  const productsRef = useRef(products);
+  const suppliersRef = useRef(suppliers);
+  useEffect(() => { productsRef.current = products; }, [products]);
+  useEffect(() => { suppliersRef.current = suppliers; }, [suppliers]);
+
   // CRITICAL FIX: Add callback to reload invoices when InvoicesSection makes changes
-  const handleInvoicesChanged = async () => {
-    if (isDemoMode) return; // Demo mode doesn't persist
+  // Uses refs for products/suppliers so this callback is STABLE and never recreated on state changes
+  // FIX: handleInvoicesChanged no longer reloads invoices into Index state.
+  // InvoicesSection manages its own local invoice state via InvoiceService directly.
+  // Index.tsx only recalculates price alerts when invoices change.
+  const handleInvoicesChanged = useCallback(async () => {
+    if (isDemoMode) return;
     try {
-      console.log('🔔 [INDEX] Received notification to reload invoices');
-      const reloadedInvoices = await getInvoices();
-      console.log('🔄 [INDEX] Reloaded invoices from Supabase:', reloadedInvoices.length);
-      setInvoices(reloadedInvoices);
-      console.log('✅ [INDEX] Invoices state updated');
-      
-      // ✅ NEW: Recalculate ALL price alerts after invoice changes
-      await calculateAllPriceAlerts(products, suppliers);
+      console.log('🔔 [INDEX] Invoice change notification — recalculating price alerts');
+      await calculateAllPriceAlertsRef.current(productsRef.current, suppliersRef.current);
     } catch (error) {
-      console.error('❌ [INDEX] Error reloading invoices:', error);
+      console.error('❌ [INDEX] Error in handleInvoicesChanged:', error);
     }
-  };
+  }, [isDemoMode]);
 
   // ✅ BUG 3 FIX: Removed auto-save for products.
   // Individual product operations (addProduct, updateProduct, deleteProduct, batchAddProducts, batchUpdateProducts)
@@ -373,23 +445,36 @@ export default function Index() {
   // This eliminates the race condition entirely.
 
   // FIXED: Save suppliers to Supabase when they change (but NOT during initial load or demo mode)
-  // ✅ BUG 3 FIX: Skip auto-save if a recent deletion just happened
+  // LOOP FIX: debounce (2500ms) + JSON-hash guard prevents the upsert->re-render->upsert cycle
+  const suppliersHashRef = useRef<string>('');
+  const suppliersDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (isDemoMode) return;
     if (recentDeletionRef.current) {
-      console.log('⏸️ Skipping auto-save after recent deletion (suppliers)');
+      console.log('Skipping auto-save after recent deletion (suppliers)');
       recentDeletionRef.current = false;
       return;
     }
-    if (dataLoaded && user && !isInitialLoad) {
-      console.log(`💾 Index.tsx: Auto-saving ${suppliers.length} suppliers to Supabase...`);
-      console.log('👥 Index.tsx: Suppliers being saved:', suppliers.map(s => ({ id: s.id, name: s.name })));
-      saveSuppliers(suppliers).catch(error => {
-        console.error('❌ Error saving suppliers:', error);
-      });
-    } else if (isInitialLoad) {
-      console.log('⏸️ Skipping auto-save during initial load (suppliers)');
+    if (!dataLoaded || !user || isInitialLoad) {
+      if (isInitialLoad) console.log('Skipping auto-save during initial load (suppliers)');
+      return;
     }
+    const newHash = JSON.stringify(suppliers.map(s => ({ id: s.id, name: s.name, updated_at: s.updated_at })));
+    if (newHash === suppliersHashRef.current) {
+      console.log('Suppliers unchanged, skipping auto-save');
+      return;
+    }
+    if (suppliersDebounceRef.current) clearTimeout(suppliersDebounceRef.current);
+    suppliersDebounceRef.current = setTimeout(() => {
+      suppliersHashRef.current = newHash;
+      console.log('Auto-saving ' + suppliers.length + ' suppliers to Supabase...');
+      saveSuppliers(suppliers).catch(error => {
+        console.error('Error saving suppliers:', error);
+      });
+    }, 2500);
+    return () => {
+      if (suppliersDebounceRef.current) clearTimeout(suppliersDebounceRef.current);
+    };
   }, [suppliers, dataLoaded, user, isInitialLoad, isDemoMode]);
 
   // FIXED: Save orders to Supabase when they change (but NOT during initial load or demo mode)
@@ -405,18 +490,10 @@ export default function Index() {
     }
   }, [orders, dataLoaded, user, isInitialLoad, isDemoMode]);
   
-  // FIXED: Save invoices to Supabase when they change (but NOT during initial load or demo mode)
-  useEffect(() => {
-    if (isDemoMode) return;
-    if (dataLoaded && user && !isInitialLoad) {
-      console.log('💾 Auto-saving invoices to Supabase...');
-      saveInvoices(invoices).catch(error => {
-        console.error('❌ Error saving invoices:', error);
-      });
-    } else if (isInitialLoad) {
-      console.log('⏸️ Skipping auto-save during initial load (invoices)');
-    }
-  }, [invoices, dataLoaded, user, isInitialLoad, isDemoMode]);
+  // ✅ FIX: Removed auto-save for invoices.
+  // Invoices are already persisted directly via addInvoice() on creation and updateInvoice() on update.
+  // The bulk auto-save was causing an infinite loop: every save triggered a re-render which triggered
+  // another save, generating 51+ Supabase requests per cycle (one per invoice + supplier lookup each).
 
   // FIXED: Save settings to Supabase when they change (but NOT during initial load or demo mode)
   useEffect(() => {
@@ -803,6 +880,8 @@ export default function Index() {
       setInvoices([]);
       setPriceAlerts([]);
       setPriceAlertsCount(0);
+      setDismissedAlerts({});
+      localStorage.removeItem('dismissedPriceAlerts');
       
       console.log('✅ All data cleared successfully');
       console.log('🗑️ ========== DATA DELETION COMPLETE ==========');
@@ -867,6 +946,15 @@ export default function Index() {
   };
 
   const handleClearAlerts = () => {
+    const newDismissed: Record<string, string> = { ...dismissedAlerts };
+    priceAlerts.forEach(alert => {
+      const key = alert.productName.toLowerCase().trim();
+      newDismissed[key] = alert.invoiceDate;
+    });
+    // Keep ref in sync so calculateAllPriceAlerts uses the latest dismissed set
+    dismissedAlertsRef.current = newDismissed;
+    setDismissedAlerts(newDismissed);
+    localStorage.setItem('dismissedPriceAlerts', JSON.stringify(newDismissed));
     setPriceAlerts([]);
     setPriceAlertsCount(0);
   };

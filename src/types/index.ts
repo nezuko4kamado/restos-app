@@ -125,3 +125,24 @@ export interface Notification {
   read: boolean;
   created_at: string;
 }
+
+export interface ExtractedInvoiceItem {
+  name: string;
+  quantity: number;
+  price: number;
+  unit_price?: number;
+  discounted_price?: number;
+  discount_amount?: number;
+  discount_percent?: number;
+  unit?: string;
+  vatRate?: number;
+  sku?: string;
+  code_description?: string;
+  // Match result fields populated after product matching
+  matchedProductId?: string;
+  matchScore?: number;
+  matchStatus?: 'matched' | 'partial' | 'new';
+  priceChanged?: boolean;
+  oldPrice?: number;
+  priceChangePercent?: number;
+}

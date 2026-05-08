@@ -3,7 +3,8 @@ import type { Product } from '@/types';
 
 /**
  * Product Matcher - Matches extracted products from invoices with existing products in database
- * Uses fuzzy matching and price comparison to identify existing products
+ * PRIMARY KEY: code_description (product code is always the same and never changes)
+ * FALLBACK: fuzzy name matching (only when no code is available)
  */
 
 interface ExtractedProduct {
@@ -93,118 +94,180 @@ function levenshteinDistance(str1: string, str2: string): number {
 }
 
 /**
- * Match product by name and optional EAN code or code_description
+ * ✅ PRIMARY MATCH: Match by product code (code_description / sku).
+ * The product code is ALWAYS the same — this is the most reliable identifier.
+ * Returns immediately on first match — no fuzzy logic needed for codes.
  */
 async function matchProduct(
   productName: string,
   eanCode?: string,
   supplierName?: string,
-  codeDescription?: string
+  codeDescription?: string,
+  userId?: string
 ): Promise<MatchResult> {
   try {
-    // CRITICAL FIX: Use correct table name 'products' instead of 'app_43909_products'
-    const { data: existingProducts, error } = await supabase
+    // Resolve userId if not provided
+    let resolvedUserId = userId;
+    if (!resolvedUserId) {
+      const { data: { user } } = await supabase.auth.getUser();
+      resolvedUserId = user?.id;
+    }
+
+    const codeNorm = codeDescription?.trim() ?? '';
+    const hasCode = codeNorm.length > 0;
+
+    console.log(`🔍 [MATCHER] Matching product: "${productName}"`);
+    console.log(`🔍 [MATCHER]   code_description/sku from OCR: "${codeNorm}" (hasCode=${hasCode})`);
+    console.log(`🔍 [MATCHER]   userId: ${resolvedUserId}`);
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // STEP 1 — CODE MATCH (PRIMARY, highest priority)
+    // When a code is present, query the DB directly by code_description.
+    // This is O(1) and 100% reliable — skip ALL fuzzy logic.
+    // ─────────────────────────────────────────────────────────────────────────
+    if (hasCode) {
+      console.log(`🔑 [MATCHER] CODE MATCH: querying DB for code_description = "${codeNorm}"`);
+
+      let codeQuery = supabase
+        .from('products')
+        .select('id,name,price,category,supplier_id,vat_rate,unit,code_description,previous_price,created_at,updated_at')
+        .ilike('code_description', codeNorm); // case-insensitive exact match
+
+      if (resolvedUserId) {
+        codeQuery = codeQuery.eq('user_id', resolvedUserId);
+      }
+
+      const { data: codeMatches, error: codeError } = await codeQuery.limit(1);
+
+      if (codeError) {
+        console.error('❌ [MATCHER] DB error during code match:', codeError.message);
+      } else if (codeMatches && codeMatches.length > 0) {
+        const matched = codeMatches[0];
+        console.log(`✅ [MATCHER] CODE MATCH SUCCESS: "${codeNorm}" → product "${matched.name}" (id=${matched.id})`);
+        console.log(`✅ [MATCHER]   DB price: ${matched.price}, OCR name: "${productName}"`);
+        return {
+          matched: true,
+          product: matched as unknown as Product,
+          confidence: 100,
+          matchType: 'exact',
+        };
+      } else {
+        console.warn(`⚠️ [MATCHER] CODE MATCH: no product found for code "${codeNorm}" (userId=${resolvedUserId})`);
+        console.warn(`⚠️ [MATCHER] This product may not exist yet in the DB — will be added as NEW`);
+        // Do NOT fall through to name matching when a code was provided but not found.
+        // A missing code means the product is genuinely new for this user.
+        return { matched: false, confidence: 0, matchType: 'none' };
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // STEP 2 — EAN CODE MATCH (secondary, only when no code_description)
+    // ─────────────────────────────────────────────────────────────────────────
+    if (eanCode && eanCode.trim()) {
+      console.log(`🔑 [MATCHER] EAN MATCH: querying DB for ean_code = "${eanCode}"`);
+      let eanQuery = supabase
+        .from('products')
+        .select('id,name,price,category,supplier_id,vat_rate,unit,code_description,previous_price,created_at,updated_at')
+        .eq('ean_code', eanCode.trim());
+
+      if (resolvedUserId) {
+        eanQuery = eanQuery.eq('user_id', resolvedUserId);
+      }
+
+      const { data: eanMatches, error: eanError } = await eanQuery.limit(1);
+      if (!eanError && eanMatches && eanMatches.length > 0) {
+        const matched = eanMatches[0];
+        console.log(`✅ [MATCHER] EAN MATCH SUCCESS: "${eanCode}" → "${matched.name}"`);
+        return {
+          matched: true,
+          product: matched as unknown as Product,
+          confidence: 100,
+          matchType: 'exact',
+        };
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // STEP 3 — NAME FUZZY MATCH (last resort, only when no code at all)
+    // ─────────────────────────────────────────────────────────────────────────
+    console.log(`🔤 [MATCHER] NAME FUZZY MATCH for: "${productName}" (no code available)`);
+
+    let query = supabase
       .from('products')
-      .select('*');
+      .select('id,name,price,category,supplier_id,vat_rate,unit,code_description,previous_price,created_at,updated_at');
+
+    if (resolvedUserId) {
+      query = query.eq('user_id', resolvedUserId);
+    }
+
+    const { data: existingProducts, error } = await query;
 
     if (error) {
-      console.error('❌ Error matching product:', error);
+      console.error('❌ [MATCHER] Error fetching products for name match:', error);
       return { matched: false, confidence: 0 };
     }
 
     if (!existingProducts || existingProducts.length === 0) {
+      console.warn('⚠️ [MATCHER] No products found for user:', resolvedUserId);
       return { matched: false, confidence: 0 };
     }
 
-    // ✅ Match by code_description (exact then partial) — highest priority after EAN
-    if (codeDescription && codeDescription.trim()) {
-      const codeNorm = codeDescription.toLowerCase().trim();
-      const isPureNumeric = /^\d+$/.test(codeNorm);
-
-      for (const product of existingProducts) {
-        if (product.code_description && product.code_description.trim()) {
-          const prodCode = product.code_description.toLowerCase().trim();
-          // Exact match
-          if (prodCode === codeNorm) {
-            console.log('✅ [MATCHER] Exact code_description match:', codeDescription, '->', product.name);
-            return { matched: true, product, confidence: 100, matchType: 'exact' };
-          }
-          // Numeric code exact match (e.g. "13010" vs "13010")
-          if (isPureNumeric && /^\d+$/.test(prodCode) && prodCode === codeNorm) {
-            console.log('✅ [MATCHER] Numeric code exact match:', codeDescription, '->', product.name);
-            return { matched: true, product, confidence: 100, matchType: 'exact' };
-          }
-          // Partial match (one contains the other)
-          if (prodCode.includes(codeNorm) || codeNorm.includes(prodCode)) {
-            console.log('✅ [MATCHER] Partial code_description match:', codeDescription, '->', product.code_description, '(', product.name, ')');
-            return { matched: true, product, confidence: 95, matchType: 'exact' };
-          }
-        }
-      }
-    }
-
-    // Find best match using combined Levenshtein + word overlap score
     let bestMatch: MatchResult = { matched: false, confidence: 0 };
     let highestScore = 0;
 
     for (const product of existingProducts) {
-      // Exact match by EAN code (if provided)
-      if (eanCode && product.ean_code && eanCode === product.ean_code) {
-        return {
-          matched: true,
-          product,
-          confidence: 100,
-          matchType: 'exact'
-        };
-      }
-
-      // Match by name similarity — combine Levenshtein and word overlap
+      // Exact name match
       const levenSimilarity = calculateSimilarity(productName, product.name);
       const wordOverlap = calculateWordOverlap(productName, product.name);
       const combinedScore = Math.max(levenSimilarity, wordOverlap);
 
-      // Exact name match
       if (levenSimilarity === 100) {
+        console.log(`✅ [MATCHER] EXACT NAME MATCH: "${productName}" → "${product.name}"`);
         return {
           matched: true,
-          product,
+          product: product as unknown as Product,
           confidence: 100,
-          matchType: 'exact'
+          matchType: 'exact',
         };
       }
 
-      // Fuzzy match: lowered threshold to 65% to catch variants like
-      // "POLPA TORRENTE 5 KG*3 S/P" vs "POLPA TORRENTE 5 KG X 3 (UN) S/P"
       if (combinedScore > 65 && combinedScore > highestScore) {
         highestScore = combinedScore;
         const confidence = wordOverlap >= 60 && levenSimilarity < 65
-          ? 75  // word-overlap-only match gets capped at 75
+          ? 75
           : Math.round(combinedScore);
         bestMatch = {
           matched: true,
-          product,
+          product: product as unknown as Product,
           confidence,
-          matchType: 'fuzzy'
+          matchType: 'fuzzy',
         };
       }
     }
 
+    if (bestMatch.matched) {
+      console.log(`🔤 [MATCHER] FUZZY NAME MATCH: "${productName}" → "${bestMatch.product?.name}" (confidence=${bestMatch.confidence}%)`);
+    } else {
+      console.warn(`⚠️ [MATCHER] NO MATCH for: "${productName}"`);
+    }
+
     return bestMatch;
   } catch (error) {
-    console.error('❌ Exception in matchProduct:', error);
+    console.error('❌ [MATCHER] Exception in matchProduct:', error);
     return { matched: false, confidence: 0 };
   }
 }
 
 /**
- * Match extracted product with existing products by name similarity
+ * Match extracted product with existing products by name similarity.
+ * FIXED: passes userId so matchProduct can filter by user_id.
  */
 export async function matchProductByName(
   extractedProduct: ExtractedProduct,
   userId: string,
   supplierName: string
 ): Promise<MatchResult> {
-  return matchProduct(extractedProduct.name, undefined, supplierName);
+  return matchProduct(extractedProduct.name, undefined, supplierName, undefined, userId);
 }
 
 /**
@@ -216,10 +279,9 @@ export async function matchProductBySupplier(
   supplierId: string
 ): Promise<MatchResult> {
   try {
-    // CRITICAL FIX: Use correct table name 'products' and correct column 'supplier_id'
     const { data: existingProducts, error } = await supabase
       .from('products')
-      .select('*')
+      .select('id,name,price,category,supplier_id,vat_rate,unit,code_description,previous_price,created_at,updated_at')
       .eq('user_id', userId)
       .eq('supplier_id', supplierId);
 
@@ -232,7 +294,6 @@ export async function matchProductBySupplier(
       return { matched: false, confidence: 0 };
     }
 
-    // Find best match using combined Levenshtein + word overlap score
     let bestMatch: MatchResult = { matched: false, confidence: 0 };
     let highestScore = 0;
 
@@ -244,9 +305,9 @@ export async function matchProductBySupplier(
       if (levenSimilarity === 100) {
         return {
           matched: true,
-          product,
+          product: product as unknown as Product,
           confidence: 100,
-          matchType: 'exact'
+          matchType: 'exact',
         };
       }
       
@@ -257,9 +318,9 @@ export async function matchProductBySupplier(
           : Math.round(combinedScore);
         bestMatch = {
           matched: true,
-          product,
+          product: product as unknown as Product,
           confidence,
-          matchType: 'fuzzy'
+          matchType: 'fuzzy',
         };
       }
     }
@@ -273,14 +334,14 @@ export async function matchProductBySupplier(
 
 // Export as ProductMatcher object to match the import pattern in InvoiceManagement.tsx
 export const ProductMatcher = {
-  matchProduct: (productName: string, eanCode?: string, supplierName?: string, codeDescription?: string) =>
-    matchProduct(productName, eanCode, supplierName, codeDescription),
+  matchProduct: (productName: string, eanCode?: string, supplierName?: string, codeDescription?: string, userId?: string) =>
+    matchProduct(productName, eanCode, supplierName, codeDescription, userId),
   matchProductByName,
-  matchProductBySupplier
+  matchProductBySupplier,
 };
 
 export default {
   matchProduct,
   matchProductByName,
-  matchProductBySupplier
+  matchProductBySupplier,
 };

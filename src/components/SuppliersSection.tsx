@@ -1,5 +1,5 @@
 import { generateUUID } from "@/lib/uuid";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,7 @@ import type { Supplier, Product, Invoice, Settings } from '@/types';
 import { useTranslations, type Language } from '@/lib/i18n';
 import InvoiceManagement from './InvoiceManagement';
 import { calculateInvoiceStats, formatCurrency } from '@/lib/invoiceStats';
-import { addProduct, deleteSupplier, deleteProduct, getInvoices, saveInvoices, updateProduct } from '@/lib/storage';
+import { addProduct, deleteSupplier, deleteProduct, addInvoice, updateInvoice, getInvoices, updateProduct, getProducts } from '@/lib/storage';
 import { SupplierMatcher } from '@/lib/supplierMatcher';
 import DeleteSupplierDialog from './DeleteSupplierDialog';
 import { ModernDeleteDialog } from './ModernDeleteDialog';
@@ -54,6 +54,45 @@ export default function SuppliersSection({
 }: SuppliersSectionProps) {
   const t = useTranslations(language);
   const currency = settings.defaultCurrency || 'EUR';
+  // Stable ref for suppliers — lets handleAddInvoice read the latest suppliers without being in deps
+  const suppliersRef = useRef(suppliers);
+  useEffect(() => { suppliersRef.current = suppliers; }, [suppliers]);
+
+  // Single-row INSERT — no get-all + save-all + get-all round-trips
+  // Uses suppliersRef so this callback is stable and never recreated when suppliers state changes
+  const handleAddInvoice = useCallback(async (invoice: Invoice) => {
+    try {
+      console.log('💾 [handleAddInvoice] Saving single invoice:', invoice.id);
+
+      // addInvoice expects Omit<Invoice, 'id'> — strip id, pass rest
+      const { id: _invoiceId, ...invoiceWithoutId } = invoice;
+      const invoicePayload = {
+        ...invoiceWithoutId,
+        // Read from ref — stable, no dep on suppliers state
+        supplier_name: invoice.supplier_name || suppliersRef.current.find(s => s.id === invoice.supplier_id)?.name || 'Unknown Supplier',
+      };
+
+      const saved = await addInvoice(invoicePayload);
+
+      if (!saved) {
+        // addInvoice already shows a toast on failure
+        return;
+      }
+
+      // Update local state with the DB-returned record (has the real id)
+      setInvoices(prev => {
+        const exists = prev.some(inv => inv.id === saved.id);
+        return exists ? prev : [...prev, saved];
+      });
+
+      console.log('✅ [handleAddInvoice] Invoice saved:', saved.id);
+      toast.success(`✅ ${t('invoices')} ${t('save')?.toLowerCase()} ${t('success')?.toLowerCase()}!`);
+    } catch (error) {
+      console.error('❌ Errore salvataggio fattura:', error);
+      toast.error(`${t('error')} ${t('save')?.toLowerCase()} ${t('invoices')?.toLowerCase()}`);
+      throw error;
+    }
+  }, [setInvoices, t]); // suppliers accessed via suppliersRef — stable, no dep needed
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingSupplier, setEditingSupplier] = useState<Partial<Supplier>>({});
@@ -318,66 +357,26 @@ export default function SuppliersSection({
     }
   };
 
-  const handleAddInvoice = async (invoice: Invoice) => {
+  // Single-row UPDATE — no get-all + save-all + get-all round-trips
+  const handleUpdateInvoice = useCallback(async (invoice: Invoice) => {
     try {
-      console.log('🔴 [CRITICAL] ===== SUPPLIERSSECTION.HANDLEADDINVOICE =====');
-      console.log('🔴 [CRITICAL] Received invoice object:', JSON.stringify(invoice, null, 2));
-      console.log('🔴 [CRITICAL] invoice.supplier_id:', invoice.supplier_id);
-      console.log('🔴 [CRITICAL] invoice.supplier_name:', invoice.supplier_name);
-      
-      console.log('💾 Saving invoice to storage...', invoice.id);
-      
-      // Get current invoices from Supabase
-      const currentInvoices = await getInvoices();
-      console.log('📥 Current invoices count:', currentInvoices.length);
-      
-      // Add new invoice to the array
-      const updatedInvoices = [...currentInvoices, invoice];
-      
-      // Save ALL invoices to Supabase
-      await saveInvoices(updatedInvoices);
-      console.log('✅ Fattura salvata su Supabase:', invoice.id);
-      
-      // CRITICAL FIX: Reload invoices from Supabase to sync state
-      const reloadedInvoices = await getInvoices();
-      console.log('🔄 Reloaded invoices from Supabase:', reloadedInvoices.length);
-      
-      setInvoices(reloadedInvoices);
-      console.log('🔴 [CRITICAL] ===== END HANDLEADDINVOICE =====');
-      
-      toast.success(`✅ ${t('invoices')} ${t('save')?.toLowerCase()} ${t('success')?.toLowerCase()}!`);
-    } catch (error) {
-      console.error('❌ Errore salvataggio fattura:', error);
-      toast.error(`${t('error')} ${t('save')?.toLowerCase()} ${t('invoices')?.toLowerCase()}`);
-      throw error;
-    }
-  };
+      console.log('💾 [handleUpdateInvoice] Updating invoice:', invoice.id);
 
-  const handleUpdateInvoice = async (invoice: Invoice) => {
-    try {
-      console.log('💾 Updating invoice...', invoice.id);
-      
-      // Get current invoices from Supabase
-      const currentInvoices = await getInvoices();
-      
-      // Update the invoice in the array
-      const updatedInvoices = currentInvoices.map(inv => 
-        inv.id === invoice.id ? invoice : inv
-      );
-      
-      // Save ALL invoices to Supabase
-      await saveInvoices(updatedInvoices);
-      console.log('✅ Fattura aggiornata su Supabase:', invoice.id);
-      
-      // CRITICAL FIX: Reload invoices from Supabase to sync state
-      const reloadedInvoices = await getInvoices();
-      setInvoices(reloadedInvoices);
+      const updated = await updateInvoice(invoice.id, invoice);
+      if (!updated) {
+        // updateInvoice already shows a toast on failure
+        return;
+      }
+
+      // Update local state optimistically — no extra DB round-trip
+      setInvoices(prev => prev.map(inv => inv.id === invoice.id ? { ...inv, ...updated } : inv));
+      console.log('✅ [handleUpdateInvoice] Invoice updated:', invoice.id);
     } catch (error) {
       console.error('❌ Errore aggiornamento fattura:', error);
       toast.error(`${t('error')} aggiornamento ${t('invoices')?.toLowerCase()}`);
       throw error;
     }
-  };
+  }, [setInvoices, t]);
 
   const handleDeleteInvoice = (invoiceId: string) => {
     if (confirm(`${t('deleteSupplierConfirm')}`)) {
@@ -401,16 +400,21 @@ export default function SuppliersSection({
         toast.success('✅ Fattura segnata come non pagata');
       }
       
-      // CRITICAL FIX: Reload invoices from Supabase to get updated data
-      const updatedInvoices = await getInvoices();
-      setInvoices(updatedInvoices);
+      // OPTIMISTIC UPDATE: update local state directly — no full DB reload
+      // A full getInvoices() here would trigger setInvoices → re-render → loop
+      setInvoices(prev => prev.map(inv =>
+        inv.id === invoice.id
+          ? { ...inv, is_paid: newStatus, isPaid: newStatus, updated_at: new Date().toISOString() }
+          : inv
+      ));
       
-      console.log('✅ Payment status updated and state reloaded');
+      console.log('✅ Payment status updated (optimistic)');
     } catch (error) {
       console.error('❌ Error toggling payment status:', error);
       toast.error('Errore nell\'aggiornamento dello stato pagamento');
     }
   };
+
 
   const handleAddProductFromInvoice = async (product: Omit<Product, 'id'>) => {
     try {
@@ -451,9 +455,15 @@ export default function SuppliersSection({
     }
   };
 
-  const handleUpdateProducts = () => {
-    // Trigger a refresh by updating the products state
-    setProducts([...products]);
+  const handleUpdateProducts = async () => {
+    try {
+      const freshProducts = await getProducts();
+      setProducts(freshProducts);
+      console.log('✅ [SuppliersSection] Products reloaded from DB:', freshProducts.length);
+    } catch (error) {
+      console.error('❌ [SuppliersSection] Error reloading products:', error);
+      setProducts([...products]); // fallback
+    }
   };
 
   const handleCloseInvoiceDialog = () => {

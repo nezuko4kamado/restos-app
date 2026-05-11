@@ -402,7 +402,7 @@ export default function OrdersSectionEnhanced({ orders, setOrders, products, set
           return {
             ...item,
             editable_name: (item as EditableOrderItem).editable_name || item.custom_product_name || product?.name || t('productName'),
-            editable_unit: (item as EditableOrderItem).editable_unit || item.custom_unit || product?.unit || '',
+            editable_unit: (item as EditableOrderItem).editable_unit || item.custom_unit || '',
             quantity_display: (item as EditableOrderItem).quantity_display || formatQuantityDisplay(item.quantity)
           };
         });
@@ -444,7 +444,7 @@ export default function OrdersSectionEnhanced({ orders, setOrders, products, set
         custom_product_name: item.custom_product_name,
         editable_name: item.custom_product_name || product?.name || t('productName'),
         custom_unit: item.custom_unit,
-        editable_unit: item.custom_unit || product?.unit || '',
+        editable_unit: item.custom_unit || '',
         quantity_display: formatQuantityDisplay(item.quantity)
       };
     });
@@ -1539,7 +1539,7 @@ export default function OrdersSectionEnhanced({ orders, setOrders, products, set
       return {
         name: item.custom_product_name || product?.name || t('productName'),
         quantity: item.quantity,
-        unit: item.custom_unit || product?.unit
+        unit: item.custom_unit || undefined
       };
     });
 
@@ -1632,7 +1632,7 @@ export default function OrdersSectionEnhanced({ orders, setOrders, products, set
           return {
             name: item.custom_product_name || product?.name || t('productName'),
             quantity: item.quantity,
-            unit: item.custom_unit || product?.unit
+            unit: item.custom_unit || undefined
           };
         })
       );

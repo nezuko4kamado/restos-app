@@ -1716,7 +1716,27 @@ export const saveSuppliers = async (suppliers: Supplier[]): Promise<boolean> => 
       return false;
     }
 
+    // Deduplicate suppliers by normalized name before saving
+    const normalizeSupplierName = (name: string): string => {
+      return name.toLowerCase().trim()
+        .replace(/(s\.r\.l\.?|srl|s\.p\.a\.?|spa|s\.n\.c\.?|snc|s\.a\.s\.?|sas|ltd|llc|inc|s\.l\.?|s\.a\.?)/gi, '')
+        .replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    };
+
+    const seenNames = new Map<string, Supplier>();
     for (const supplier of suppliers) {
+      const key = normalizeSupplierName(supplier.name);
+      if (!seenNames.has(key)) {
+        seenNames.set(key, supplier);
+      } else {
+        console.log(`⚠️ [DEDUP] Skipping duplicate supplier: "${supplier.name}" (matches "${seenNames.get(key)!.name}")`);
+      }
+    }
+    const deduplicatedSuppliers = Array.from(seenNames.values());
+
+    for (const supplier of deduplicatedSuppliers) {
       const { error } = await supabase
         .from('suppliers')
         .upsert(
@@ -2443,7 +2463,7 @@ export const getInvoices = async (): Promise<Invoice[]> => {
     const invoices: Invoice[] = (data || []).map(dbInvoice => {
       return {
         id: dbInvoice.id,
-        supplier_id: '',
+        supplier_id: dbInvoice.supplier_id || '',
         supplier_name: dbInvoice.supplier_name,
         invoice_number: dbInvoice.invoice_number,
         date: dbInvoice.date,

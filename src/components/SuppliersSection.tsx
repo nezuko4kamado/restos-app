@@ -16,6 +16,7 @@ import InvoiceManagement from './InvoiceManagement';
 import { calculateInvoiceStats, formatCurrency } from '@/lib/invoiceStats';
 import { addProduct, deleteSupplier, deleteProduct, addInvoice, updateInvoice, getInvoices, updateProduct, getProducts } from '@/lib/storage';
 import { SupplierMatcher } from '@/lib/supplierMatcher';
+import { supabase } from '@/lib/supabase';
 import DeleteSupplierDialog from './DeleteSupplierDialog';
 import { ModernDeleteDialog } from './ModernDeleteDialog';
 import { exportSuppliersToExcel, exportSuppliersToPDF } from '@/lib/exportUtils';
@@ -160,15 +161,19 @@ export default function SuppliersSection({
     console.log('📋 Dati fornitore da aggiungere:', newSupplier);
 
     // Check for duplicate using intelligent matching
-    const matchResult = await SupplierMatcher.matchSupplier(newSupplier.name || '', 80);
+    const { data: { user } } = await supabase.auth.getUser();
+    const matchResult = await SupplierMatcher.matchSupplier(
+      { name: newSupplier.name || '', email: newSupplier.email || undefined, phone: newSupplier.phone || undefined },
+      user?.id || ''
+    );
 
-    if (matchResult.matched && matchResult.supplier && matchResult.confidence >= 80) {
+    if (matchResult && matchResult.supplier && matchResult.similarity >= 75) {
       console.log('⚠️ Fornitore duplicato rilevato!');
       console.log('   Match trovato:', matchResult.supplier.name);
-      console.log('   Confidenza:', matchResult.confidence + '%');
+      console.log('   Similarità:', matchResult.similarity + '%');
       
       toast.warning(
-        `⚠️ Fornitore già esistente: "${matchResult.supplier.name}" (${matchResult.confidence}% similarità)`,
+        `⚠️ Fornitore già esistente: "${matchResult.supplier.name}" (${Math.round(matchResult.similarity)}% similarità)`,
         { duration: 6000 }
       );
       return;

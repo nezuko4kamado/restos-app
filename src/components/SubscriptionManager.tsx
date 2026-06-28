@@ -111,8 +111,8 @@ export function SubscriptionManager() {
     },
     {
       name: 'Basic',
-      price: '9.99',
-      priceId: 'price_1Sro9hERHOOWoH8ZAusBoEDS',
+      price: '4.99',
+      priceId: 'price_1TnOCyERHOOWoH8ZQONG0cH3',
       type: 'basic',
       limits: {
         products: 40,
@@ -129,8 +129,8 @@ export function SubscriptionManager() {
     },
     {
       name: 'Pro',
-      price: '19.99',
-      priceId: 'price_1SroFeERHOOWoH8ZzKxaihdT',
+      price: '9.99',
+      priceId: 'price_1TnOCYERHOOWoH8ZtjpcvBgZ',
       type: 'pro',
       limits: {
         products: 100,
@@ -148,8 +148,8 @@ export function SubscriptionManager() {
     },
     {
       name: 'Premium',
-      price: '49.99',
-      priceId: 'price_1SroIRERHOOWoH8Zyi6tTBGy',
+      price: '14.99',
+      priceId: 'price_1TnOAxERHOOWoH8ZsINJgJUN',
       type: 'premium',
       limits: {
         products: -1,

@@ -183,11 +183,15 @@ const resolveEmailPhone = (
 
 // Helper: open external URL reliably on mobile — NEVER navigate away from the current page
 const openExternalUrl = (url: string) => {
-  // Use a temporary <a> with target="_blank" and rel="noopener noreferrer".
-  // This is the most reliable cross-platform approach:
-  // - On desktop: opens a new browser tab
-  // - On mobile Safari/Chrome: triggers the OS intent system → opens native app
-  // - Inside WebView/PWA: _blank forces an external browser, preventing in-app navigation
+  // For native deep links (whatsapp://, intent://, etc.) use window.location.href.
+  // On Android, target="_blank" does NOT trigger custom URI schemes — the browser
+  // intercepts the click and shows the wa.me landing page instead of opening the app.
+  // window.location.href correctly fires the OS intent and opens WhatsApp natively.
+  if (url.startsWith('whatsapp://') || url.startsWith('intent://')) {
+    window.location.href = url;
+    return;
+  }
+  // Desktop / http(s) links: open in a new tab as before
   const a = document.createElement('a');
   a.href = url;
   a.target = '_blank';
@@ -1914,8 +1918,24 @@ export default function OrdersSectionEnhanced({ orders, setOrders, products, set
       }
 
       if (allNewSuppliers.length > 0) {
-        setSuppliers((prev) => [...prev, ...allNewSuppliers]);
-        await saveSuppliers([...suppliers, ...allNewSuppliers]);
+        // Deduplicate in-memory before updating state
+        const normalizeSupplierName = (name: string): string =>
+          name.toLowerCase().trim()
+            .replace(/\b(s\.r\.l\.?|srl|s\.p\.a\.?|spa|s\.n\.c\.?|snc|s\.a\.s\.?|sas|ltd|llc|inc|s\.l\.?|s\.a\.?)\b/gi, '')
+            .replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, '')
+            .replace(/\s+/g, ' ').trim();
+
+        setSuppliers((prev) => {
+          const merged = [...prev, ...allNewSuppliers];
+          const seen = new Map<string, Supplier>();
+          for (const s of merged) {
+            const key = normalizeSupplierName(s.name);
+            if (!seen.has(key)) seen.set(key, s);
+          }
+          return Array.from(seen.values());
+        });
+        const mergedForSave = [...suppliers, ...allNewSuppliers];
+        await saveSuppliers(mergedForSave);
       }
 
       if (allNewProducts.length > 0) {

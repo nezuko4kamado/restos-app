@@ -183,37 +183,46 @@ const resolveEmailPhone = (
 
 // Helper: open external URL reliably on mobile — NEVER navigate away from the current page
 const openExternalUrl = (url: string) => {
-  // For native deep links (whatsapp://, intent://, etc.) use window.location.href.
-  // On Android, target="_blank" does NOT trigger custom URI schemes — the browser
-  // intercepts the click and shows the wa.me landing page instead of opening the app.
-  // window.location.href correctly fires the OS intent and opens WhatsApp natively.
   if (url.startsWith('whatsapp://') || url.startsWith('intent://')) {
+    // Try native deep link first — works on Android/iOS regardless of user agent
     window.location.href = url;
+    // Fallback: if the app didn't open after 2s (desktop/no WhatsApp), open wa.me
+    const fallbackTimer = setTimeout(() => {
+      const waMe = url.replace('whatsapp://send?', 'https://wa.me/?');
+      const a = document.createElement('a');
+      a.href = waMe;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => document.body.removeChild(a), 100);
+    }, 2000);
+    // Cancel fallback if page is hidden (app opened successfully)
+    const cancelFallback = () => {
+      clearTimeout(fallbackTimer);
+      document.removeEventListener('visibilitychange', cancelFallback);
+    };
+    document.addEventListener('visibilitychange', cancelFallback);
     return;
   }
-  // Desktop / http(s) links: open in a new tab as before
+  // Desktop / http(s) links: open in a new tab
   const a = document.createElement('a');
   a.href = url;
   a.target = '_blank';
   a.rel = 'noopener noreferrer';
-  // Must be appended to DOM for Firefox compatibility
   document.body.appendChild(a);
   a.click();
-  // Small delay before removal to ensure the click is processed
   setTimeout(() => document.body.removeChild(a), 100);
 };
 
 // Helper: build the best WhatsApp URL for the current platform.
-// On mobile, the native deep-link "whatsapp://" opens the app directly
-// without showing any "download WhatsApp" landing page or ads.
+// Always try the native deep-link first — works on Android regardless of user agent.
+// On desktop without WhatsApp installed, wa.me is used as fallback via openExternalUrl.
 const buildWhatsAppUrl = (cleanPhone: string, encodedText: string): string => {
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  if (isMobile) {
-    // Native deep link — opens WhatsApp app directly, no browser redirect, no ads
-    return `whatsapp://send?phone=${cleanPhone}&text=${encodedText}`;
-  }
-  // Desktop: use web.whatsapp.com (avoids the wa.me marketing/download page)
-  return `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`;
+  // Always use whatsapp:// deep link — works on Android/iOS regardless of user agent.
+  // openExternalUrl handles this correctly via window.location.href.
+  // On desktop browsers without WhatsApp, this silently fails and we fall back to wa.me.
+  return `whatsapp://send?phone=${cleanPhone}&text=${encodedText}`;
 };
 
 export default function OrdersSectionEnhanced({ orders, setOrders, products, setProducts, suppliers, setSuppliers, settings }: OrdersSectionEnhancedProps) {

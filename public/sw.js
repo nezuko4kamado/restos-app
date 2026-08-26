@@ -1,7 +1,7 @@
 // Service Worker per PWA - Restaurant Manager
 // CACHE_NAME versioned to force cache invalidation on every deploy
-// Updated: 2026-08-26 - v4 force cache bust for upload buttons fix
-const CACHE_NAME = 'restaurant-manager-v4';
+// Updated: 2026-08-26 - v5 force cache bust (removed orphan public/public/sw.js)
+const CACHE_NAME = 'restaurant-manager-v5';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -15,7 +15,7 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('✅ Cache aperta v4');
+        console.log('✅ Cache aperta v5');
         return cache.addAll(urlsToCache);
       })
   );

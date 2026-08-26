@@ -411,13 +411,14 @@ function InvoiceManagement({
           // Not last page: extract ONLY items
           console.log('📦 Intermediate page - extracting items only');
           
-          const itemsData = await extractInvoiceItems(file);
+          // extractInvoiceItems returns ExtractedInvoiceItem[] directly (NOT an object with .items)
+          const itemsArray = await extractInvoiceItems(file);
           
           setCurrentState('analyzing');
           
-          if (itemsData.items && itemsData.items.length > 0) {
-            console.log(`  ✅ Extracted ${itemsData.items.length} items from page ${i + 1}`);
-            for (const item of itemsData.items) {
+          if (Array.isArray(itemsArray) && itemsArray.length > 0) {
+            console.log(`  Extracted ${itemsArray.length} items from page ${i + 1}`);
+            for (const item of itemsArray) {
               const matchResult = await ProductMatcher.matchProduct(
                 item.name,
                 undefined,
@@ -570,8 +571,10 @@ function InvoiceManagement({
     } catch (error) {
       console.error('❌ Error processing invoice:', error);
       toast.error(error instanceof Error ? error.message : t('invoiceProcessingError'));
-      setIsProcessing(false);
       setCurrentState('completed');
+    } finally {
+      // Always unblock the UI — prevents infinite spinner on any error/timeout
+      setIsProcessing(false);
     }
   };
 

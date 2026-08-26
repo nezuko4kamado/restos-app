@@ -887,18 +887,18 @@ export default function ProductsSectionEnhanced({
       const skippedCount = 0;
 
       // ✅ FIX: BATCH FETCH — single DB call to get ALL user products (no supplier filter)
-      // This covers both same-supplier (P1) and cross-supplier (P2) matching in one query.
+      // IMPORTANT: use DB data as-is for price comparison — do NOT override with local React state.
+      // Local state may already have a stale/updated price → oldPrice === newPrice → no update.
+      // DB is the source of truth for "what price is currently saved".
       let allKnownProducts: Product[] = [...products];
       try {
         console.log(`🚀 [BATCH FETCH] Fetching all user products in ONE DB call...`);
         const allUserProducts = await getProductsBySupplier(); // no filter = all user products
         console.log(`✅ [BATCH FETCH] Loaded ${allUserProducts.length} total user products`);
-        // Merge: start with DB data, then override with local state (most up-to-date prices)
-        const mergedMap = new Map<string, Product>();
-        for (const p of allUserProducts) mergedMap.set(p.id, p);
-        for (const p of products) mergedMap.set(p.id, p); // local state wins
-        allKnownProducts = Array.from(mergedMap.values());
-        console.log(`✅ [BATCH FETCH] Merged pool: ${allKnownProducts.length} products`);
+        // ✅ KEY FIX: DB data wins — do NOT override with local React state for price comparison.
+        // Local state can have stale prices that would make priceActuallyChanged = false.
+        allKnownProducts = allUserProducts;
+        console.log(`✅ [BATCH FETCH] Using ${allKnownProducts.length} products from DB (source of truth)`);
       } catch (e) {
         console.error('❌ [BATCH FETCH] Failed, falling back to local products array:', e);
         allKnownProducts = [...products];
@@ -962,6 +962,10 @@ export default function ProductsSectionEnhanced({
             const newPrice = (extracted.discounted_price && extracted.discounted_price > 0.001) ? extracted.discounted_price : (extracted.unit_price && extracted.unit_price > 0.001) ? extracted.unit_price : (extracted.price && extracted.price > 0.001) ? extracted.price : 0;
             const oldPrice = existingProduct.price;
             const priceActuallyChanged = Math.abs(newPrice - oldPrice) > 0.001;
+            // 🔍 DEBUG: log price comparison to diagnose update issues
+            console.log(`🔍 [PRICE DEBUG] "${existingProduct.name}" (id=${existingProduct.id}): ` +
+              `extracted.discounted_price=${extracted.discounted_price}, extracted.unit_price=${extracted.unit_price}, extracted.price=${extracted.price} ` +
+              `→ newPrice=${newPrice}, oldPrice=${oldPrice}, diff=${Math.abs(newPrice - oldPrice).toFixed(4)}, priceActuallyChanged=${priceActuallyChanged}`);
 
             // Build updated price history
             const existingHistory = getProductPriceHistory(existingProduct);

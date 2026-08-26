@@ -1,9 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { X, Upload, Camera, FileText, Check, AlertCircle, Plus } from 'lucide-react';
+import { X, Upload, Camera, FileText, Check, AlertCircle, Plus, Image } from 'lucide-react';
 import { toast } from 'sonner';
-import { CameraCapture } from './CameraCapture';
 
 interface UploadedPage {
   file: File;
@@ -25,44 +24,27 @@ export function MultiPageInvoiceUpload({
   disabled = false
 }: MultiPageInvoiceUploadProps) {
   const [pages, setPages] = useState<UploadedPage[]>([]);
-  const [showCamera, setShowCamera] = useState(false);
-  const [cameraSupported, setCameraSupported] = useState<boolean | null>(null);
+  // Ref per "Scatta Foto" — capture="environment" apre direttamente la fotocamera posteriore
   const cameraInputRef = useRef<HTMLInputElement>(null);
-
-  // Check camera support on mount
-  useEffect(() => {
-    checkCameraSupport();
-  }, []);
-
-  const checkCameraSupport = async () => {
-    try {
-      // Check if getUserMedia is available
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        console.log('getUserMedia not supported, using fallback');
-        setCameraSupported(false);
-        return;
-      }
-
-      // Try to get camera permissions (without actually starting stream)
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const hasCamera = devices.some(device => device.kind === 'videoinput');
-      
-      console.log('Camera support check:', { hasCamera, devices: devices.length });
-      setCameraSupported(hasCamera);
-    } catch (error) {
-      console.error('Camera support check failed:', error);
-      setCameraSupported(false);
-    }
-  };
+  // Ref per "Scegli dalla Galleria" — senza capture, apre il selettore file/galleria
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
-
     await addFiles(files);
-    
-    // Reset input
+    // Reset input so the same file can be re-selected if needed
     event.target.value = '';
+  };
+
+  /** Apre la fotocamera posteriore direttamente (Android/iOS) */
+  const handleCameraClick = () => {
+    cameraInputRef.current?.click();
+  };
+
+  /** Apre il selettore file/galleria senza forzare la camera */
+  const handleGalleryClick = () => {
+    galleryInputRef.current?.click();
   };
 
   const addFiles = async (files: File[]) => {
@@ -91,24 +73,6 @@ export function MultiPageInvoiceUpload({
     }
   };
 
-  const handleCameraCapture = async (files: File[]) => {
-    await addFiles(files);
-    setShowCamera(false);
-  };
-
-  const handleCameraClick = () => {
-    // If camera is not supported or we're on iOS Safari, use file input with capture
-    if (cameraSupported === false) {
-      console.log('Using fallback camera input');
-      cameraInputRef.current?.click();
-      toast.info('📸 Usa la fotocamera del dispositivo per scattare più foto', { duration: 3000 });
-    } else {
-      // Try to use custom camera component
-      console.log('Opening custom camera component');
-      setShowCamera(true);
-    }
-  };
-
   const handleRemovePage = (index: number) => {
     const newPages = pages.filter((_, i) => i !== index);
     setPages(newPages);
@@ -134,20 +98,21 @@ export function MultiPageInvoiceUpload({
 
   return (
     <>
-      {/* Camera Capture Modal - Only show if supported */}
-      {showCamera && cameraSupported !== false && (
-        <CameraCapture
-          onCapture={handleCameraCapture}
-          onClose={() => setShowCamera(false)}
-        />
-      )}
-
-      {/* Hidden camera input for fallback (iOS Safari) */}
+      {/* Input nascosto — apre direttamente la fotocamera posteriore (Android + iOS) */}
       <input
         ref={cameraInputRef}
         type="file"
         accept="image/*"
         capture="environment"
+        multiple
+        onChange={handleFileSelect}
+        className="hidden"
+      />
+      {/* Input nascosto — apre galleria/selettore file senza forzare la camera */}
+      <input
+        ref={galleryInputRef}
+        type="file"
+        accept="image/*"
         multiple
         onChange={handleFileSelect}
         className="hidden"
@@ -164,30 +129,7 @@ export function MultiPageInvoiceUpload({
             <p className="text-sm text-slate-500 mb-4">
               Puoi caricare più pagine. Il sistema estrarrà tutti i prodotti automaticamente.
             </p>
-            <div className="flex gap-3 justify-center">
-              <label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileSelect}
-                  disabled={disabled || isProcessing}
-                  multiple
-                  className="hidden"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={disabled || isProcessing}
-                  className="gap-2"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    (e.currentTarget.previousElementSibling as HTMLInputElement)?.click();
-                  }}
-                >
-                  <Upload className="h-4 w-4" />
-                  Carica File
-                </Button>
-              </label>
+            <div className="flex gap-3 justify-center flex-wrap">
               <Button
                 type="button"
                 variant="outline"
@@ -198,12 +140,17 @@ export function MultiPageInvoiceUpload({
                 <Camera className="h-4 w-4" />
                 Scatta Foto
               </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={disabled || isProcessing}
+                className="gap-2"
+                onClick={handleGalleryClick}
+              >
+                <Image className="h-4 w-4" />
+                Scegli dalla Galleria
+              </Button>
             </div>
-            {cameraSupported === false && (
-              <p className="text-xs text-amber-600 mt-3">
-                ℹ️ Fotocamera nativa del dispositivo (supporto iOS/Safari)
-              </p>
-            )}
           </div>
         ) : (
           <>
@@ -295,7 +242,7 @@ export function MultiPageInvoiceUpload({
                         Aggiungi Pagina
                       </p>
                       <p className="text-xs text-indigo-600">
-                        Scatta altre foto
+                        Scatta foto / Galleria
                       </p>
                     </div>
                   </Card>

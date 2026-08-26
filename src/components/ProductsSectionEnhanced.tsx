@@ -886,17 +886,14 @@ export default function ProductsSectionEnhanced({
       let updatedCount = 0;
       const skippedCount = 0;
 
-      // ✅ FIX: BATCH FETCH — single DB call to get all products for this supplier
-      // Replaces 2-4 sequential DB calls per product (was 80 calls for 20 products → now 1)
+      // ✅ FIX: BATCH FETCH — single DB call to get ALL user products (no supplier filter)
+      // This covers both same-supplier (P1) and cross-supplier (P2) matching in one query.
       let allKnownProducts: Product[] = [...products];
       try {
-        console.log(`🚀 [BATCH FETCH] Fetching all products for supplier ${supplierId} in ONE DB call...`);
-        const supplierProducts = await getProductsBySupplier(supplierId);
-        console.log(`✅ [BATCH FETCH] Loaded ${supplierProducts.length} products for supplier ${supplierId}`);
-        // Also fetch all user products (no supplier filter) for cross-supplier name matching
-        const allUserProducts = supplierId ? await getProductsBySupplier() : supplierProducts;
+        console.log(`🚀 [BATCH FETCH] Fetching all user products in ONE DB call...`);
+        const allUserProducts = await getProductsBySupplier(); // no filter = all user products
         console.log(`✅ [BATCH FETCH] Loaded ${allUserProducts.length} total user products`);
-        // Merge: start with allUserProducts, then override with local state (most up-to-date)
+        // Merge: start with DB data, then override with local state (most up-to-date prices)
         const mergedMap = new Map<string, Product>();
         for (const p of allUserProducts) mergedMap.set(p.id, p);
         for (const p of products) mergedMap.set(p.id, p); // local state wins

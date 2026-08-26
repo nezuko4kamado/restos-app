@@ -1195,7 +1195,7 @@ export const getProductsBySupplier = async (supplierId?: string): Promise<Produc
   try {
     const user = await getCurrentUser();
     if (!user) return [];
-    const SAFE_COLS = 'id,name,price,category,supplier_id,vat_rate,unit,code_description,previous_price,created_at,updated_at';
+    const SAFE_COLS = 'id,name,price,unit_price,discounted_price,discount_amount,discount_percent,category,supplier_id,vat_rate,unit,code_description,previous_price,created_at,updated_at';
     let query = supabase
       .from('products')
       .select(SAFE_COLS)
@@ -1212,6 +1212,10 @@ export const getProductsBySupplier = async (supplierId?: string): Promise<Produc
       id: p.id,
       name: p.name,
       price: p.price,
+      unit_price: p.unit_price,
+      discounted_price: p.discounted_price,
+      discount_amount: p.discount_amount,
+      discount_percent: p.discount_percent,
       category: p.category || '',
       supplier_id: p.supplier_id,
       vat_rate: p.vat_rate,

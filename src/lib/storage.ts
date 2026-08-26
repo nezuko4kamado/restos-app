@@ -1719,7 +1719,7 @@ export const saveSuppliers = async (suppliers: Supplier[]): Promise<boolean> => 
     // Deduplicate suppliers by normalized name before saving
     const normalizeSupplierName = (name: string): string => {
       return name.toLowerCase().trim()
-        .replace(/(s\.r\.l\.?|srl|s\.p\.a\.?|spa|s\.n\.c\.?|snc|s\.a\.s\.?|sas|ltd|llc|inc|s\.l\.?|s\.a\.?)/gi, '')
+        .replace(/\b(s\.r\.l\.?|srl|s\.p\.a\.?|spa|s\.n\.c\.?|snc|s\.a\.s\.?|sas|ltd|llc|inc|s\.l\.?|s\.a\.?)\b/gi, '')
         .replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, '')
         .replace(/\s+/g, ' ')
         .trim();

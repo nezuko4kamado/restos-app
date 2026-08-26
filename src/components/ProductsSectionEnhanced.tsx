@@ -91,8 +91,16 @@ function ProductCard({
   const unitPrice = (product.unit_price !== undefined && product.unit_price !== null && product.unit_price > 0)
     ? product.unit_price
     : product.price;
-  const discountPercent = product.discount_percent || 0;
-  const discountAmount = product.discount_amount || 0;
+  // Calcola discount_percent dal rapporto unit_price/discounted_price se non esplicitamente fornito
+  const rawDiscountPercent = product.discount_percent || 0;
+  const computedDiscountPercent =
+    rawDiscountPercent > 0
+      ? rawDiscountPercent
+      : unitPrice > 0 && discountedPrice > 0 && discountedPrice < unitPrice
+      ? Math.round(((unitPrice - discountedPrice) / unitPrice) * 100)
+      : 0;
+  const discountPercent = computedDiscountPercent;
+  const discountAmount = product.discount_amount || (unitPrice > discountedPrice ? unitPrice - discountedPrice : 0);
   const hasDiscount = discountPercent > 0;
   const priceWithVAT = calculatePriceWithVAT(discountedPrice, vatRate);
 
@@ -1284,7 +1292,8 @@ export default function ProductsSectionEnhanced({
               {filteredProducts.length} {safeToLower(t('products')) || 'products'} • {currency}
             </p>
           </div>
-          <div className="grid grid-cols-3 gap-2 w-full">
+          {/* Riga 1: Export + Aggiungi prodotto */}
+          <div className="grid grid-cols-2 gap-2 w-full">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button 
@@ -1316,52 +1325,56 @@ export default function ProductsSectionEnhanced({
               <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />
               <span className="truncate">{t('addProduct') || 'Add'}</span>
             </Button>
-            <div className="w-full flex gap-1.5">
-              {/* Camera: apre direttamente la fotocamera */}
-              <input
-                id="invoice-upload-camera"
-                type="file"
-                className="hidden"
-                accept="image/*"
-                capture="environment"
-                onChange={handleFileUpload}
-              />
-              <label
-                htmlFor={uploading ? undefined : 'invoice-upload-camera'}
-                data-tour="upload-invoice"
-                className={[
-                  'flex-1 inline-flex items-center justify-center gap-1 border-2 rounded-md',
-                  'min-h-[40px] sm:min-h-[44px] text-[11px] sm:text-sm px-2 sm:px-3 transition-all font-medium',
-                  uploading
-                    ? 'opacity-50 cursor-not-allowed border-slate-200 text-slate-400 dark:border-slate-700'
-                    : 'cursor-pointer border-blue-300 text-blue-700 hover:border-blue-500 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:hover:border-blue-500',
-                ].join(' ')}
-              >
-                <span className="truncate">{uploading ? ((t('loading') || 'Loading') + '...') : (t('takePhoto') || 'Camera')}</span>
-              </label>
+          </div>
 
-              {/* Galleria: apre il selettore file senza forzare la camera */}
-              <input
-                id="invoice-upload-gallery"
-                type="file"
-                className="hidden"
-                accept="image/*"
-                multiple
-                onChange={handleFileUpload}
-              />
-              <label
-                htmlFor={uploading ? undefined : 'invoice-upload-gallery'}
-                className={[
-                  'flex-1 inline-flex items-center justify-center gap-1 border-2 rounded-md',
-                  'min-h-[40px] sm:min-h-[44px] text-[11px] sm:text-sm px-2 sm:px-3 transition-all font-medium',
-                  uploading
-                    ? 'opacity-50 cursor-not-allowed border-slate-200 text-slate-400 dark:border-slate-700'
-                    : 'cursor-pointer border-slate-300 text-slate-700 hover:border-blue-400 hover:text-blue-600 dark:border-slate-700 dark:text-slate-300 dark:hover:border-blue-500',
-                ].join(' ')}
-              >
-                <span className="truncate">{t('selectPhoto') || 'Gallery'}</span>
-              </label>
-            </div>
+          {/* Riga 2: Camera + Galleria (due pulsanti separati, sempre visibili) */}
+          <div className="grid grid-cols-2 gap-2 w-full">
+            {/* Camera: apre direttamente la fotocamera */}
+            <input
+              id="invoice-upload-camera"
+              type="file"
+              className="hidden"
+              accept="image/*"
+              capture="environment"
+              onChange={handleFileUpload}
+            />
+            <label
+              htmlFor={uploading ? undefined : 'invoice-upload-camera'}
+              data-tour="upload-invoice"
+              className={[
+                'w-full inline-flex items-center justify-center gap-1.5 border-2 rounded-md',
+                'min-h-[40px] sm:min-h-[44px] text-[11px] sm:text-sm px-2 sm:px-3 transition-all font-medium',
+                uploading
+                  ? 'opacity-50 cursor-not-allowed border-slate-200 text-slate-400 dark:border-slate-700'
+                  : 'cursor-pointer border-blue-300 text-blue-700 hover:border-blue-500 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:hover:border-blue-500',
+              ].join(' ')}
+            >
+              <span className="text-base leading-none">📷</span>
+              <span className="truncate">{uploading ? ((t('loading') || 'Loading') + '...') : (t('takePhoto') || 'Cámara')}</span>
+            </label>
+
+            {/* Galleria: apre il selettore file senza forzare la camera */}
+            <input
+              id="invoice-upload-gallery"
+              type="file"
+              className="hidden"
+              accept="image/*"
+              multiple
+              onChange={handleFileUpload}
+            />
+            <label
+              htmlFor={uploading ? undefined : 'invoice-upload-gallery'}
+              className={[
+                'w-full inline-flex items-center justify-center gap-1.5 border-2 rounded-md',
+                'min-h-[40px] sm:min-h-[44px] text-[11px] sm:text-sm px-2 sm:px-3 transition-all font-medium',
+                uploading
+                  ? 'opacity-50 cursor-not-allowed border-slate-200 text-slate-400 dark:border-slate-700'
+                  : 'cursor-pointer border-slate-300 text-slate-700 hover:border-blue-400 hover:text-blue-600 dark:border-slate-700 dark:text-slate-300 dark:hover:border-blue-500',
+              ].join(' ')}
+            >
+              <span className="text-base leading-none">🖼️</span>
+              <span className="truncate">{t('selectPhoto') || 'Galería'}</span>
+            </label>
           </div>
         </div>
         

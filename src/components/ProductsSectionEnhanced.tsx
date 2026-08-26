@@ -1316,30 +1316,51 @@ export default function ProductsSectionEnhanced({
               <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />
               <span className="truncate">{t('addProduct') || 'Add'}</span>
             </Button>
-            <div className="w-full">
-              <input 
-                id="invoice-upload"
-                type="file" 
-                className="hidden" 
+            <div className="w-full flex gap-1.5">
+              {/* Camera: apre direttamente la fotocamera */}
+              <input
+                id="invoice-upload-camera"
+                type="file"
+                className="hidden"
+                accept="image/*"
+                capture="environment"
+                onChange={handleFileUpload}
+              />
+              <label
+                htmlFor={uploading ? undefined : 'invoice-upload-camera'}
+                data-tour="upload-invoice"
+                className={[
+                  'flex-1 inline-flex items-center justify-center gap-1 border-2 rounded-md',
+                  'min-h-[40px] sm:min-h-[44px] text-[11px] sm:text-sm px-2 sm:px-3 transition-all font-medium',
+                  uploading
+                    ? 'opacity-50 cursor-not-allowed border-slate-200 text-slate-400 dark:border-slate-700'
+                    : 'cursor-pointer border-blue-300 text-blue-700 hover:border-blue-500 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:hover:border-blue-500',
+                ].join(' ')}
+              >
+                <span className="truncate">{uploading ? ((t('loading') || 'Loading') + '...') : (t('takePhoto') || 'Camera')}</span>
+              </label>
+
+              {/* Galleria: apre il selettore file senza forzare la camera */}
+              <input
+                id="invoice-upload-gallery"
+                type="file"
+                className="hidden"
                 accept="image/*"
                 multiple
                 onChange={handleFileUpload}
               />
-              <Button
-                data-tour="upload-invoice"
-                variant="outline"
-                size="sm"
-                disabled={uploading}
-                onClick={() => {
-                  if (!uploading) {
-                    document.getElementById('invoice-upload')?.click();
-                  }
-                }}
-                className="w-full border-2 hover:border-blue-500 hover:text-blue-600 transition-all min-h-[40px] sm:min-h-[44px] text-[11px] sm:text-sm dark:border-slate-700 dark:hover:border-blue-500 px-2 sm:px-3"
+              <label
+                htmlFor={uploading ? undefined : 'invoice-upload-gallery'}
+                className={[
+                  'flex-1 inline-flex items-center justify-center gap-1 border-2 rounded-md',
+                  'min-h-[40px] sm:min-h-[44px] text-[11px] sm:text-sm px-2 sm:px-3 transition-all font-medium',
+                  uploading
+                    ? 'opacity-50 cursor-not-allowed border-slate-200 text-slate-400 dark:border-slate-700'
+                    : 'cursor-pointer border-slate-300 text-slate-700 hover:border-blue-400 hover:text-blue-600 dark:border-slate-700 dark:text-slate-300 dark:hover:border-blue-500',
+                ].join(' ')}
               >
-                <Upload className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />
-                <span className="truncate">{uploading ? (t('loading') || 'Loading') + '...' : t('uploadInvoice')}</span>
-              </Button>
+                <span className="truncate">{t('selectPhoto') || 'Gallery'}</span>
+              </label>
             </div>
           </div>
         </div>

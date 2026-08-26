@@ -370,23 +370,51 @@ export default function SupplierDetail({
         {/* Invoices Tab */}
         <TabsContent value="invoices" className="space-y-6">
           {/* Upload Button */}
-          <div>
-            <label htmlFor="invoice-upload">
-              <Button disabled={isUploading} asChild>
-                <span className="cursor-pointer">
-                  <Upload className="mr-2 h-4 w-4" />
-                  {isUploading ? t('loading') : t('uploadInvoice')}
-                </span>
-              </Button>
-            </label>
+          <div className="flex gap-2">
+            {/* Camera: apre direttamente la fotocamera */}
             <input
-              id="invoice-upload"
+              id="supplier-invoice-camera"
               type="file"
               accept="image/*"
+              capture="environment"
               onChange={handleInvoiceUpload}
               disabled={isUploading}
               className="hidden"
             />
+            <label
+              htmlFor={isUploading ? undefined : 'supplier-invoice-camera'}
+              className={[
+                'inline-flex items-center justify-center gap-2 rounded-md border-2 px-4 py-2 text-sm font-medium transition-all',
+                isUploading
+                  ? 'opacity-50 cursor-not-allowed border-slate-200 text-slate-400'
+                  : 'cursor-pointer border-blue-300 text-blue-700 hover:border-blue-500 hover:bg-blue-50',
+              ].join(' ')}
+            >
+              <Upload className="h-4 w-4" />
+              {isUploading ? t('loading') : (t('takePhoto') || 'Camera')}
+            </label>
+
+            {/* Galleria: apre il selettore file senza forzare la camera */}
+            <input
+              id="supplier-invoice-gallery"
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleInvoiceUpload}
+              disabled={isUploading}
+              className="hidden"
+            />
+            <label
+              htmlFor={isUploading ? undefined : 'supplier-invoice-gallery'}
+              className={[
+                'inline-flex items-center justify-center gap-2 rounded-md border-2 px-4 py-2 text-sm font-medium transition-all',
+                isUploading
+                  ? 'opacity-50 cursor-not-allowed border-slate-200 text-slate-400'
+                  : 'cursor-pointer border-slate-300 text-slate-700 hover:border-blue-400 hover:text-blue-600',
+              ].join(' ')}
+            >
+              {t('selectPhoto') || 'Gallery'}
+            </label>
           </div>
 
           {/* Invoices by Year and Month */}

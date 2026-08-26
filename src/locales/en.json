@@ -141,6 +141,8 @@
   "selectProducts": "Select Products",
   "quantity": "Quantity",
   "uploadInvoice": "Upload Invoice",
+  "takePhoto": "📷 Take Photo",
+  "selectPhoto": "🖼️ Select Photo",
   "uploadOrder": "Upload Order",
   "searchProducts": "Search Products",
   "createOrderMode": "Creation Mode",

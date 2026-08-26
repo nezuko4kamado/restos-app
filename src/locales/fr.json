@@ -137,6 +137,8 @@
   "selectProducts": "Sélectionner des Produits",
   "quantity": "Quantité",
   "uploadInvoice": "Télécharger une Facture",
+  "takePhoto": "📷 Prendre une Photo",
+  "selectPhoto": "🖼️ Choisir une Photo",
   "uploadOrder": "Télécharger une Commande",
   "searchProducts": "Rechercher des Produits",
   "createOrderMode": "Mode de Création",

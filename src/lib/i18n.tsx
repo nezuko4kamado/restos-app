@@ -143,6 +143,8 @@ export interface Translations {
   selectProducts: string;
   quantity: string;
   uploadInvoice: string;
+  takePhoto: string;
+  selectPhoto: string;
   uploadOrder: string;
   searchProducts: string;
   createOrderMode: string;

@@ -886,19 +886,20 @@ export default function ProductsSectionEnhanced({
       let updatedCount = 0;
       const skippedCount = 0;
 
-      // ✅ FIX: BATCH FETCH — single DB call to get ALL user products (no supplier filter)
-      // IMPORTANT: use DB data as-is for price comparison — do NOT override with local React state.
-      // Local state may already have a stale/updated price → oldPrice === newPrice → no update.
-      // DB is the source of truth for "what price is currently saved".
+      // ✅ BATCH FETCH — fetch supplier products + all user products, merge with local state
+      // Local state wins in merge: contains most up-to-date prices (incl. manual user edits)
       let allKnownProducts: Product[] = [...products];
       try {
-        console.log(`🚀 [BATCH FETCH] Fetching all user products in ONE DB call...`);
-        const allUserProducts = await getProductsBySupplier(); // no filter = all user products
+        console.log(`🚀 [BATCH FETCH] Fetching products for supplier ${supplierId} + all user products...`);
+        const supplierProducts = await getProductsBySupplier(supplierId);
+        const allUserProducts = supplierId ? await getProductsBySupplier() : supplierProducts;
         console.log(`✅ [BATCH FETCH] Loaded ${allUserProducts.length} total user products`);
-        // ✅ KEY FIX: DB data wins — do NOT override with local React state for price comparison.
-        // Local state can have stale prices that would make priceActuallyChanged = false.
-        allKnownProducts = allUserProducts;
-        console.log(`✅ [BATCH FETCH] Using ${allKnownProducts.length} products from DB (source of truth)`);
+        // Merge: DB first, then local state wins (local state has most up-to-date prices)
+        const mergedMap = new Map<string, Product>();
+        for (const p of allUserProducts) mergedMap.set(p.id, p);
+        for (const p of products) mergedMap.set(p.id, p); // local state wins
+        allKnownProducts = Array.from(mergedMap.values());
+        console.log(`✅ [BATCH FETCH] Merged pool: ${allKnownProducts.length} products`);
       } catch (e) {
         console.error('❌ [BATCH FETCH] Failed, falling back to local products array:', e);
         allKnownProducts = [...products];

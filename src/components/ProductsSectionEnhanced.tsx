@@ -911,39 +911,44 @@ export default function ProductsSectionEnhanced({
         const extractedCode = extracted.code_description?.trim();
         let existingProduct: Product | null | undefined = undefined;
 
-        // Priority 1: code_description + supplier_id (most precise)
-        if (extractedCode) {
+        // Normalize extracted code for case-insensitive comparison
+        const extractedCodeNorm = extractedCode?.toLowerCase() ?? '';
+
+        // Priority 1: code_description + supplier_id (most precise, case-insensitive)
+        if (extractedCodeNorm) {
           existingProduct = allKnownProducts.find(p => {
-            const productCode = p.code_description?.trim();
-            return productCode && extractedCode === productCode && p.supplier_id === supplierId;
+            const productCode = p.code_description?.trim().toLowerCase();
+            return productCode && extractedCodeNorm === productCode && p.supplier_id === supplierId;
           }) ?? null;
           if (existingProduct) console.log(`✅ [MATCH P1] Found by code+supplier: "${existingProduct.name}" id=${existingProduct.id}`);
         }
 
-        // Priority 2: code_description only (any supplier)
-        if (!existingProduct && extractedCode) {
+        // Priority 2: code_description only (any supplier, case-insensitive)
+        if (!existingProduct && extractedCodeNorm) {
           existingProduct = allKnownProducts.find(p => {
-            const productCode = p.code_description?.trim();
-            return productCode && extractedCode === productCode;
+            const productCode = p.code_description?.trim().toLowerCase();
+            return productCode && extractedCodeNorm === productCode;
           }) ?? null;
           if (existingProduct) console.log(`✅ [MATCH P2] Found by code (any supplier): "${existingProduct.name}" id=${existingProduct.id}`);
         }
 
-        // Priority 3: name + supplier_id
+        // Priority 3: name + supplier_id (case-insensitive, trimmed)
         if (!existingProduct) {
+          const extractedNameNorm = extracted.name.trim().toLowerCase();
           existingProduct = allKnownProducts.find(p =>
-            p.name.toLowerCase() === extracted.name.toLowerCase() && p.supplier_id === supplierId
+            p.name.trim().toLowerCase() === extractedNameNorm && p.supplier_id === supplierId
           ) ?? null;
           if (existingProduct) console.log(`✅ [MATCH P3] Found by name+supplier: "${existingProduct.name}" id=${existingProduct.id}`);
         }
 
-        // Priority 4: name only (any supplier)
+        // Priority 4: name only (any supplier, case-insensitive, trimmed)
         if (!existingProduct) {
+          const extractedNameNorm = extracted.name.trim().toLowerCase();
           existingProduct = allKnownProducts.find(p =>
-            p.name.toLowerCase() === extracted.name.toLowerCase()
+            p.name.trim().toLowerCase() === extractedNameNorm
           ) ?? null;
           if (existingProduct) console.log(`✅ [MATCH P4] Found by name only: "${existingProduct.name}" id=${existingProduct.id}`);
-          else console.log(`❌ [NO MATCH] Product not found: "${extracted.name}" code="${extractedCode}"`);
+          else console.log(`❌ [NO MATCH] Product not found: "${extracted.name}" code="${extractedCode}" (norm="${extractedCodeNorm}"`);
         }
 
         // ✅ TRUST KLIPPA'S VAT RATE, CATEGORY, AND CODE_DESCRIPTION - No recalculation, no default override!

@@ -295,7 +295,8 @@ export const getDetailedPriceAlerts = async (): Promise<PriceAlert[]> => {
 
         const oldPrice = previousPrices.get(productName);
 
-        if (oldPrice && oldPrice > 0 && newPrice > oldPrice) {
+        // Segnala sia aumenti che riduzioni di prezzo (tolleranza > 1% per evitare falsi positivi)
+        if (oldPrice && oldPrice > 0 && Math.abs(newPrice - oldPrice) / oldPrice > 0.01) {
           const percentChange = ((newPrice - oldPrice) / oldPrice) * 100;
           
           alerts.push({

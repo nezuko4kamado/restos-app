@@ -1179,7 +1179,7 @@ export default function Index() {
         </div>
 
         {/* Price Alerts Widget */}
-        <PriceAlertsWidget products={products} />
+        <PriceAlertsWidget priceAlerts={priceAlerts} onClearAlerts={handleClearAlerts} />
 
         {/* Content Area */}
         <div>

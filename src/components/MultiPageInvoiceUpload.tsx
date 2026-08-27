@@ -109,7 +109,7 @@ export function MultiPageInvoiceUpload({
                 capture="environment"
                 onChange={handleFileSelect}
                 disabled={isDisabled}
-                className="hidden"
+                className="sr-only"
               />
             </label>
 
@@ -123,7 +123,7 @@ export function MultiPageInvoiceUpload({
                 multiple
                 onChange={handleFileSelect}
                 disabled={isDisabled}
-                className="hidden"
+                className="sr-only"
               />
             </label>
           </div>
@@ -213,7 +213,7 @@ export function MultiPageInvoiceUpload({
                     accept="image/*"
                     capture="environment"
                     onChange={handleFileSelect}
-                    className="hidden"
+                    className="sr-only"
                   />
                 </label>
               )}
@@ -230,7 +230,7 @@ export function MultiPageInvoiceUpload({
                 capture="environment"
                 onChange={handleFileSelect}
                 disabled={isDisabled}
-                className="hidden"
+                className="sr-only"
               />
             </label>
 
@@ -243,7 +243,7 @@ export function MultiPageInvoiceUpload({
                 multiple
                 onChange={handleFileSelect}
                 disabled={isDisabled}
-                className="hidden"
+                className="sr-only"
               />
             </label>
           </div>

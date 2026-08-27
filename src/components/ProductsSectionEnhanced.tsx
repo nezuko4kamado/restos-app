@@ -1310,7 +1310,7 @@ export default function ProductsSectionEnhanced({
             <input
               id="invoice-upload-camera"
               type="file"
-              className="hidden"
+              className="sr-only"
               accept="image/*"
               capture="environment"
               onChange={handleFileUpload}
@@ -1334,7 +1334,7 @@ export default function ProductsSectionEnhanced({
             <input
               id="invoice-upload-gallery"
               type="file"
-              className="hidden"
+              className="sr-only"
               accept="image/*"
               multiple
               onChange={handleFileUpload}

@@ -19,6 +19,7 @@ import { useTranslations, type Language } from '@/lib/i18n';
 import { InvoiceUploadWithLimits } from '@/components/InvoiceUploadWithLimits';
 import { InvoiceLoadingDialog } from '@/components/InvoiceLoadingDialog';
 import { SupplierConfirmationDialog } from '@/components/SupplierConfirmationDialog';
+import AllInvoicesView from '@/components/AllInvoicesView';
 
 // Type for pending invoice data that might have nested structure
 type PendingInvoiceDataType = InvoiceDataExtracted | { invoiceData: InvoiceDataExtracted };
@@ -90,7 +91,7 @@ function InvoiceManagement({
   const [extractedData, setExtractedData] = useState<InvoiceDataExtracted | null>(null);
   const [extractedItems, setExtractedItems] = useState<ExtractedInvoiceItem[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [activeTab, setActiveTab] = useState<'manual' | 'upload'>('manual');
+  const [activeTab, setActiveTab] = useState<'manual' | 'upload' | 'report'>('manual');
   const [expandedYears, setExpandedYears] = useState<Set<string>>(new Set());
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
   
@@ -970,10 +971,11 @@ function InvoiceManagement({
             </Card>
           </div>
 
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'manual' | 'upload')}>
-            <TabsList className="grid w-full grid-cols-2">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'manual' | 'upload' | 'report')}>
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="manual">{t('manualEntry')}</TabsTrigger>
               <TabsTrigger value="upload">{t('uploadInvoice')}</TabsTrigger>
+              <TabsTrigger value="report">📊 {t('monthlyReport') || 'Informe mensual'}</TabsTrigger>
             </TabsList>
 
             {/* Manual Entry Tab */}
@@ -1184,6 +1186,16 @@ function InvoiceManagement({
                   </div>
                 )}
               </div>
+            </TabsContent>
+
+            {/* Monthly Report Tab */}
+            <TabsContent value="report" className="space-y-4">
+              <AllInvoicesView
+                invoices={invoices}
+                suppliers={suppliers}
+                onDeleteInvoice={onDeleteInvoice}
+                currency="EUR"
+              />
             </TabsContent>
           </Tabs>
 

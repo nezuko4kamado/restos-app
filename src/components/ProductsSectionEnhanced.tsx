@@ -886,24 +886,9 @@ export default function ProductsSectionEnhanced({
       let updatedCount = 0;
       const skippedCount = 0;
 
-      // ✅ BATCH FETCH — fetch supplier products + all user products, merge with local state
-      // Local state wins in merge: contains most up-to-date prices (incl. manual user edits)
-      let allKnownProducts: Product[] = [...products];
-      try {
-        console.log(`🚀 [BATCH FETCH] Fetching products for supplier ${supplierId} + all user products...`);
-        const supplierProducts = await getProductsBySupplier(supplierId);
-        const allUserProducts = supplierId ? await getProductsBySupplier() : supplierProducts;
-        console.log(`✅ [BATCH FETCH] Loaded ${allUserProducts.length} total user products`);
-        // Merge: DB first, then local state wins (local state has most up-to-date prices)
-        const mergedMap = new Map<string, Product>();
-        for (const p of allUserProducts) mergedMap.set(p.id, p);
-        for (const p of products) mergedMap.set(p.id, p); // local state wins
-        allKnownProducts = Array.from(mergedMap.values());
-        console.log(`✅ [BATCH FETCH] Merged pool: ${allKnownProducts.length} products`);
-      } catch (e) {
-        console.error('❌ [BATCH FETCH] Failed, falling back to local products array:', e);
-        allKnownProducts = [...products];
-      }
+      // Usa direttamente i prodotti locali per matching e confronto prezzi
+      // Lo stato locale è già sincronizzato con il DB dopo ogni operazione
+      const allKnownProducts: Product[] = [...products];
 
       for (const extracted of allExtractedProducts) {
         const extractedCode = extracted.code_description?.trim();
@@ -961,44 +946,20 @@ export default function ProductsSectionEnhanced({
           {
             // ✅ Update existing product WITH price fields + price history tracking
             const newPrice = (extracted.discounted_price && extracted.discounted_price > 0.001) ? extracted.discounted_price : (extracted.unit_price && extracted.unit_price > 0.001) ? extracted.unit_price : (extracted.price && extracted.price > 0.001) ? extracted.price : 0;
+            // Usa sempre lo stato locale come oldPrice — è già sincronizzato con il DB
             const oldPrice = existingProduct.price;
-            const priceActuallyChanged = Math.abs(newPrice - oldPrice) > 0.001;
-            // 🔍 DEBUG: log price comparison to diagnose update issues
+            const priceActuallyChanged = newPrice > 0.001 && Math.abs(newPrice - oldPrice) > 0.001;
             console.log(`🔍 [PRICE DEBUG] "${existingProduct.name}" (id=${existingProduct.id}): ` +
               `extracted.discounted_price=${extracted.discounted_price}, extracted.unit_price=${extracted.unit_price}, extracted.price=${extracted.price} ` +
               `→ newPrice=${newPrice}, oldPrice=${oldPrice}, diff=${Math.abs(newPrice - oldPrice).toFixed(4)}, priceActuallyChanged=${priceActuallyChanged}`);
 
-            // Build updated price history
+            // Build updated price history (solo quando il prezzo cambia davvero)
             const existingHistory = getProductPriceHistory(existingProduct);
-            let newHistory: Array<{ price: number; date: string; reason?: string }>;
-            if (priceActuallyChanged) {
-              if (existingHistory.length === 0) {
-                newHistory = [
-                  { price: oldPrice, date: existingProduct.created_at || new Date().toISOString(), reason: 'Original price' },
-                  { price: newPrice, date: new Date().toISOString(), reason: 'Updated from invoice' },
-                ];
-              } else {
-                newHistory = [
-                  ...existingHistory,
-                  { price: newPrice, date: new Date().toISOString(), reason: 'Updated from invoice' },
-                ];
-              }
-            } else {
-              // ✅ FIX: Price unchanged — add "Confirmed from invoice" entry to clear manual-change notifications
-              newHistory = [
-                ...(existingHistory.length > 0 ? existingHistory : [
-                  { price: oldPrice, date: existingProduct.created_at || new Date().toISOString(), reason: 'Original price' },
-                ]),
-                { price: oldPrice, date: new Date().toISOString(), reason: 'Confirmed from invoice' },
-              ];
-            }
 
             // ✅ GUARD: Only update price if we got a valid price from the invoice
             if (newPrice <= 0.001) {
               console.warn(`⚠️ [PRICE] Skipping price update for "${existingProduct.name}" — newPrice is 0 or invalid (discounted_price=${extracted.discounted_price}, unit_price=${extracted.unit_price}, price=${extracted.price})`);
-              // Still update non-price fields (category, vat, code_description) but keep existing price.
-              // ✅ FIX: Do NOT touch priceHistory when price is invalid — leave history unchanged
-              // so no spurious "Confirmed from invoice" entry masks a real prior price change.
+              // Aggiorna solo campi non-prezzo, lascia priceHistory invariata
               const nonPriceUpdates: Partial<Product> = {
                 vat_rate: productVATRate,
                 vatRate: productVATRate,
@@ -1008,7 +969,7 @@ export default function ProductsSectionEnhanced({
               };
               productsToUpdate.push({ id: existingProduct.id, updates: nonPriceUpdates });
             } else if (!priceActuallyChanged) {
-              // ✅ FIX: Price confirmed same from invoice — update price_history to clear manual notifications
+              // Prezzo invariato — aggiorna solo campi non-prezzo, NON toccare priceHistory
               const confirmedUpdates: Partial<Product> = {
                 vat_rate: productVATRate,
                 vatRate: productVATRate,
@@ -1016,11 +977,20 @@ export default function ProductsSectionEnhanced({
                 code_description: productCodeDescription,
                 updated_at: new Date().toISOString(),
               };
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (confirmedUpdates as any).priceHistory = newHistory;
               productsToUpdate.push({ id: existingProduct.id, updates: confirmedUpdates });
             } else {
-              // ✅ FIX: Only include unit_price/discounted_price/discount_amount/discount_percent
+              // Prezzo cambiato — aggiorna prezzo + priceHistory
+              const newHistory = existingHistory.length === 0
+                ? [
+                    { price: oldPrice, date: existingProduct.created_at || new Date().toISOString(), reason: 'Original price' },
+                    { price: newPrice, date: new Date().toISOString(), reason: 'Updated from invoice' },
+                  ]
+                : [
+                    ...existingHistory,
+                    { price: newPrice, date: new Date().toISOString(), reason: 'Updated from invoice' },
+                  ];
+
+              // ✅ Only include unit_price/discounted_price/discount_amount/discount_percent
               // when they are valid (> 0) to avoid overwriting good DB values with OCR zeros.
               const updates: Partial<Product> = {
                 price: newPrice,
@@ -1288,8 +1258,8 @@ export default function ProductsSectionEnhanced({
   const safeToLower = (str: string | undefined) => str ? str.toLowerCase() : '';
 
   return (
-    <Card className="backdrop-blur-xl bg-white/80 dark:bg-slate-900/80 border-white/20 dark:border-slate-700/20 shadow-xl w-full max-w-full overflow-hidden">
-      <CardHeader className="px-3 sm:px-6">
+    <Card className="backdrop-blur-xl bg-white/80 dark:bg-slate-900/80 border-white/20 dark:border-slate-700/20 shadow-xl w-full max-w-full overflow-x-hidden">
+      <CardHeader className="px-3 sm:px-6 overflow-visible">
         <div className="flex flex-col gap-3 sm:gap-4">
           <div className="w-full">
             <CardTitle className="text-lg sm:text-2xl bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">

@@ -2610,7 +2610,7 @@ export default function OrdersSectionEnhanced({ orders, setOrders, products, set
                             title={t('deleteOrder')}
                           >
                             <Trash2 className="h-4 w-4 flex-shrink-0" />
-                            <span className="hidden sm:inline text-xs ml-1">{t('deleteOrder')}</span>
+                            <span className="text-xs ml-1">{t('deleteOrder')}</span>
                           </Button>
                         </div>
                       </div>

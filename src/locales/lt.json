@@ -1151,5 +1151,11 @@
   "demoRegisterPrompt": "Sukurkite nemokamą paskyrą, kad išsaugotumėte savo duomenis ir pasiektumėte visas funkcijas.",
   "exitDemo": "Išeiti iš Demo",
   "transferProduct": "Perkelti produktą",
-  "monthlyReport": "Ataskaita"
+  "monthlyReport": "Ataskaita",
+  "orderSavedAsDraft": "Užsakymas išsaugotas kaip juodraštis",
+  "draftAvailable": "Juodraštis pasiekiamas",
+  "canRecoverWithButton": "Galite jį atkurti naudodami mygtuką Atkurti",
+  "noOrderOrDraftAvailable": "Nėra užsakymo ar juodraščio",
+  "recover": "Atkurti",
+  "errorSaving": "Išsaugojimo klaida"
 }

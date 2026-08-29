@@ -183,31 +183,22 @@ const resolveEmailPhone = (
 
 // Helper: open external URL reliably on mobile — NEVER navigate away from the current page
 const openExternalUrl = (url: string) => {
-  if (url.startsWith('whatsapp://') || url.startsWith('intent://')) {
-    // Try native deep link first — works on Android/iOS regardless of user agent
-    window.location.href = url;
-    // Fallback: if the app didn't open after 2s (desktop/no WhatsApp), open wa.me
-    const fallbackTimer = setTimeout(() => {
-      const waMe = url.replace('whatsapp://send?', 'https://wa.me/?');
-      const a = document.createElement('a');
-      a.href = waMe;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => document.body.removeChild(a), 100);
-    }, 2000);
-    // Cancel fallback if page is hidden (app opened successfully)
-    const cancelFallback = () => {
-      clearTimeout(fallbackTimer);
-      document.removeEventListener('visibilitychange', cancelFallback);
-    };
-    document.addEventListener('visibilitychange', cancelFallback);
-    return;
+  // Convert whatsapp:// deep link to wa.me HTTPS link so we can always use
+  // window.open(..., '_blank') without ever touching window.location.href.
+  // wa.me works on Android, iOS and desktop — WhatsApp handles the app handoff.
+  let finalUrl = url;
+  if (url.startsWith('whatsapp://send?')) {
+    finalUrl = url.replace('whatsapp://send?', 'https://wa.me/?');
+  } else if (url.startsWith('intent://')) {
+    // intent:// fallback: extract wa.me equivalent
+    const match = url.match(/phone=([^&]+).*text=([^#]+)/);
+    if (match) {
+      finalUrl = `https://wa.me/${match[1]}?text=${match[2]}`;
+    }
   }
-  // Desktop / http(s) links: open in a new tab
+  // Always open in a new tab/window — the SPA page is never navigated away
   const a = document.createElement('a');
-  a.href = url;
+  a.href = finalUrl;
   a.target = '_blank';
   a.rel = 'noopener noreferrer';
   document.body.appendChild(a);

@@ -6,8 +6,6 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import AllInvoicesView from '@/components/AllInvoicesView';
 import { 
   FileText, 
   Search, 
@@ -73,7 +71,6 @@ function normalizeInvoiceItem(raw: any): InvoiceProduct {
 
 export function InvoicesSection({ settings, onInvoicesChanged }: InvoicesSectionProps) {
   const { t } = useLanguage();
-  const [activeMainTab, setActiveMainTab] = useState<'invoices' | 'report'>('invoices');
   const [invoices, setInvoices] = useState<InvoiceType[]>([]);
   const [stats, setStats] = useState({
     total_invoices: 0,
@@ -390,27 +387,6 @@ export function InvoicesSection({ settings, onInvoicesChanged }: InvoicesSection
     t('invoicesSection.december') || 'Dicembre',
   ];
 
-  // Calcolo riepilogo mensile per il tab report
-  const monthlyReport = useMemo(() => {
-    const map: Record<string, { year: number; month: number; label: string; total: number; paid: number; unpaid: number; count: number }> = {};
-    invoices.forEach(inv => {
-      const d = inv.date ? new Date(inv.date) : null;
-      if (!d || isNaN(d.getTime())) return;
-      const year = d.getFullYear();
-      const month = d.getMonth();
-      const key = `${year}-${String(month).padStart(2, '0')}`;
-      if (!map[key]) {
-        map[key] = { year, month, label: `${monthNames[month]} ${year}`, total: 0, paid: 0, unpaid: 0, count: 0 };
-      }
-      const amount = Number(inv.total_amount) || 0;
-      map[key].count += 1;
-      map[key].total += amount;
-      if (inv.is_paid) map[key].paid += amount;
-      else map[key].unpaid += amount;
-    });
-    return Object.values(map).sort((a, b) => b.year !== a.year ? b.year - a.year : b.month - a.month);
-  }, [invoices, monthNames]);
-
   const filteredInvoices = useMemo(() => invoices.filter(invoice => {
     const matchesSearch =
       invoice.invoice_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -517,61 +493,6 @@ export function InvoicesSection({ settings, onInvoicesChanged }: InvoicesSection
 
   return (
     <div className="space-y-6">
-      <Tabs value={activeMainTab} onValueChange={(v) => setActiveMainTab(v as 'invoices' | 'report')}>
-        <TabsList className="mb-2">
-          <TabsTrigger value="invoices">📄 {t('invoicesSection.invoicesTab') || 'Fatture'}</TabsTrigger>
-          <TabsTrigger value="report">📊 {t('invoicesSection.monthlyReportTab') || 'Informe mensual'}</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="report">
-          <Card>
-            <CardContent className="p-4">
-              <h2 className="text-lg font-bold text-slate-800 mb-4">📊 {t('invoicesSection.monthlyReportTab') || 'Informe mensual'}</h2>
-              {monthlyReport.length === 0 ? (
-                <div className="text-center py-12 text-slate-500">
-                  <FileText className="h-12 w-12 mx-auto mb-4 text-slate-300" />
-                  <p>{t('invoicesSection.noInvoicesFound')}</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b text-left text-slate-600">
-                        <th className="pb-2 pr-4">{t('invoicesSection.filterByMonth') || 'Mese'}</th>
-                        <th className="pb-2 pr-4 text-right">{t('invoicesSection.totalInvoices')}</th>
-                        <th className="pb-2 pr-4 text-right">{t('invoicesSection.totalAmount') || 'Totale'}</th>
-                        <th className="pb-2 pr-4 text-right">{t('invoicesSection.paid')}</th>
-                        <th className="pb-2 text-right">{t('invoicesSection.unpaid')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {monthlyReport.map(row => (
-                        <tr key={`${row.year}-${row.month}`} className="border-b hover:bg-slate-50">
-                          <td className="py-3 pr-4 font-medium">{row.label}</td>
-                          <td className="py-3 pr-4 text-right">{row.count}</td>
-                          <td className="py-3 pr-4 text-right font-semibold text-indigo-600">{formatPrice(row.total, currency)}</td>
-                          <td className="py-3 pr-4 text-right text-green-600">{formatPrice(row.paid, currency)}</td>
-                          <td className="py-3 text-right text-orange-600">{formatPrice(row.unpaid, currency)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr className="font-bold text-slate-800">
-                        <td className="pt-3 pr-4">{t('invoicesSection.total') || 'Totale'}</td>
-                        <td className="pt-3 pr-4 text-right">{monthlyReport.reduce((s, r) => s + r.count, 0)}</td>
-                        <td className="pt-3 pr-4 text-right text-indigo-700">{formatPrice(monthlyReport.reduce((s, r) => s + r.total, 0), currency)}</td>
-                        <td className="pt-3 pr-4 text-right text-green-700">{formatPrice(monthlyReport.reduce((s, r) => s + r.paid, 0), currency)}</td>
-                        <td className="pt-3 text-right text-orange-700">{formatPrice(monthlyReport.reduce((s, r) => s + r.unpaid, 0), currency)}</td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="invoices">
       {/* Header Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200">
@@ -1077,8 +998,6 @@ export function InvoicesSection({ settings, onInvoicesChanged }: InvoicesSection
           </div>
         </DialogContent>
       </Dialog>
-        </TabsContent>
-      </Tabs>
     </div>
   );
 }

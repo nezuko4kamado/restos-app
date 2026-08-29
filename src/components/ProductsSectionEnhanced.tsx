@@ -928,13 +928,17 @@ export default function ProductsSectionEnhanced({
         }
 
         // Priority 4: name only (any supplier, case-insensitive, trimmed)
-        if (!existingProduct) {
+        // ✅ FIX: Skip P4 when supplierId is known — avoids updating a product
+        // from a different supplier that happens to share the same name.
+        if (!existingProduct && !supplierId) {
           const extractedNameNorm = extracted.name.trim().toLowerCase();
           existingProduct = allKnownProducts.find(p =>
             p.name.trim().toLowerCase() === extractedNameNorm
           ) ?? null;
-          if (existingProduct) console.log(`✅ [MATCH P4] Found by name only: "${existingProduct.name}" id=${existingProduct.id}`);
-          else console.log(`❌ [NO MATCH] Product not found: "${extracted.name}" code="${extractedCode}" (norm="${extractedCodeNorm}"`);
+          if (existingProduct) console.log(`✅ [MATCH P4] Found by name only (no supplierId): "${existingProduct.name}" id=${existingProduct.id}`);
+        }
+        if (!existingProduct) {
+          console.log(`❌ [NO MATCH] Product not found: "${extracted.name}" code="${extractedCode}" (norm="${extractedCodeNorm}")`);
         }
 
         // ✅ TRUST KLIPPA'S VAT RATE, CATEGORY, AND CODE_DESCRIPTION - No recalculation, no default override!

@@ -1157,7 +1157,8 @@ export default function OrdersSectionEnhanced({ orders, setOrders, products, set
 
     const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     
-    window.open(mailtoUrl, '_blank');
+    // Use window.location.href for mailto: — works on Android TWA (same approach as whatsapp://)
+    window.location.href = mailtoUrl;
     toast.success(t('success'));
   };
 
@@ -1276,8 +1277,9 @@ export default function OrdersSectionEnhanced({ orders, setOrders, products, set
 
       const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
       
+      // Use window.location.href for mailto: — works on Android TWA
       setTimeout(() => {
-        window.open(mailtoUrl, '_blank');
+        window.location.href = mailtoUrl;
       }, sentCount * 1000);
       
       sentCount++;
@@ -1578,7 +1580,8 @@ export default function OrdersSectionEnhanced({ orders, setOrders, products, set
 
     const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     
-    window.open(mailtoUrl, '_blank');
+    // Use window.location.href for mailto: — works on Android TWA (same approach as whatsapp://)
+    window.location.href = mailtoUrl;
     toast.success(t('success'));
   };
 
@@ -1705,8 +1708,9 @@ export default function OrdersSectionEnhanced({ orders, setOrders, products, set
 
       const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
       
+      // Use window.location.href for mailto: — works on Android TWA
       setTimeout(() => {
-        window.open(mailtoUrl, '_blank');
+        window.location.href = mailtoUrl;
       }, sentCount * 1000);
       
       sentCount++

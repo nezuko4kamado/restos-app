@@ -2589,7 +2589,7 @@ export default function OrdersSectionEnhanced({ orders, setOrders, products, set
                               className="border-2 border-green-500 text-green-600 hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm min-h-[44px]"
                             >
                               <MessageCircle className="h-4 w-4 mr-1" />
-                              <span className="hidden sm:inline">WhatsApp</span>
+                              <span className="text-xs font-medium">WhatsApp</span>
                             </Button>
                             <Button
                               variant="outline"
@@ -2599,18 +2599,18 @@ export default function OrdersSectionEnhanced({ orders, setOrders, products, set
                               className="border-2 border-blue-500 text-blue-600 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm min-h-[44px]"
                             >
                               <Mail className="h-4 w-4 mr-1" />
-                              <span className="hidden sm:inline">{t('email')}</span>
+                              <span className="text-xs font-medium">{t('email')}</span>
                             </Button>
                           </div>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handleSupplierAction(supplierId)}
-                            className="border-2 border-red-500 text-red-600 hover:bg-red-50 shadow-sm min-h-[44px] px-2 sm:px-3"
+                            className="border-2 border-red-500 text-red-600 hover:bg-red-50 shadow-sm min-h-[44px] w-full flex items-center justify-center gap-2"
                             title={t('deleteOrder')}
                           >
                             <Trash2 className="h-4 w-4 flex-shrink-0" />
-                            <span className="text-xs ml-1">{t('deleteOrder')}</span>
+                            <span className="text-xs font-medium">{t('deleteOrder')}</span>
                           </Button>
                         </div>
                       </div>

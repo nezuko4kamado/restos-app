@@ -975,7 +975,7 @@ function InvoiceManagement({
             <TabsList className="grid w-full grid-cols-3 h-auto">
               <TabsTrigger value="manual" className="text-xs sm:text-sm px-1 py-2 whitespace-normal leading-tight">{t('manualEntry')}</TabsTrigger>
               <TabsTrigger value="upload" className="text-xs sm:text-sm px-1 py-2 whitespace-normal leading-tight">{t('uploadInvoice')}</TabsTrigger>
-              <TabsTrigger value="report" className="text-xs sm:text-sm px-1 py-2 whitespace-normal leading-tight">📊 {t('monthlyReport') || 'Informe mensual'}</TabsTrigger>
+              <TabsTrigger value="report" className="text-xs sm:text-sm px-1 py-2 whitespace-normal leading-tight data-[state=active]:bg-indigo-600 data-[state=active]:text-white">📊 {t('monthlyReport') || 'Rapporto'}</TabsTrigger>
             </TabsList>
 
             {/* Manual Entry Tab */}

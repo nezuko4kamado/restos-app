@@ -91,21 +91,16 @@ export function generateEmailMessage(
   if (customTemplate && customTemplate.trim()) {
     // Format products list
     let productsText = '';
-    let total = 0;
     
     items.forEach((item, index) => {
       const unitDisplay = item.unit && item.unit.toLowerCase() !== 'pz' ? ` ${item.unit}` : '';
       productsText += `${index + 1}. ${item.name}\n`;
       productsText += `   Quantità: ${item.quantity}${unitDisplay}\n`;
-      if (item.price) {
-        const priceFormatted = countryCode ? formatPrice(item.price, countryCode) : `€${(Number(item.price) || 0).toFixed(2)}`;
-        productsText += `   Prezzo: ${priceFormatted}\n`;
-        total += item.price * item.quantity;
-      }
+      // Price intentionally omitted from email messages
       productsText += `\n`;
     });
     
-    const totalFormatted = countryCode ? formatPrice(total, countryCode) : `€${(Number(total) || 0).toFixed(2)}`;
+    const totalFormatted = countryCode ? formatPrice(0, countryCode) : `€0.00`;
     
     const body = replacePlaceholders(customTemplate, {
       supplier_name: supplierName,
@@ -131,10 +126,7 @@ export function generateEmailMessage(
     const unitDisplay = item.unit && item.unit.toLowerCase() !== 'pz' ? ` ${item.unit}` : '';
     body += `${index + 1}. ${item.name}\n`;
     body += `   Quantità: ${item.quantity}${unitDisplay}\n`;
-    if (item.price) {
-      const priceFormatted = countryCode ? formatPrice(item.price, countryCode) : `€${(Number(item.price) || 0).toFixed(2)}`;
-      body += `   Prezzo: ${priceFormatted}\n`;
-    }
+    // Price intentionally omitted from email messages
     body += `\n`;
   });
   

@@ -267,6 +267,12 @@ export default function OrdersSectionEnhanced({ orders, setOrders, products, set
   const [selectedImageForView, setSelectedImageForView] = useState<string | null>(null);
   const [showImageDialog, setShowImageDialog] = useState(false);
 
+  // Sequential send dialog state (for "send all" on Android TWA)
+  const [showSequentialSendDialog, setShowSequentialSendDialog] = useState(false);
+  const [sequentialSendQueue, setSequentialSendQueue] = useState<Array<{ supplierName: string; url: string }>>([]);
+  const [sequentialSendIndex, setSequentialSendIndex] = useState(0);
+  const [sequentialSendType, setSequentialSendType] = useState<'whatsapp' | 'email'>('whatsapp');
+
   // Temporary product dialog states
   const [showTempProductDialog, setShowTempProductDialog] = useState(false);
   const [tempProductDialogName, setTempProductDialogName] = useState('');
@@ -1162,136 +1168,68 @@ export default function OrdersSectionEnhanced({ orders, setOrders, products, set
     toast.success(t('success'));
   };
 
-  // Send all draft items via WhatsApp
+  // Helper: open sequential send dialog for draft items
   const handleSendAllWhatsAppDraft = () => {
     const currentItems = editingOrderId ? editingOrderItems : orderItems;
-    
-    if (currentItems.length === 0) {
-      toast.error(t('noProductsInOrder'));
-      return;
-    }
+    if (currentItems.length === 0) { toast.error(t('noProductsInOrder')); return; }
 
     const itemsBySupplier = new Map<string, typeof currentItems>();
     currentItems.forEach(item => {
       const product = allProductsForDisplay.find(p => p.id === item.product_id);
       const supplierId = product?.supplier_id || 'unknown';
-      if (!itemsBySupplier.has(supplierId)) {
-        itemsBySupplier.set(supplierId, []);
-      }
+      if (!itemsBySupplier.has(supplierId)) itemsBySupplier.set(supplierId, []);
       itemsBySupplier.get(supplierId)!.push(item);
     });
 
-    let sentCount = 0;
-    let skippedCount = 0;
-
+    const queue: Array<{ supplierName: string; url: string }> = [];
     itemsBySupplier.forEach((supplierItems, supplierId) => {
       const supplier = suppliers.find(s => s.id === supplierId);
       const phoneNumber = resolveWhatsAppPhone(supplier);
-      
-      if (!phoneNumber) {
-        skippedCount++;
-        return;
-      }
-
-      const items = supplierItems.map(item => ({
-        name: item.editable_name,
-        quantity: item.quantity,
-        unit: item.editable_unit
-      }));
-
+      if (!phoneNumber) return;
+      const items = supplierItems.map(item => ({ name: item.editable_name, quantity: item.quantity, unit: item.editable_unit }));
       const supplierName = supplier?.name || t('supplier');
-      const message = generateWhatsAppMessage(
-        supplierName,
-        items,
-        phoneNumber,
-        settings?.storeName,
-        language
-      );
-
-      const cleanPhoneNumber = phoneNumber.replace(/[^0-9]/g, '');
-      const whatsappUrl = buildWhatsAppUrl(cleanPhoneNumber, encodeURIComponent(message));
-      
-      setTimeout(() => {
-        openExternalUrl(whatsappUrl);
-      }, sentCount * 1000);
-      sentCount++;
+      const message = generateWhatsAppMessage(supplierName, items, phoneNumber, settings?.storeName, language);
+      const cleanPhone = phoneNumber.replace(/[^0-9]/g, '');
+      queue.push({ supplierName, url: buildWhatsAppUrl(cleanPhone, encodeURIComponent(message)) });
     });
 
-    if (sentCount > 0) {
-      toast.success(t('success'), {
-        description: skippedCount > 0 ? `${skippedCount} ${t('suppliers')} ${t('phone')}` : undefined
-      });
-    } else {
-      toast.error(t('error'));
-    }
+    if (queue.length === 0) { toast.error(t('error')); return; }
+    setSequentialSendQueue(queue);
+    setSequentialSendIndex(0);
+    setSequentialSendType('whatsapp');
+    setShowSequentialSendDialog(true);
   };
 
-  // Send all draft items via Email
+  // Helper: open sequential send dialog for draft items via email
   const handleSendAllEmailDraft = () => {
     const currentItems = editingOrderId ? editingOrderItems : orderItems;
-    
-    if (currentItems.length === 0) {
-      toast.error(t('noProductsInOrder'));
-      return;
-    }
+    if (currentItems.length === 0) { toast.error(t('noProductsInOrder')); return; }
 
     const itemsBySupplier = new Map<string, typeof currentItems>();
     currentItems.forEach(item => {
       const product = allProductsForDisplay.find(p => p.id === item.product_id);
       const supplierId = product?.supplier_id || 'unknown';
-      if (!itemsBySupplier.has(supplierId)) {
-        itemsBySupplier.set(supplierId, []);
-      }
+      if (!itemsBySupplier.has(supplierId)) itemsBySupplier.set(supplierId, []);
       itemsBySupplier.get(supplierId)!.push(item);
     });
 
-    let sentCount = 0;
-    let skippedCount = 0;
-
+    const queue: Array<{ supplierName: string; url: string }> = [];
     itemsBySupplier.forEach((supplierItems, supplierId) => {
       const supplier = suppliers.find(s => s.id === supplierId);
       const email = supplier?.email;
-      
-      if (!email) {
-        skippedCount++;
-        return;
-      }
-
-      const items = supplierItems.map(item => ({
-        name: item.editable_name,
-        quantity: item.quantity,
-        unit: item.editable_unit,
-        price: item.price
-      }));
-
+      if (!email) return;
+      const items = supplierItems.map(item => ({ name: item.editable_name, quantity: item.quantity, unit: item.editable_unit, price: item.price }));
       const supplierName = supplier?.name || t('supplier');
       const phoneNumber = resolveEmailPhone(supplier);
-
-      const { subject, body } = generateEmailMessage(
-        supplierName,
-        items,
-        phoneNumber,
-        settings?.storeName,
-        language
-      );
-
-      const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-      
-      // Use window.location.href for mailto: — works on Android TWA
-      setTimeout(() => {
-        window.location.href = mailtoUrl;
-      }, sentCount * 1000);
-      
-      sentCount++;
+      const { subject, body } = generateEmailMessage(supplierName, items, phoneNumber, settings?.storeName, language);
+      queue.push({ supplierName, url: `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}` });
     });
 
-    if (sentCount > 0) {
-      toast.success(t('success'), {
-        description: skippedCount > 0 ? `${skippedCount} ${t('suppliers')} ${t('email')}` : undefined
-      });
-    } else {
-      toast.error(t('error'));
-    }
+    if (queue.length === 0) { toast.error(t('error')); return; }
+    setSequentialSendQueue(queue);
+    setSequentialSendIndex(0);
+    setSequentialSendType('email');
+    setShowSequentialSendDialog(true);
   };
 
   // Start editing an order
@@ -1585,144 +1523,78 @@ export default function OrdersSectionEnhanced({ orders, setOrders, products, set
     toast.success(t('success'));
   };
 
-  // Send all orders via WhatsApp with proper grouping by supplier
+  // Send all orders via WhatsApp — sequential dialog (one supplier at a time)
   const handleSendAllWhatsApp = () => {
-    if (orders.length === 0) {
-      toast.error(t('noOrders'));
-      return;
-    }
+    if (orders.length === 0) { toast.error(t('noOrders')); return; }
 
     const ordersBySupplier = new Map<string, Order[]>();
     orders.forEach(order => {
       const supplierId = order.supplier_id || 'unknown';
-      if (!ordersBySupplier.has(supplierId)) {
-        ordersBySupplier.set(supplierId, []);
-      }
+      if (!ordersBySupplier.has(supplierId)) ordersBySupplier.set(supplierId, []);
       ordersBySupplier.get(supplierId)!.push(order);
     });
 
-    let sentCount = 0;
-    let skippedCount = 0;
-
+    const queue: Array<{ supplierName: string; url: string }> = [];
     ordersBySupplier.forEach((supplierOrders, supplierId) => {
       const supplier = suppliers.find(s => s.id === supplierId);
       const firstOrder = supplierOrders[0];
       const phoneNumber = resolveWhatsAppPhone(supplier, firstOrder);
-      
-      if (!phoneNumber) {
-        skippedCount++;
-        console.warn(`Skipping supplier ${supplier?.name || supplierId}: no mobile number (cellulare)`);
-        return;
-      }
+      if (!phoneNumber) return;
 
-      const allItems = supplierOrders.flatMap(order => 
+      const allItems = supplierOrders.flatMap(order =>
         order.items.map(item => {
           const product = products.find(p => p.id === item.product_id);
-          return {
-            name: item.custom_product_name || product?.name || t('productName'),
-            quantity: item.quantity,
-            unit: item.custom_unit || undefined
-          };
+          return { name: item.custom_product_name || product?.name || t('productName'), quantity: item.quantity, unit: item.custom_unit || undefined };
         })
       );
-
       const supplierName = firstOrder.custom_supplier_name || supplier?.name || t('supplier');
-      const message = generateWhatsAppMessage(
-        supplierName,
-        allItems,
-        phoneNumber,
-        settings?.storeName,
-        language
-      );
-
-      const cleanPhoneNumber = phoneNumber.replace(/[^0-9]/g, '');
-      const whatsappUrl = buildWhatsAppUrl(cleanPhoneNumber, encodeURIComponent(message));
-      
-      setTimeout(() => {
-        openExternalUrl(whatsappUrl);
-      }, sentCount * 1000);
-      sentCount++;
+      const message = generateWhatsAppMessage(supplierName, allItems, phoneNumber, settings?.storeName, language);
+      const cleanPhone = phoneNumber.replace(/[^0-9]/g, '');
+      queue.push({ supplierName, url: buildWhatsAppUrl(cleanPhone, encodeURIComponent(message)) });
     });
 
-    if (sentCount > 0) {
-      toast.success(t('success'), {
-        description: skippedCount > 0 ? `${skippedCount} ${t('suppliers')}` : undefined
-      });
-    } else {
-      toast.error(t('error'));
-    }
+    if (queue.length === 0) { toast.error(t('error')); return; }
+    setSequentialSendQueue(queue);
+    setSequentialSendIndex(0);
+    setSequentialSendType('whatsapp');
+    setShowSequentialSendDialog(true);
   };
 
-  // Send all orders via Email with proper grouping by supplier
+  // Send all orders via Email — sequential dialog (one supplier at a time)
   const handleSendAllEmail = () => {
-    if (orders.length === 0) {
-      toast.error(t('noOrders'));
-      return;
-    }
+    if (orders.length === 0) { toast.error(t('noOrders')); return; }
 
     const ordersBySupplier = new Map<string, Order[]>();
     orders.forEach(order => {
       const supplierId = order.supplier_id || 'unknown';
-      if (!ordersBySupplier.has(supplierId)) {
-        ordersBySupplier.set(supplierId, []);
-      }
+      if (!ordersBySupplier.has(supplierId)) ordersBySupplier.set(supplierId, []);
       ordersBySupplier.get(supplierId)!.push(order);
     });
 
-    let sentCount = 0;
-    let skippedCount = 0;
-
+    const queue: Array<{ supplierName: string; url: string }> = [];
     ordersBySupplier.forEach((supplierOrders, supplierId) => {
       const supplier = suppliers.find(s => s.id === supplierId);
       const firstOrder = supplierOrders[0];
       const email = firstOrder.custom_supplier_email || supplier?.email;
-      
-      if (!email) {
-        skippedCount++;
-        console.warn(`Skipping supplier ${supplier?.name || supplierId}: no email`);
-        return;
-      }
+      if (!email) return;
 
-      const allItems = supplierOrders.flatMap(order => 
+      const allItems = supplierOrders.flatMap(order =>
         order.items.map(item => {
           const product = products.find(p => p.id === item.product_id);
-          return {
-            name: item.custom_product_name || product?.name || t('productName'),
-            quantity: item.quantity,
-            unit: item.custom_unit || product?.unit,
-            price: item.price
-          };
+          return { name: item.custom_product_name || product?.name || t('productName'), quantity: item.quantity, unit: item.custom_unit || product?.unit, price: item.price };
         })
       );
-
       const supplierName = firstOrder.custom_supplier_name || supplier?.name || t('supplier');
       const phoneNumber = resolveEmailPhone(supplier, firstOrder);
-
-      const { subject, body } = generateEmailMessage(
-        supplierName,
-        allItems,
-        phoneNumber,
-        settings?.storeName,
-        language
-      );
-
-      const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-      
-      // Use window.location.href for mailto: — works on Android TWA
-      setTimeout(() => {
-        window.location.href = mailtoUrl;
-      }, sentCount * 1000);
-      
-      sentCount++
+      const { subject, body } = generateEmailMessage(supplierName, allItems, phoneNumber, settings?.storeName, language);
+      queue.push({ supplierName, url: `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}` });
     });
 
-    if (sentCount > 0) {
-      toast.success(t('success'), {
-        description: skippedCount > 0 ? `${skippedCount} ${t('suppliers')}` : undefined
-      });
-    } else {
-      toast.error(t('error'));
-    }
+    if (queue.length === 0) { toast.error(t('error')); return; }
+    setSequentialSendQueue(queue);
+    setSequentialSendIndex(0);
+    setSequentialSendType('email');
+    setShowSequentialSendDialog(true);
   };
 
   // Handle multiple image upload for OCR with multi-supplier support and POST-PROCESSING
@@ -3130,6 +3002,70 @@ export default function OrdersSectionEnhanced({ orders, setOrders, products, set
               <Save className="h-4 w-4 mr-2" />
               {t('save')}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Sequential Send Dialog — one supplier at a time (Android TWA safe) */}
+      <Dialog open={showSequentialSendDialog} onOpenChange={(open) => { if (!open) setShowSequentialSendDialog(false); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {sequentialSendType === 'whatsapp' ? <MessageCircle className="h-5 w-5 text-green-600" /> : <Mail className="h-5 w-5 text-blue-600" />}
+              {sequentialSendType === 'whatsapp' ? 'Invia WhatsApp' : 'Invia Email'} — {sequentialSendIndex + 1}/{sequentialSendQueue.length}
+            </DialogTitle>
+            <DialogDescription>
+              {sequentialSendIndex < sequentialSendQueue.length
+                ? `Fornitore: ${sequentialSendQueue[sequentialSendIndex]?.supplierName}`
+                : '✅ Tutti i fornitori sono stati contattati!'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {sequentialSendIndex < sequentialSendQueue.length ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-white border-2 border-slate-200 text-lg">
+                    {sequentialSendType === 'whatsapp' ? '📱' : '✉️'}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-900">{sequentialSendQueue[sequentialSendIndex]?.supplierName}</p>
+                    <p className="text-xs text-slate-500">{sequentialSendIndex + 1} di {sequentialSendQueue.length}</p>
+                  </div>
+                </div>
+                {/* Progress dots */}
+                <div className="flex gap-1 justify-center">
+                  {sequentialSendQueue.map((_, i) => (
+                    <div key={i} className={`h-2 w-2 rounded-full transition-all ${i < sequentialSendIndex ? 'bg-green-500' : i === sequentialSendIndex ? 'bg-blue-500 scale-125' : 'bg-slate-200'}`} />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-4">
+                <div className="text-4xl mb-2">✅</div>
+                <p className="font-semibold text-green-700">Tutti i fornitori contattati!</p>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowSequentialSendDialog(false)} className="flex-1">
+              <X className="h-4 w-4 mr-1" /> Chiudi
+            </Button>
+            {sequentialSendIndex < sequentialSendQueue.length && (
+              <Button
+                onClick={() => {
+                  const current = sequentialSendQueue[sequentialSendIndex];
+                  window.location.href = current.url;
+                  // Advance to next after a short delay (user will return from app)
+                  setTimeout(() => {
+                    setSequentialSendIndex(prev => prev + 1);
+                  }, 1500);
+                }}
+                className={`flex-1 ${sequentialSendType === 'whatsapp' ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'} text-white`}
+              >
+                {sequentialSendType === 'whatsapp' ? <MessageCircle className="h-4 w-4 mr-2" /> : <Mail className="h-4 w-4 mr-2" />}
+                Invia a {sequentialSendQueue[sequentialSendIndex]?.supplierName}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

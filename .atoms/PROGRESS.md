@@ -28,6 +28,11 @@ RESTOS web app for restaurant managers: automate invoice OCR processing, manage 
 - [x] Bump SW cache to v4 to force cache invalidation on all clients
 
 ## Progress Log
+- 2026-08-29 | Removed camera button from all three uploads (ProductsSectionEnhanced, MultiPageInvoiceUpload, SupplierDetail); deleted CameraCapture.tsx; gallery-only (Photo Picker) full-width in each; lint OK, build OK; pushed commit f38bad6
+- 2026-08-29 | Fixed WhatsApp button navigating away from current page: replaced window.location.href with wa.me URL opened via window.open(_blank); lint OK, build OK; pushed commit 4d66fbb
+- 2026-08-29 | Fixed WhatsApp on Android TWA: now uses intent:// URL with S.browser_fallback_url so OS hands off to WhatsApp without touching window.location or SPA router; lint OK, build OK; pushed commit fd6cbe1
+- 2026-08-29 | Reverted WhatsApp to window.location.href + whatsapp:// deep link (intent:// caused ERR_UNKNOWN_URL_SCHEME in TWA WebView); lint OK, build OK; pushed commit 360f14d
+- 2026-08-29 | Fixed all email buttons on Android TWA: replaced window.open(mailto, '_blank') with window.location.href (same approach as whatsapp://); all 4 email handlers fixed; lint OK, build OK; pushed commit 0cd5f64
 - 2026-04-13 | Project scaffolded: React/TS + Supabase + Stripe + i18n setup
 - 2026-04-13 | WhatsApp button fixed; product deduplication logic added
 - 2026-04-17 | Month/year filters, dynamic summary cards, discount price display fixes
@@ -53,6 +58,7 @@ RESTOS web app for restaurant managers: automate invoice OCR processing, manage 
 - 2026-08-26 | Refactored MultiPageInvoiceUpload: removed all ref/.click() calls, all buttons now use label+input native pattern; fixed \x08 control char in storage.ts regex (replaced with \b); lint OK, build OK; pushed to GitHub (commit 83ba31a)
 - 2026-08-26 | Fixed two-button upload UI (camera + gallery) in ProductsSectionEnhanced, SupplierDetail, MultiPageInvoiceUpload; added takePhoto/selectPhoto i18n keys to all 6 locales (IT/EN/ES/DE/FR/LT) and i18n.tsx type; MultiPageInvoiceUpload now uses useLanguage() for full i18n; lint OK, build OK; pushed to GitHub (commit 7f200ef)
 - 2026-08-26 | Fixed upload buttons layout to 2-row grid and discount badge computed from unit_price vs discounted_price; pushed commit 58362d4
+- 2026-08-29 | Rimossi prezzi dai template email (default e custom); sostituiti handler "Invia tutti" (WhatsApp + Email, ordini salvati e draft) con dialog sequenziale per Android TWA; lint OK, build OK
 - 2026-08-29 | Added cameraOverlay render to MultiPageInvoiceUpload.tsx; confirmed SupplierDetail.tsx already uses native label+input pattern; lint OK, build OK; pushed commit e89332c
 - 2026-08-29 | Ripristinati due pulsanti Camera (capture=environment) + Galleria (no capture) con overlay assoluto in ProductsSectionEnhanced, MultiPageInvoiceUpload, SupplierDetail; lint OK, build OK; pushed commit d48f657
 - 2026-08-29 | Rimossi useRef inutilizzati da ProductsSectionEnhanced, MultiPageInvoiceUpload e SupplierDetail (camera ora usa label+input nativi); lint OK, build OK; pushed commit 03ab9f7

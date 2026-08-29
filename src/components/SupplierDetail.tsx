@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { Supplier, Product, Invoice } from '@/types';
 import { useLanguage } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
@@ -37,8 +37,7 @@ export default function SupplierDetail({
   const [isUploading, setIsUploading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
-  // Ref camera — ref.click() è l'unico modo affidabile su Android TWA con capture
-  const supplierCameraRef = useRef<HTMLInputElement>(null);
+
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
   // Filter products for this supplier
@@ -372,57 +371,46 @@ export default function SupplierDetail({
 
         {/* Invoices Tab */}
         <TabsContent value="invoices" className="space-y-6">
-          {/* Upload Button */}
+          {/* Upload Button — label+input nativo, unico metodo garantito su Android TWA */}
           <div className="flex gap-2">
-            {/* Camera: ref.click() programmatico — unico modo affidabile su Android TWA */}
-            <input
-              ref={supplierCameraRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={handleInvoiceUpload}
-              disabled={isUploading}
-              className="sr-only"
-            />
-            <button
-              type="button"
-              disabled={isUploading}
-              onClick={() => {
-                if (supplierCameraRef.current) {
-                  supplierCameraRef.current.value = '';
-                  supplierCameraRef.current.click();
-                }
-              }}
+            {/* Camera: label+input con capture=environment — tap diretto, nessun .click() JS */}
+            <label
               className={[
                 'inline-flex items-center justify-center gap-2 rounded-md border-2 px-4 py-2 text-sm font-medium transition-all',
                 isUploading
-                  ? 'opacity-50 cursor-not-allowed border-slate-200 text-slate-400'
-                  : 'border-blue-300 text-blue-700 hover:border-blue-500 hover:bg-blue-50',
+                  ? 'opacity-50 pointer-events-none cursor-not-allowed border-slate-200 text-slate-400'
+                  : 'cursor-pointer border-blue-300 text-blue-700 hover:border-blue-500 hover:bg-blue-50',
               ].join(' ')}
             >
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleInvoiceUpload}
+                disabled={isUploading}
+                className="sr-only"
+              />
               <Upload className="h-4 w-4" />
               {isUploading ? t('loading') : (t('takePhoto') || 'Camera')}
-            </button>
+            </label>
 
-            {/* Galleria: apre il selettore file senza forzare la camera */}
-            <input
-              id="supplier-invoice-gallery"
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={handleInvoiceUpload}
-              disabled={isUploading}
-              className="hidden"
-            />
+            {/* Galleria: label+input senza capture — apre il selettore file */}
             <label
-              htmlFor={isUploading ? undefined : 'supplier-invoice-gallery'}
               className={[
                 'inline-flex items-center justify-center gap-2 rounded-md border-2 px-4 py-2 text-sm font-medium transition-all',
                 isUploading
-                  ? 'opacity-50 cursor-not-allowed border-slate-200 text-slate-400'
+                  ? 'opacity-50 pointer-events-none cursor-not-allowed border-slate-200 text-slate-400'
                   : 'cursor-pointer border-slate-300 text-slate-700 hover:border-blue-400 hover:text-blue-600',
               ].join(' ')}
             >
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleInvoiceUpload}
+                disabled={isUploading}
+                className="sr-only"
+              />
               {t('selectPhoto') || 'Gallery'}
             </label>
           </div>

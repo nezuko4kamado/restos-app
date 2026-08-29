@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -213,8 +213,8 @@ export default function ProductsSectionEnhanced({
     notes: '',
   });
 
-  // Ref per pulsante camera (ref.click() è l'unico modo affidabile su Android TWA)
-  const cameraInputRef = useRef<HTMLInputElement>(null);
+
+
 
   // Comparison dialog states
   const [compareDialogOpen, setCompareDialogOpen] = useState(false);
@@ -1307,53 +1307,49 @@ export default function ProductsSectionEnhanced({
             </Button>
           </div>
 
-          {/* Riga 2: Camera + Galleria (due pulsanti separati, sempre visibili) */}
+          {/* Riga 2: Camera + Galleria (due label native — unico metodo garantito su Android TWA) */}
           <div className="grid grid-cols-2 gap-2 w-full">
-            {/* Camera: ref.click() programmatico — unico modo affidabile su Android TWA */}
-            <input
-              ref={cameraInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="sr-only"
-              onChange={handleFileUpload}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              disabled={uploading}
-              data-tour="upload-invoice"
-              onClick={() => {
-                if (cameraInputRef.current) {
-                  cameraInputRef.current.value = '';
-                  cameraInputRef.current.click();
-                }
-              }}
-              className="w-full min-h-[40px] sm:min-h-[44px] text-[11px] sm:text-sm px-2 sm:px-3 border-2 border-blue-300 text-blue-700 hover:border-blue-500 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400"
-            >
-              <span className="text-base leading-none mr-1">📷</span>
-              <span className="truncate">{uploading ? ((t('loading') || 'Loading') + '...') : (t('takePhoto') || 'Cámara')}</span>
-            </Button>
-
-            {/* Galleria: label+input va bene senza capture */}
-            <input
-              id="invoice-upload-gallery"
-              type="file"
-              className="sr-only"
-              accept="image/*"
-              multiple
-              onChange={handleFileUpload}
-            />
+            {/* Camera: label+input con capture=environment — tap diretto, nessun .click() JS */}
             <label
-              htmlFor={uploading ? undefined : 'invoice-upload-gallery'}
+              data-tour="upload-invoice"
               className={[
                 'w-full inline-flex items-center justify-center gap-1.5 border-2 rounded-md',
                 'min-h-[40px] sm:min-h-[44px] text-[11px] sm:text-sm px-2 sm:px-3 transition-all font-medium',
                 uploading
-                  ? 'opacity-50 cursor-not-allowed border-slate-200 text-slate-400 dark:border-slate-700'
+                  ? 'opacity-50 pointer-events-none cursor-not-allowed border-blue-200 text-blue-300 dark:border-blue-900'
+                  : 'cursor-pointer border-blue-300 text-blue-700 hover:border-blue-500 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400',
+              ].join(' ')}
+            >
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="sr-only"
+                disabled={uploading}
+                onChange={handleFileUpload}
+              />
+              <span className="text-base leading-none mr-1">📷</span>
+              <span className="truncate">{uploading ? ((t('loading') || 'Loading') + '...') : (t('takePhoto') || 'Cámara')}</span>
+            </label>
+
+            {/* Galleria: label+input senza capture — apre il selettore file */}
+            <label
+              className={[
+                'w-full inline-flex items-center justify-center gap-1.5 border-2 rounded-md',
+                'min-h-[40px] sm:min-h-[44px] text-[11px] sm:text-sm px-2 sm:px-3 transition-all font-medium',
+                uploading
+                  ? 'opacity-50 pointer-events-none cursor-not-allowed border-slate-200 text-slate-400 dark:border-slate-700'
                   : 'cursor-pointer border-slate-300 text-slate-700 hover:border-blue-400 hover:text-blue-600 dark:border-slate-700 dark:text-slate-300 dark:hover:border-blue-500',
               ].join(' ')}
             >
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="sr-only"
+                disabled={uploading}
+                onChange={handleFileUpload}
+              />
               <span className="text-base leading-none">🖼️</span>
               <span className="truncate">{t('selectPhoto') || 'Galería'}</span>
             </label>

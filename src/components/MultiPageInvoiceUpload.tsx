@@ -1,8 +1,7 @@
 import { useState, useCallback } from 'react';
-import { useCameraCapture } from '@/components/CameraCapture';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { X, Upload, Camera, FileText, Check, AlertCircle, Plus, Image } from 'lucide-react';
+import { X, Upload, FileText, Check, AlertCircle, Image } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '@/lib/i18n';
 
@@ -48,24 +47,12 @@ export function MultiPageInvoiceUpload({
     });
   }, [onFilesSelected, t]);
 
-  const { openCamera: openCameraGetUserMedia, overlay: cameraOverlay } = useCameraCapture(
-    useCallback((file: File) => {
-      addFiles([file]);
-    }, [addFiles])
-  );
-
-  const handleCameraClick = useCallback(() => {
-    openCameraGetUserMedia();
-  }, [openCameraGetUserMedia]);
-
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
     await addFiles(files);
     event.target.value = '';
   };
-
-
 
   const handleRemovePage = (index: number) => {
     const newPages = pages.filter((_, i) => i !== index);
@@ -111,32 +98,19 @@ export function MultiPageInvoiceUpload({
             {t('uploadInvoicePdfOrImage') || 'Puoi caricare piu pagine.'}
           </p>
 
-          <div className="flex gap-3 justify-center flex-wrap">
-            {/* Camera: getUserMedia overlay */}
-            <button
-              type="button"
+          {/* Galleria: Photo Picker nativo — larghezza piena */}
+          <label className={labelBtnClass('relative w-full justify-center')}>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleFileSelect}
               disabled={isDisabled}
-              onClick={handleCameraClick}
-              className={labelBtnClass()}
-            >
-              <Camera className="h-4 w-4" />
-              {t('takePhoto') || 'Foto'}
-            </button>
-
-            {/* Galleria: Photo Picker nativo */}
-            <label className={labelBtnClass() + ' relative'}>
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleFileSelect}
-                disabled={isDisabled}
-                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
-              />
-              <Image className="h-4 w-4" />
-              {t('selectPhoto') || 'Galleria'}
-            </label>
-          </div>
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
+            />
+            <Image className="h-4 w-4" />
+            {t('selectPhoto') || 'Seleccionar Foto'}
+          </label>
         </div>
       ) : (
         <>
@@ -208,51 +182,43 @@ export function MultiPageInvoiceUpload({
                 </Card>
               ))}
 
+              {/* Aggiungi altra foto — label nativa */}
               {!isProcessing && (
-                <button
-                  type="button"
-                  onClick={handleCameraClick}
-                  className="relative overflow-hidden border-2 border-dashed border-indigo-300 hover:border-indigo-500 transition-colors bg-gradient-to-br from-indigo-50 to-purple-50 cursor-pointer rounded-lg block w-full text-left"
-                >
+                <label className="relative overflow-hidden border-2 border-dashed border-indigo-300 hover:border-indigo-500 transition-colors bg-gradient-to-br from-indigo-50 to-purple-50 cursor-pointer rounded-lg block w-full">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleFileSelect}
+                    disabled={isDisabled}
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
+                  />
                   <div className="aspect-[3/4] flex flex-col items-center justify-center p-4 text-center">
                     <div className="bg-indigo-600 text-white p-4 rounded-full mb-3">
-                      <Plus className="h-8 w-8" />
+                      <Image className="h-8 w-8" />
                     </div>
                     <p className="font-semibold text-indigo-700 text-sm">
-                      {t('takePhoto') || 'Aggiungi'}
+                      {t('selectPhoto') || 'Seleccionar Foto'}
                     </p>
                   </div>
-                </button>
+                </label>
               )}
             </div>
           </div>
 
-          <div className="flex gap-3 flex-wrap">
-            {/* Camera: getUserMedia overlay */}
-            <button
-              type="button"
+          {/* Galleria: Photo Picker nativo — larghezza piena */}
+          <label className={labelBtnClass('relative w-full justify-center border-indigo-300 hover:bg-indigo-50 py-3')}>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleFileSelect}
               disabled={isDisabled}
-              onClick={handleCameraClick}
-              className={labelBtnClass('flex-1 justify-center border-indigo-300 hover:bg-indigo-50 py-3')}
-            >
-              <Camera className="h-5 w-5" />
-              {t('takePhoto') || 'Foto'}
-            </button>
-
-            {/* Galleria: Photo Picker nativo */}
-            <label className={labelBtnClass('flex-1 justify-center border-indigo-300 hover:bg-indigo-50 py-3') + ' relative'}>
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleFileSelect}
-                disabled={isDisabled}
-                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
-              />
-              <Upload className="h-5 w-5" />
-              {t('selectPhoto') || 'Galleria'}
-            </label>
-          </div>
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
+            />
+            <Upload className="h-5 w-5" />
+            {t('selectPhoto') || 'Seleccionar Foto'}
+          </label>
 
           <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-xl">
             <div className="flex gap-3">
@@ -288,7 +254,6 @@ export function MultiPageInvoiceUpload({
           </Button>
         </>
       )}
-      {cameraOverlay}
     </div>
   );
 }

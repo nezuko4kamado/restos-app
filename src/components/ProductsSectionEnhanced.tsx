@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo, useCallback, memo } from 'react';
-import { useCameraCapture } from '@/components/CameraCapture';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -200,7 +199,6 @@ export default function ProductsSectionEnhanced({
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [showCamera, setShowCamera] = useState(false); // mantenuto per compatibilità, gestito via cameraOverlay
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [processingSupplier, setProcessingSupplier] = useState('');
@@ -1262,25 +1260,7 @@ export default function ProductsSectionEnhanced({
 
   const safeToLower = (str: string | undefined) => str ? str.toLowerCase() : '';
 
-  // Hook camera getUserMedia — il callback usa handleFileUpload tramite DataTransfer
-  const { openCamera: openCameraGetUserMedia, overlay: cameraOverlay } = useCameraCapture(
-    useCallback((file: File) => {
-      const dt = new DataTransfer();
-      dt.items.add(file);
-      const fakeEvent = {
-        target: { files: dt.files, value: '' },
-      } as unknown as React.ChangeEvent<HTMLInputElement>;
-      handleFileUpload(fakeEvent);
-    }, [handleFileUpload])
-  );
 
-  const handleCameraButtonClick = useCallback(() => {
-    const opened = openCameraGetUserMedia();
-    if (!opened) {
-      // fallback: apri input capture
-      setShowCamera(true);
-    }
-  }, [openCameraGetUserMedia]);
 
   return (
     <Card className="backdrop-blur-xl bg-white/80 dark:bg-slate-900/80 border-white/20 dark:border-slate-700/20 shadow-xl w-full max-w-full overflow-x-hidden">
@@ -1329,46 +1309,28 @@ export default function ProductsSectionEnhanced({
             </Button>
           </div>
 
-          {/* Camera (getUserMedia) + Galleria — due pulsanti separati per PWA Android */}
-          <div className="grid grid-cols-2 gap-2 w-full">
-            {/* Camera: getUserMedia overlay (fallback: capture=environment) */}
-            <Button
-              data-tour="upload-invoice"
-              type="button"
-              variant="outline"
+          {/* Galleria: Photo Picker nativo — larghezza piena */}
+          <label
+            data-tour="upload-invoice"
+            className={[
+              'relative w-full inline-flex items-center justify-center gap-1.5 border-2 rounded-md',
+              'min-h-[40px] sm:min-h-[44px] text-[11px] sm:text-sm px-2 sm:px-3 transition-all font-medium',
+              uploading
+                ? 'opacity-50 pointer-events-none cursor-not-allowed border-slate-200 text-slate-400 dark:border-slate-700'
+                : 'cursor-pointer border-slate-300 text-slate-700 hover:border-blue-400 hover:text-blue-600 dark:border-slate-700 dark:text-slate-300 dark:hover:border-blue-500',
+            ].join(' ')}
+          >
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
               disabled={uploading}
-              onClick={handleCameraButtonClick}
-              className={[
-                'w-full min-h-[40px] sm:min-h-[44px] text-[11px] sm:text-sm px-2 sm:px-3 font-medium gap-1.5',
-                'border-blue-300 text-blue-700 hover:border-blue-500 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400',
-              ].join(' ')}
-            >
-              <span className="text-base leading-none">📷</span>
-              <span className="truncate">{uploading ? ((t('loading') || 'Loading') + '...') : (t('takePhoto') || 'Foto')}</span>
-            </Button>
-
-            {/* Galleria: senza capture apre il Photo Picker */}
-            <label
-              className={[
-                'relative w-full inline-flex items-center justify-center gap-1.5 border-2 rounded-md',
-                'min-h-[40px] sm:min-h-[44px] text-[11px] sm:text-sm px-2 sm:px-3 transition-all font-medium',
-                uploading
-                  ? 'opacity-50 pointer-events-none cursor-not-allowed border-slate-200 text-slate-400 dark:border-slate-700'
-                  : 'cursor-pointer border-slate-300 text-slate-700 hover:border-blue-400 hover:text-blue-600 dark:border-slate-700 dark:text-slate-300 dark:hover:border-blue-500',
-              ].join(' ')}
-            >
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
-                disabled={uploading}
-                onChange={handleFileUpload}
-              />
-              <span className="text-base leading-none mr-1">🖼️</span>
-              <span className="truncate">{t('selectPhoto') || 'Galleria'}</span>
-            </label>
-          </div>
+              onChange={handleFileUpload}
+            />
+            <span className="text-base leading-none mr-1">🖼️</span>
+            <span className="truncate">{uploading ? ((t('loading') || 'Loading') + '...') : (t('selectPhoto') || 'Seleccionar Foto')}</span>
+          </label>
         </div>
         
         <div className="mt-3 sm:mt-4 space-y-2 sm:space-y-3">
@@ -1804,7 +1766,6 @@ export default function ProductsSectionEnhanced({
           </div>
         </DialogContent>
       </Dialog>
-      {cameraOverlay}
     </Card>
   );
 }

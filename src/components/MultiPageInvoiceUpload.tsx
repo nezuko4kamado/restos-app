@@ -102,28 +102,28 @@ export function MultiPageInvoiceUpload({
 
           <div className="flex gap-3 justify-center flex-wrap">
             {/* Camera: label+input con capture=environment — tap diretto, nessun .click() JS */}
-            <label className={labelBtnClass()}>
+            <label className={labelBtnClass() + ' relative'}>
               <input
                 type="file"
                 accept="image/*"
                 capture="environment"
                 onChange={handleFileSelect}
                 disabled={isDisabled}
-                className="sr-only"
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
               />
               <Camera className="h-4 w-4" />
               {t('takePhoto') || 'Scatta Foto'}
             </label>
 
             {/* Galleria: label+input senza capture — apre il selettore file */}
-            <label className={labelBtnClass()}>
+            <label className={labelBtnClass() + ' relative'}>
               <input
                 type="file"
                 accept="image/*"
                 multiple
                 onChange={handleFileSelect}
                 disabled={isDisabled}
-                className="sr-only"
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
               />
               <Image className="h-4 w-4" />
               {t('selectPhoto') || 'Seleziona Foto'}
@@ -207,7 +207,7 @@ export function MultiPageInvoiceUpload({
                     accept="image/*"
                     capture="environment"
                     onChange={handleFileSelect}
-                    className="sr-only"
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
                   />
                   <div className="aspect-[3/4] flex flex-col items-center justify-center p-4 text-center">
                     <div className="bg-indigo-600 text-white p-4 rounded-full mb-3">
@@ -224,28 +224,28 @@ export function MultiPageInvoiceUpload({
 
           <div className="flex gap-3 flex-wrap">
             {/* Camera: label+input con capture=environment — tap diretto, nessun .click() JS */}
-            <label className={labelBtnClass('flex-1 justify-center border-indigo-300 hover:bg-indigo-50 py-3')}>
+            <label className={labelBtnClass('flex-1 justify-center border-indigo-300 hover:bg-indigo-50 py-3') + ' relative'}>
               <input
                 type="file"
                 accept="image/*"
                 capture="environment"
                 onChange={handleFileSelect}
                 disabled={isDisabled}
-                className="sr-only"
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
               />
               <Camera className="h-5 w-5" />
               {t('takePhoto') || 'Scatta Altre Foto'}
             </label>
 
             {/* Galleria: label+input senza capture */}
-            <label className={labelBtnClass('flex-1 justify-center border-indigo-300 hover:bg-indigo-50 py-3')}>
+            <label className={labelBtnClass('flex-1 justify-center border-indigo-300 hover:bg-indigo-50 py-3') + ' relative'}>
               <input
                 type="file"
                 accept="image/*"
                 multiple
                 onChange={handleFileSelect}
                 disabled={isDisabled}
-                className="sr-only"
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
               />
               <Upload className="h-5 w-5" />
               {t('selectPhoto') || 'Aggiungi dalla Galleria'}

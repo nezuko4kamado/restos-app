@@ -1313,7 +1313,7 @@ export default function ProductsSectionEnhanced({
             <label
               data-tour="upload-invoice"
               className={[
-                'w-full inline-flex items-center justify-center gap-1.5 border-2 rounded-md',
+                'relative w-full inline-flex items-center justify-center gap-1.5 border-2 rounded-md',
                 'min-h-[40px] sm:min-h-[44px] text-[11px] sm:text-sm px-2 sm:px-3 transition-all font-medium',
                 uploading
                   ? 'opacity-50 pointer-events-none cursor-not-allowed border-blue-200 text-blue-300 dark:border-blue-900'
@@ -1324,7 +1324,7 @@ export default function ProductsSectionEnhanced({
                 type="file"
                 accept="image/*"
                 capture="environment"
-                className="sr-only"
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
                 disabled={uploading}
                 onChange={handleFileUpload}
               />
@@ -1335,7 +1335,7 @@ export default function ProductsSectionEnhanced({
             {/* Galleria: label+input senza capture — apre il selettore file */}
             <label
               className={[
-                'w-full inline-flex items-center justify-center gap-1.5 border-2 rounded-md',
+                'relative w-full inline-flex items-center justify-center gap-1.5 border-2 rounded-md',
                 'min-h-[40px] sm:min-h-[44px] text-[11px] sm:text-sm px-2 sm:px-3 transition-all font-medium',
                 uploading
                   ? 'opacity-50 pointer-events-none cursor-not-allowed border-slate-200 text-slate-400 dark:border-slate-700'
@@ -1346,7 +1346,7 @@ export default function ProductsSectionEnhanced({
                 type="file"
                 accept="image/*"
                 multiple
-                className="sr-only"
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
                 disabled={uploading}
                 onChange={handleFileUpload}
               />

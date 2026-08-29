@@ -2382,7 +2382,7 @@ export default function OrdersSectionEnhanced({ orders, setOrders, products, set
                       key={supplierId} 
                       className="p-6 bg-gradient-to-br from-white to-slate-50 border-2 border-slate-300 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300"
                     >
-                      <div className="flex items-center justify-between mb-4 pb-4 border-b-2 border-slate-200">
+                      <div className="flex flex-col gap-3 mb-4 pb-4 border-b-2 border-slate-200 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex-1 space-y-3">
                           <div className="flex items-center gap-2">
                             {editingSupplierField === 'name' && editingSupplierId === supplierId ? (
@@ -2578,7 +2578,7 @@ export default function OrdersSectionEnhanced({ orders, setOrders, products, set
                           </div>
                         </div>
                         
-                        <div className="flex gap-2 ml-4 flex-col">
+                        <div className="flex gap-2 flex-col sm:ml-4">
                           <div className="flex gap-2">
                             <Button
                               variant="outline"
@@ -2606,10 +2606,11 @@ export default function OrdersSectionEnhanced({ orders, setOrders, products, set
                             variant="outline"
                             size="sm"
                             onClick={() => handleSupplierAction(supplierId)}
-                            className="border-2 border-red-500 text-red-600 hover:bg-red-50 shadow-sm min-h-[44px]"
+                            className="border-2 border-red-500 text-red-600 hover:bg-red-50 shadow-sm min-h-[44px] px-2 sm:px-3"
+                            title={t('deleteOrder')}
                           >
-                            <Trash2 className="h-4 w-4 mr-1" />
-                            <span className="text-xs">{t('deleteOrder')}</span>
+                            <Trash2 className="h-4 w-4 flex-shrink-0" />
+                            <span className="hidden sm:inline text-xs ml-1">{t('deleteOrder')}</span>
                           </Button>
                         </div>
                       </div>

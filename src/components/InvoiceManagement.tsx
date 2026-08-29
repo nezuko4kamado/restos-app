@@ -972,10 +972,10 @@ function InvoiceManagement({
           </div>
 
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'manual' | 'upload' | 'report')}>
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="manual">{t('manualEntry')}</TabsTrigger>
-              <TabsTrigger value="upload">{t('uploadInvoice')}</TabsTrigger>
-              <TabsTrigger value="report">📊 {t('monthlyReport') || 'Informe mensual'}</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-3 h-auto">
+              <TabsTrigger value="manual" className="text-xs sm:text-sm px-1 py-2 whitespace-normal leading-tight">{t('manualEntry')}</TabsTrigger>
+              <TabsTrigger value="upload" className="text-xs sm:text-sm px-1 py-2 whitespace-normal leading-tight">{t('uploadInvoice')}</TabsTrigger>
+              <TabsTrigger value="report" className="text-xs sm:text-sm px-1 py-2 whitespace-normal leading-tight">📊 {t('monthlyReport') || 'Informe mensual'}</TabsTrigger>
             </TabsList>
 
             {/* Manual Entry Tab */}

@@ -145,6 +145,7 @@ export interface Translations {
   uploadInvoice: string;
   takePhoto: string;
   selectPhoto: string;
+  monthlyReport: string;
   uploadOrder: string;
   searchProducts: string;
   createOrderMode: string;

@@ -324,7 +324,7 @@ export class SupplierWhitelistService {
       }
     }
 
-    // Fuzzy match with 30% similarity threshold (LOWERED FROM 85%)
+    // Fuzzy match with 75% similarity threshold
     let bestMatch: Supplier | null = null;
     let bestSimilarity = 0;
     
@@ -332,15 +332,15 @@ export class SupplierWhitelistService {
       const normalizedSupplierName = normalizeText(supplier.name);
       const similarity = calculateSimilarity(normalizedSearchName, normalizedSupplierName);
       
-      // THRESHOLD LOWERED TO 30%
-      if (similarity >= 30 && similarity > bestSimilarity) {
+      // THRESHOLD: 75% to avoid false duplicates
+      if (similarity >= 75 && similarity > bestSimilarity) {
         bestMatch = supplier;
         bestSimilarity = similarity;
       }
     }
 
     if (bestMatch) {
-      console.log(`✅ FUZZY MATCH (30% threshold): "${supplierName}" → "${bestMatch.name}" (${bestSimilarity.toFixed(1)}%)`);
+      console.log(`✅ FUZZY MATCH (75% threshold): "${supplierName}" → "${bestMatch.name}" (${bestSimilarity.toFixed(1)}%)`);
       return { supplier: bestMatch, similarity: bestSimilarity, matchType: 'fuzzy' };
     }
 

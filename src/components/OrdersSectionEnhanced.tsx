@@ -181,24 +181,50 @@ const resolveEmailPhone = (
   return undefined;
 };
 
-// Helper: open external URL reliably on mobile — NEVER navigate away from the current page
+// Helper: open WhatsApp without ever touching window.location.href.
+// On Android TWA/Chrome: use intent:// so the OS hands off to WhatsApp directly,
+// leaving the SPA router and auth state completely untouched.
+// On iOS/desktop: open https://wa.me/ via a temporary anchor with target="_blank".
 const openExternalUrl = (url: string) => {
-  // Convert whatsapp:// deep link to wa.me HTTPS link so we can always use
-  // window.open(..., '_blank') without ever touching window.location.href.
-  // wa.me works on Android, iOS and desktop — WhatsApp handles the app handoff.
-  let finalUrl = url;
+  // Parse phone + text from whatsapp:// scheme
+  let phone = '';
+  let text = '';
   if (url.startsWith('whatsapp://send?')) {
-    finalUrl = url.replace('whatsapp://send?', 'https://wa.me/?');
-  } else if (url.startsWith('intent://')) {
-    // intent:// fallback: extract wa.me equivalent
-    const match = url.match(/phone=([^&]+).*text=([^#]+)/);
-    if (match) {
-      finalUrl = `https://wa.me/${match[1]}?text=${match[2]}`;
-    }
+    const params = new URLSearchParams(url.replace('whatsapp://send?', ''));
+    phone = params.get('phone') || '';
+    text = params.get('text') || '';
+  } else if (url.startsWith('https://wa.me/')) {
+    try {
+      const u = new URL(url);
+      phone = u.pathname.replace('/', '');
+      text = u.searchParams.get('text') || '';
+    } catch (_) { /* ignore */ }
   }
-  // Always open in a new tab/window — the SPA page is never navigated away
+
+  // wa.me HTTPS fallback (works on all platforms)
+  const waMeUrl = phone
+    ? 'https://wa.me/' + phone + (text ? '?text=' + encodeURIComponent(decodeURIComponent(text)) : '')
+    : url;
+
+  const isAndroid = /android/i.test(navigator.userAgent);
+  if (isAndroid && phone) {
+    // intent:// hands off to WhatsApp without touching window.location or SPA history.
+    // S.browser_fallback_url is used when WhatsApp is not installed.
+    const intentUrl =
+      'intent://send?phone=' + phone + '&text=' + text +
+      '#Intent;scheme=whatsapp;package=com.whatsapp;' +
+      'S.browser_fallback_url=' + encodeURIComponent(waMeUrl) + ';end';
+    const a = document.createElement('a');
+    a.href = intentUrl;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => document.body.removeChild(a), 100);
+    return;
+  }
+
+  // iOS / desktop: open wa.me in a new tab
   const a = document.createElement('a');
-  a.href = finalUrl;
+  a.href = waMeUrl;
   a.target = '_blank';
   a.rel = 'noopener noreferrer';
   document.body.appendChild(a);

@@ -373,7 +373,7 @@ export default function SupplierDetail({
         <TabsContent value="invoices" className="space-y-6">
           {/* Upload Button — label+input nativo, unico metodo garantito su Android TWA */}
           <div className="flex gap-2">
-            {/* Camera: label+input con capture=environment — tap diretto, nessun .click() JS */}
+            {/* Pulsante unico — senza capture, Android mostra menu nativo fotocamera/galleria */}
             <label
               className={[
                 'relative inline-flex items-center justify-center gap-2 rounded-md border-2 px-4 py-2 text-sm font-medium transition-all',
@@ -385,33 +385,13 @@ export default function SupplierDetail({
               <input
                 type="file"
                 accept="image/*"
-                capture="environment"
-                onChange={handleInvoiceUpload}
-                disabled={isUploading}
-                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
-              />
-              <Upload className="h-4 w-4" />
-              {isUploading ? t('loading') : (t('takePhoto') || 'Camera')}
-            </label>
-
-            {/* Galleria: label+input senza capture — apre il selettore file */}
-            <label
-              className={[
-                'relative inline-flex items-center justify-center gap-2 rounded-md border-2 px-4 py-2 text-sm font-medium transition-all',
-                isUploading
-                  ? 'opacity-50 pointer-events-none cursor-not-allowed border-slate-200 text-slate-400'
-                  : 'cursor-pointer border-slate-300 text-slate-700 hover:border-blue-400 hover:text-blue-600',
-              ].join(' ')}
-            >
-              <input
-                type="file"
-                accept="image/*"
                 multiple
                 onChange={handleInvoiceUpload}
                 disabled={isUploading}
                 style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
               />
-              {t('selectPhoto') || 'Gallery'}
+              <Upload className="h-4 w-4" />
+              {isUploading ? t('loading') : (t('uploadInvoice') || 'Carica Fattura')}
             </label>
           </div>
 

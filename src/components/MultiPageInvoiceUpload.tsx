@@ -101,21 +101,7 @@ export function MultiPageInvoiceUpload({
           </p>
 
           <div className="flex gap-3 justify-center flex-wrap">
-            {/* Camera: label+input con capture=environment — tap diretto, nessun .click() JS */}
-            <label className={labelBtnClass() + ' relative'}>
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleFileSelect}
-                disabled={isDisabled}
-                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
-              />
-              <Camera className="h-4 w-4" />
-              {t('takePhoto') || 'Scatta Foto'}
-            </label>
-
-            {/* Galleria: label+input senza capture — apre il selettore file */}
+            {/* Pulsante unico — senza capture, Android mostra menu nativo fotocamera/galleria */}
             <label className={labelBtnClass() + ' relative'}>
               <input
                 type="file"
@@ -125,8 +111,8 @@ export function MultiPageInvoiceUpload({
                 disabled={isDisabled}
                 style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
               />
-              <Image className="h-4 w-4" />
-              {t('selectPhoto') || 'Seleziona Foto'}
+              <Camera className="h-4 w-4" />
+              {t('uploadInvoice') || 'Carica Fattura'}
             </label>
           </div>
         </div>
@@ -205,7 +191,7 @@ export function MultiPageInvoiceUpload({
                   <input
                     type="file"
                     accept="image/*"
-                    capture="environment"
+                    multiple
                     onChange={handleFileSelect}
                     style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
                   />
@@ -223,21 +209,7 @@ export function MultiPageInvoiceUpload({
           </div>
 
           <div className="flex gap-3 flex-wrap">
-            {/* Camera: label+input con capture=environment — tap diretto, nessun .click() JS */}
-            <label className={labelBtnClass('flex-1 justify-center border-indigo-300 hover:bg-indigo-50 py-3') + ' relative'}>
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleFileSelect}
-                disabled={isDisabled}
-                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
-              />
-              <Camera className="h-5 w-5" />
-              {t('takePhoto') || 'Scatta Altre Foto'}
-            </label>
-
-            {/* Galleria: label+input senza capture */}
+            {/* Pulsante unico — senza capture, Android mostra menu nativo fotocamera/galleria */}
             <label className={labelBtnClass('flex-1 justify-center border-indigo-300 hover:bg-indigo-50 py-3') + ' relative'}>
               <input
                 type="file"
@@ -247,8 +219,8 @@ export function MultiPageInvoiceUpload({
                 disabled={isDisabled}
                 style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
               />
-              <Upload className="h-5 w-5" />
-              {t('selectPhoto') || 'Aggiungi dalla Galleria'}
+              <Camera className="h-5 w-5" />
+              {t('uploadInvoice') || 'Aggiungi Pagine'}
             </label>
           </div>
 

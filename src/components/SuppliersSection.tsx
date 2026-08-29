@@ -505,16 +505,13 @@ export default function SuppliersSection({
       });
     });
     
-    // Filter by supplier_id (more reliable than supplier_name)
+    // Filter by supplier_id; fallback to supplier_name if supplier_id is missing/null
+    const supplier = suppliers.find(s => s.id === supplierId);
     const filtered = invoices.filter(inv => {
-      const matches = inv.supplier_id === supplierId;
-      console.log('🔍 [GET SUPPLIER INVOICES] Controllando fattura:', {
-        invoice_number: inv.invoice_number,
-        supplier_id: inv.supplier_id,
-        expected_supplier_id: supplierId,
-        matches: matches
-      });
-      return matches;
+      if (inv.supplier_id === supplierId) return true;
+      if (supplier && inv.supplier_name &&
+          inv.supplier_name.toLowerCase().trim() === supplier.name.toLowerCase().trim()) return true;
+      return false;
     });
     
     console.log('🔍 [GET SUPPLIER INVOICES] Conteggio filtrato:', filtered.length);

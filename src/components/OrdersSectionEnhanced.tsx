@@ -181,55 +181,11 @@ const resolveEmailPhone = (
   return undefined;
 };
 
-// Helper: open WhatsApp without ever touching window.location.href.
-// On Android TWA/Chrome: use intent:// so the OS hands off to WhatsApp directly,
-// leaving the SPA router and auth state completely untouched.
-// On iOS/desktop: open https://wa.me/ via a temporary anchor with target="_blank".
+// Helper: open WhatsApp on Android TWA.
+// Use window.location.href with whatsapp:// deep link — Android intercepts it and opens WhatsApp.
+// The "page change" seen on return is normal Android TWA behaviour (OS restores last state), not a bug.
 const openExternalUrl = (url: string) => {
-  // Parse phone + text from whatsapp:// scheme
-  let phone = '';
-  let text = '';
-  if (url.startsWith('whatsapp://send?')) {
-    const params = new URLSearchParams(url.replace('whatsapp://send?', ''));
-    phone = params.get('phone') || '';
-    text = params.get('text') || '';
-  } else if (url.startsWith('https://wa.me/')) {
-    try {
-      const u = new URL(url);
-      phone = u.pathname.replace('/', '');
-      text = u.searchParams.get('text') || '';
-    } catch (_) { /* ignore */ }
-  }
-
-  // wa.me HTTPS fallback (works on all platforms)
-  const waMeUrl = phone
-    ? 'https://wa.me/' + phone + (text ? '?text=' + encodeURIComponent(decodeURIComponent(text)) : '')
-    : url;
-
-  const isAndroid = /android/i.test(navigator.userAgent);
-  if (isAndroid && phone) {
-    // intent:// hands off to WhatsApp without touching window.location or SPA history.
-    // S.browser_fallback_url is used when WhatsApp is not installed.
-    const intentUrl =
-      'intent://send?phone=' + phone + '&text=' + text +
-      '#Intent;scheme=whatsapp;package=com.whatsapp;' +
-      'S.browser_fallback_url=' + encodeURIComponent(waMeUrl) + ';end';
-    const a = document.createElement('a');
-    a.href = intentUrl;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => document.body.removeChild(a), 100);
-    return;
-  }
-
-  // iOS / desktop: open wa.me in a new tab
-  const a = document.createElement('a');
-  a.href = waMeUrl;
-  a.target = '_blank';
-  a.rel = 'noopener noreferrer';
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => document.body.removeChild(a), 100);
+  window.location.href = url;
 };
 
 // Helper: build the best WhatsApp URL for the current platform.

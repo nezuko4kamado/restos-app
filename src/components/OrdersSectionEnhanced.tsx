@@ -2268,6 +2268,18 @@ export default function OrdersSectionEnhanced({ orders, setOrders, products, set
                 </div>
               )}
 
+              {!editingOrderId && currentItems.length > 0 && (
+                <Button
+                  onClick={handleSaveDraft}
+                  disabled={currentItems.length === 0}
+                  variant="outline"
+                  className="w-full border-2 border-blue-500 text-blue-600 hover:bg-blue-50 shadow-md h-12 font-semibold min-h-[44px]"
+                >
+                  <Save className="h-5 w-5 mr-2" />
+                  {t('orderSavedAsDraft')}
+                </Button>
+              )}
+
               <div className="space-y-3 p-6 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl border-2 border-purple-200 shadow-lg">
                 <h3 className="text-lg font-bold text-purple-900 mb-4">🔍 {t('addProduct')}</h3>
                 

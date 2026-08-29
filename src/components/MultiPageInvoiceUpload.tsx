@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { X, Upload, Camera, FileText, Check, AlertCircle, Plus, Image } from 'lucide-react';
@@ -26,6 +26,11 @@ export function MultiPageInvoiceUpload({
 }: MultiPageInvoiceUploadProps) {
   const [pages, setPages] = useState<UploadedPage[]>([]);
   const { t } = useLanguage();
+
+  // Refs camera — ref.click() è l'unico modo affidabile su Android TWA con capture
+  const camRef1 = useRef<HTMLInputElement>(null);
+  const camRef2 = useRef<HTMLInputElement>(null);
+  const camRef3 = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
@@ -99,19 +104,25 @@ export function MultiPageInvoiceUpload({
           </p>
 
           <div className="flex gap-3 justify-center flex-wrap">
-            {/* Camera: capture=environment apre la fotocamera posteriore su Android/iOS */}
-            <label className={labelBtnClass()}>
+            {/* Camera: ref.click() programmatico — unico modo affidabile su Android TWA */}
+            <input
+              ref={camRef1}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleFileSelect}
+              disabled={isDisabled}
+              className="sr-only"
+            />
+            <button
+              type="button"
+              disabled={isDisabled}
+              onClick={() => { if (camRef1.current) { camRef1.current.value = ''; camRef1.current.click(); } }}
+              className={labelBtnClass()}
+            >
               <Camera className="h-4 w-4" />
               {t('takePhoto') || 'Scatta Foto'}
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleFileSelect}
-                disabled={isDisabled}
-                className="sr-only"
-              />
-            </label>
+            </button>
 
             {/* Galleria: senza capture apre il selettore file */}
             <label className={labelBtnClass()}>
@@ -199,40 +210,53 @@ export function MultiPageInvoiceUpload({
               ))}
 
               {!isProcessing && (
-                <label className="relative overflow-hidden border-2 border-dashed border-indigo-300 hover:border-indigo-500 transition-colors bg-gradient-to-br from-indigo-50 to-purple-50 cursor-pointer rounded-lg block">
-                  <div className="aspect-[3/4] flex flex-col items-center justify-center p-4 text-center">
-                    <div className="bg-indigo-600 text-white p-4 rounded-full mb-3">
-                      <Plus className="h-8 w-8" />
-                    </div>
-                    <p className="font-semibold text-indigo-700 text-sm">
-                      {t('takePhoto') || 'Aggiungi'}
-                    </p>
-                  </div>
+                <>
                   <input
+                    ref={camRef2}
                     type="file"
                     accept="image/*"
                     capture="environment"
                     onChange={handleFileSelect}
                     className="sr-only"
                   />
-                </label>
+                  <button
+                    type="button"
+                    onClick={() => { if (camRef2.current) { camRef2.current.value = ''; camRef2.current.click(); } }}
+                    className="relative overflow-hidden border-2 border-dashed border-indigo-300 hover:border-indigo-500 transition-colors bg-gradient-to-br from-indigo-50 to-purple-50 cursor-pointer rounded-lg block w-full text-left"
+                  >
+                    <div className="aspect-[3/4] flex flex-col items-center justify-center p-4 text-center">
+                      <div className="bg-indigo-600 text-white p-4 rounded-full mb-3">
+                        <Plus className="h-8 w-8" />
+                      </div>
+                      <p className="font-semibold text-indigo-700 text-sm">
+                        {t('takePhoto') || 'Aggiungi'}
+                      </p>
+                    </div>
+                  </button>
+                </>
               )}
             </div>
           </div>
 
           <div className="flex gap-3 flex-wrap">
-            <label className={labelBtnClass('flex-1 justify-center border-indigo-300 hover:bg-indigo-50 py-3')}>
+            <input
+              ref={camRef3}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleFileSelect}
+              disabled={isDisabled}
+              className="sr-only"
+            />
+            <button
+              type="button"
+              disabled={isDisabled}
+              onClick={() => { if (camRef3.current) { camRef3.current.value = ''; camRef3.current.click(); } }}
+              className={labelBtnClass('flex-1 justify-center border-indigo-300 hover:bg-indigo-50 py-3')}
+            >
               <Camera className="h-5 w-5" />
               {t('takePhoto') || 'Scatta Altre Foto'}
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleFileSelect}
-                disabled={isDisabled}
-                className="sr-only"
-              />
-            </label>
+            </button>
 
             <label className={labelBtnClass('flex-1 justify-center border-indigo-300 hover:bg-indigo-50 py-3')}>
               <Upload className="h-5 w-5" />

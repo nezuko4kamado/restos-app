@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Supplier, Product, Invoice } from '@/types';
 import { useLanguage } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
@@ -36,6 +36,9 @@ export default function SupplierDetail({
   const { t, language } = useLanguage();
   const [isUploading, setIsUploading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+
+  // Ref camera — ref.click() è l'unico modo affidabile su Android TWA con capture
+  const supplierCameraRef = useRef<HTMLInputElement>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
   // Filter products for this supplier
@@ -371,28 +374,35 @@ export default function SupplierDetail({
         <TabsContent value="invoices" className="space-y-6">
           {/* Upload Button */}
           <div className="flex gap-2">
-            {/* Camera: apre direttamente la fotocamera */}
+            {/* Camera: ref.click() programmatico — unico modo affidabile su Android TWA */}
             <input
-              id="supplier-invoice-camera"
+              ref={supplierCameraRef}
               type="file"
               accept="image/*"
               capture="environment"
               onChange={handleInvoiceUpload}
               disabled={isUploading}
-              className="hidden"
+              className="sr-only"
             />
-            <label
-              htmlFor={isUploading ? undefined : 'supplier-invoice-camera'}
+            <button
+              type="button"
+              disabled={isUploading}
+              onClick={() => {
+                if (supplierCameraRef.current) {
+                  supplierCameraRef.current.value = '';
+                  supplierCameraRef.current.click();
+                }
+              }}
               className={[
                 'inline-flex items-center justify-center gap-2 rounded-md border-2 px-4 py-2 text-sm font-medium transition-all',
                 isUploading
                   ? 'opacity-50 cursor-not-allowed border-slate-200 text-slate-400'
-                  : 'cursor-pointer border-blue-300 text-blue-700 hover:border-blue-500 hover:bg-blue-50',
+                  : 'border-blue-300 text-blue-700 hover:border-blue-500 hover:bg-blue-50',
               ].join(' ')}
             >
               <Upload className="h-4 w-4" />
               {isUploading ? t('loading') : (t('takePhoto') || 'Camera')}
-            </label>
+            </button>
 
             {/* Galleria: apre il selettore file senza forzare la camera */}
             <input

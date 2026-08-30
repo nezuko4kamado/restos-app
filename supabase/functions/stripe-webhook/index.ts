@@ -30,11 +30,16 @@ function getPlanLimits(planType: string): { products_limit: number; invoices_lim
 
 // ✅ Determine plan type from Stripe price ID
 function getPlanTypeFromPrice(priceId: string): string {
-  // Map known price IDs to plan types
-  // These should match your Stripe dashboard price IDs
+  // Map known price IDs to plan types (must match SubscriptionManager.tsx and sync-user-subscription)
   const priceToPlan: Record<string, string> = {
-    // Add your actual Stripe price IDs here
-    // e.g. 'price_xxx': 'basic',
+    // Current active price IDs (as of 2026-08)
+    'price_1TnOCyERHOOWoH8ZQONG0cH3': 'basic',
+    'price_1TnOCYERHOOWoH8ZtjpcvBgZ': 'pro',
+    'price_1TnOAxERHOOWoH8ZsINJgJUN': 'premium',
+    // Legacy price IDs (kept for backward compatibility)
+    'price_1Sro9hERHOOWoH8ZAusBoEDS': 'basic',
+    'price_1SroFeERHOOWoH8ZzKxaihdT': 'pro',
+    'price_1SroIRERHOOWoH8Zyi6tTBGy': 'premium',
   }
   return priceToPlan[priceId] || 'basic'
 }

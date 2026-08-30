@@ -81,6 +81,8 @@ export function SubscriptionManager() {
   const [daysUntilRenewal, setDaysUntilRenewal] = useState<number>(0)
   const [dataLoaded, setDataLoaded] = useState(false)
   const autoSyncDone = useRef(false)
+  // Ref to break circular dependency: loadSubscriptionData -> syncSubscription -> loadSubscriptionData
+  const syncSubscriptionRef = useRef<((silent?: boolean) => Promise<boolean>) | null>(null)
   
   // Get currency from settings
   const currency = settings.defaultCurrency || 'EUR'
@@ -223,6 +225,9 @@ export function SubscriptionManager() {
     }
   }, [t, toast])
 
+  // Keep ref in sync so loadSubscriptionData can call syncSubscription without circular deps
+  syncSubscriptionRef.current = syncSubscription
+
   /**
    * Enrich subscription data with actual counts from products, invoices, and scans.
    */
@@ -331,7 +336,7 @@ export function SubscriptionManager() {
     }
   }
 
-  const loadSubscriptionData = async (skipAutoSync = false) => {
+  const loadSubscriptionData = useCallback(async (skipAutoSync = false) => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
@@ -502,7 +507,7 @@ export function SubscriptionManager() {
           
           // Wait 3 seconds for webhook to process, then sync
           setTimeout(async () => {
-            const synced = await syncSubscription(true)
+            const synced = await syncSubscriptionRef.current?.(true)
             if (synced) {
               toast({
                 title: '🎉 ' + t('subscriptions.planActivated'),
@@ -511,7 +516,7 @@ export function SubscriptionManager() {
             } else {
               // Retry once more after another 3 seconds
               setTimeout(async () => {
-                const retried = await syncSubscription(true)
+                const retried = await syncSubscriptionRef.current?.(true)
                 if (retried) {
                   toast({
                     title: '🎉 ' + t('subscriptions.planActivated'),
@@ -524,7 +529,7 @@ export function SubscriptionManager() {
         } else if (enriched.subscription_type === 'free' && enriched.stripe_customer_id) {
           // Auto-sync: user is on free plan but has a Stripe customer ID
           console.log('🔄 [AUTO-SYNC] Free plan with stripe_customer_id, auto-syncing...')
-          syncSubscription(true)
+          syncSubscriptionRef.current?.(true)
         }
       }
     } catch (error) {
@@ -536,11 +541,11 @@ export function SubscriptionManager() {
         variant: 'destructive'
       })
     }
-  }
+  }, [t, toast])
 
   useEffect(() => {
     loadSubscriptionData()
-  }, [])
+  }, [loadSubscriptionData])
 
   // Calculate days until renewal and update countdown
   useEffect(() => {

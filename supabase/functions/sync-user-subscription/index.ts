@@ -11,8 +11,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Known price IDs mapped to plan types
+// Known price IDs mapped to plan types (must match stripe-webhook and SubscriptionManager.tsx)
 const PRICE_TO_PLAN: Record<string, string> = {
+  // Current active price IDs (as of 2026-08)
+  'price_1TnOCyERHOOWoH8ZQONG0cH3': 'basic',
+  'price_1TnOCYERHOOWoH8ZtjpcvBgZ': 'pro',
+  'price_1TnOAxERHOOWoH8ZsINJgJUN': 'premium',
+  // Legacy price IDs (kept for backward compatibility)
   'price_1Sro9hERHOOWoH8ZAusBoEDS': 'basic',
   'price_1SroFeERHOOWoH8ZzKxaihdT': 'pro',
   'price_1SroIRERHOOWoH8Zyi6tTBGy': 'premium',

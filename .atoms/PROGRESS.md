@@ -28,6 +28,10 @@ RESTOS web app for restaurant managers: automate invoice OCR processing, manage 
 - [x] Bump SW cache to v4 to force cache invalidation on all clients
 
 ## Progress Log
+- 2026-08-29 | Added save-draft button at top of order form (below yellow banner), visible only when !editingOrderId and currentItems.length > 0; lint OK, build OK; pushed commit c5cedf6
+- 2026-08-29 | Fixed all three action buttons (WhatsApp, email, deleteOrder) always show text on mobile: removed hidden sm:inline from WhatsApp/email spans, added w-full flex items-center justify-center gap-2 to delete button; lint OK, build OK; pushed commit 67dc664
+- 2026-08-29 | Fixed deleteOrder button text hidden on mobile (removed hidden sm:inline, now always visible); added orderSavedAsDraft + related i18n keys to lt.json; lint OK, build OK; pushed commit 696d8ab
+- 2026-08-29 | Fixed "Eliminar pedido" button not visible on Android: changed supplier header from flex-row to flex-col on mobile; lint OK, build OK; pushed commit 394fbce
 - 2026-08-29 | Removed camera button from all three uploads (ProductsSectionEnhanced, MultiPageInvoiceUpload, SupplierDetail); deleted CameraCapture.tsx; gallery-only (Photo Picker) full-width in each; lint OK, build OK; pushed commit f38bad6
 - 2026-08-29 | Fixed WhatsApp button navigating away from current page: replaced window.location.href with wa.me URL opened via window.open(_blank); lint OK, build OK; pushed commit 4d66fbb
 - 2026-08-29 | Fixed WhatsApp on Android TWA: now uses intent:// URL with S.browser_fallback_url so OS hands off to WhatsApp without touching window.location or SPA router; lint OK, build OK; pushed commit fd6cbe1
@@ -58,6 +62,7 @@ RESTOS web app for restaurant managers: automate invoice OCR processing, manage 
 - 2026-08-26 | Refactored MultiPageInvoiceUpload: removed all ref/.click() calls, all buttons now use label+input native pattern; fixed \x08 control char in storage.ts regex (replaced with \b); lint OK, build OK; pushed to GitHub (commit 83ba31a)
 - 2026-08-26 | Fixed two-button upload UI (camera + gallery) in ProductsSectionEnhanced, SupplierDetail, MultiPageInvoiceUpload; added takePhoto/selectPhoto i18n keys to all 6 locales (IT/EN/ES/DE/FR/LT) and i18n.tsx type; MultiPageInvoiceUpload now uses useLanguage() for full i18n; lint OK, build OK; pushed to GitHub (commit 7f200ef)
 - 2026-08-26 | Fixed upload buttons layout to 2-row grid and discount badge computed from unit_price vs discounted_price; pushed commit 58362d4
+- 2026-08-30 | Fixed Stripe price ID maps in stripe-webhook and sync-user-subscription (added new price_1TnO* IDs alongside legacy); fixed circular dep in SubscriptionManager (syncSubscriptionRef pattern); lint OK, build OK
 - 2026-08-29 | Fixed OCR unit propagation: Priority 4 (name-only match, any supplier) now skipped when supplierId is known, preventing cross-supplier unit/price updates; lint OK, build OK
 - 2026-08-29 | Rimossi prezzi dai template email (default e custom); sostituiti handler "Invia tutti" (WhatsApp + Email, ordini salvati e draft) con dialog sequenziale per Android TWA; lint OK, build OK; pushed commit 67f2b24
 - 2026-08-29 | Added cameraOverlay render to MultiPageInvoiceUpload.tsx; confirmed SupplierDetail.tsx already uses native label+input pattern; lint OK, build OK; pushed commit e89332c

@@ -2387,6 +2387,10 @@ export const addInvoice = async (invoice: Omit<Invoice, 'id'>): Promise<Invoice 
     const dbInvoice = {
       user_id: user.id,
       invoice_number: invoice.invoice_number,
+      // CRITICAL FIX: persist supplier_id so each invoice stays linked to the canonical
+      // supplier record. Without it the Invoices section had to fall back on the raw
+      // OCR-detected name, which produced duplicate supplier entries.
+      supplier_id: invoice.supplier_id || null,
       supplier_name: supplierName,
       date: isoDate,
       total_amount: parseFloat(String(invoice.amount)),
@@ -2415,7 +2419,7 @@ export const addInvoice = async (invoice: Omit<Invoice, 'id'>): Promise<Invoice 
 
     const savedInvoice: Invoice = {
       id: data.id,
-      supplier_id: invoice.supplier_id,
+      supplier_id: data.supplier_id || invoice.supplier_id || '',
       supplier_name: data.supplier_name || supplierName,
       invoice_number: data.invoice_number,
       date: data.date,
@@ -2515,6 +2519,8 @@ export const saveInvoices = async (invoices: Invoice[]): Promise<boolean> => {
       id: invoice.id,
       user_id: user.id,
       invoice_number: invoice.invoice_number,
+      // CRITICAL FIX: keep the canonical supplier link on bulk saves too
+      supplier_id: invoice.supplier_id || null,
       supplier_name: invoice.supplier_name || 'Unknown Supplier',
       date: convertDateToISO(invoice.date),
       total_amount: parseFloat(String(invoice.amount || invoice.total_amount || 0)),
@@ -2564,6 +2570,8 @@ export const updateInvoice = async (id: string, updates: Partial<Invoice>): Prom
     if (updates.items) dbUpdates.items = typeof updates.items === 'string' ? JSON.parse(updates.items) : updates.items;
     
     if (updates.supplier_id) {
+      // CRITICAL FIX: persist the supplier link so re-assignments stay in sync
+      dbUpdates.supplier_id = updates.supplier_id;
       // CRITICAL FIX: Use supplier_name already on the updates object if available.
       // Avoid an extra GET to suppliers table per invoice (was causing N+1 requests).
       if (updates.supplier_name) {

@@ -33,6 +33,10 @@ export interface Invoice {
 
 export interface InvoiceFilters {
   supplier?: string;
+  /** Canonical supplier id; matched together with the known name variants. */
+  supplierId?: string;
+  /** All stored name variants of one canonical supplier (legacy rows without supplier_id). */
+  supplierNames?: string[];
   isPaid?: boolean;
   dateFrom?: string;
   dateTo?: string;
@@ -64,7 +68,17 @@ export class InvoiceService {
         .select('*')
         .order('date', { ascending: false });
 
-      if (filters?.supplier) {
+      const supplierNames = (filters?.supplierNames ?? []).filter(Boolean);
+      if (filters?.supplierId || supplierNames.length > 0) {
+        // Prefer the canonical supplier_id, falling back to the legacy name variants.
+        const conditions: string[] = [];
+        if (filters?.supplierId) conditions.push(`supplier_id.eq.${filters.supplierId}`);
+        if (supplierNames.length > 0) {
+          const quoted = supplierNames.map(name => `"${name.replace(/"/g, '\\"')}"`).join(',');
+          conditions.push(`supplier_name.in.(${quoted})`);
+        }
+        query = query.or(conditions.join(','));
+      } else if (filters?.supplier) {
         query = query.eq('supplier_name', filters.supplier);
       }
 
@@ -202,8 +216,7 @@ export class InvoiceService {
     const filters: InvoiceFilters = {};
     
     if (options.suppliers && options.suppliers.length > 0) {
-      // Note: This will only work for single supplier, multiple suppliers need OR logic
-      filters.supplier = options.suppliers[0];
+      filters.supplierNames = options.suppliers;
     }
 
     const invoices = await this.getInvoices(filters);
@@ -242,7 +255,7 @@ export class InvoiceService {
     const filters: InvoiceFilters = {};
     
     if (options.suppliers && options.suppliers.length > 0) {
-      filters.supplier = options.suppliers[0];
+      filters.supplierNames = options.suppliers;
     }
 
     const invoices = await this.getInvoices(filters);

@@ -24,13 +24,23 @@ import {
   X
 } from 'lucide-react';
 import { InvoiceService, type Invoice as InvoiceType, type InvoiceFilters } from '@/lib/invoiceService';
-import { getProducts, type Product } from '@/lib/storage';
+import { getProducts, getSuppliers, updateInvoice, type Product } from '@/lib/storage';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { formatPrice } from '@/lib/currency';
-import type { Settings } from '@/types';
+import type { Settings, Supplier } from '@/types';
 import { useLanguage } from '@/lib/i18n';
+import {
+  buildSupplierIndex,
+  buildSupplierOptions,
+  findUnlinkedInvoiceSuppliers,
+  getCanonicalSupplierKey,
+  getCanonicalSupplierName,
+  supplierNameKey,
+  type SupplierFilterOption,
+  type SupplierIndex,
+} from '@/lib/supplierUtils';
 
 interface VATBreakdown {
   rate: number;
@@ -89,7 +99,9 @@ export function InvoicesSection({ settings, onInvoicesChanged }: InvoicesSection
   const [filterYear, setFilterYear] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [suppliers, setSuppliers] = useState<string[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  // De-duplicated supplier filter options, keyed by canonical supplier identity.
+  const [supplierOptions, setSupplierOptions] = useState<SupplierFilterOption[]>([]);
   
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -110,9 +122,11 @@ export function InvoicesSection({ settings, onInvoicesChanged }: InvoicesSection
   const currency = settings.defaultCurrency || 'EUR';
 
   useEffect(() => {
-    console.log('🔄 InvoicesSection useEffect triggered');
+    console.log(' InvoicesSection useEffect triggered');
     loadData();
-  }, [filterStatus, filterSupplier, dateFrom, dateTo]);
+    // Supplier filtering now happens client-side on the canonical supplier key,
+    // so changing it must not trigger another network round-trip.
+  }, [filterStatus, dateFrom, dateTo]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -130,9 +144,6 @@ export function InvoicesSection({ settings, onInvoicesChanged }: InvoicesSection
       setLoading(true);
       
       const filters: InvoiceFilters = {};
-      if (filterSupplier !== 'all') {
-        filters.supplier = filterSupplier;
-      }
       if (filterStatus !== 'all') {
         filters.isPaid = filterStatus === 'paid';
       }
@@ -143,17 +154,24 @@ export function InvoicesSection({ settings, onInvoicesChanged }: InvoicesSection
         filters.dateTo = dateTo;
       }
 
-      const [loadedInvoices, invoiceStats] = await Promise.all([
+      const [loadedInvoices, invoiceStats, loadedSuppliers] = await Promise.all([
         InvoiceService.getInvoices(filters),
-        InvoiceService.getInvoiceStats()
+        InvoiceService.getInvoiceStats(),
+        getSuppliers()
       ]);
 
       setInvoices(loadedInvoices);
       setStats(invoiceStats);
+      setSuppliers(loadedSuppliers);
 
-      const uniqueSuppliers = [...new Set(loadedInvoices.map(inv => inv.supplier_name))]
-        .filter(supplier => supplier && supplier.trim() !== '');
-      setSuppliers(uniqueSuppliers);
+      // CRITICAL FIX: resolve suppliers through their canonical id before building any
+      // list, so OCR name variants ("ROSSI SRL", "Rossi Srl ") collapse into one entry.
+      const supplierIndex = buildSupplierIndex(loadedSuppliers);
+      setSupplierOptions(buildSupplierOptions(loadedInvoices, supplierIndex));
+
+      // Self-heal legacy rows: persist the missing supplier link for invoices that
+      // were stored with a name only. Runs once per load and is safe to repeat.
+      await backfillMissingSupplierIds(loadedInvoices, supplierIndex);
 
       // Load product links
       await loadProductLinks();
@@ -162,6 +180,31 @@ export function InvoicesSection({ settings, onInvoicesChanged }: InvoicesSection
       toast.error(t('invoicesSection.errorLoadingInvoices'));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const backfillMissingSupplierIds = async (
+    loadedInvoices: InvoiceType[],
+    supplierIndex: SupplierIndex
+  ) => {
+    const links = findUnlinkedInvoiceSuppliers(loadedInvoices, supplierIndex);
+    if (links.length === 0) return;
+
+    try {
+      await Promise.all(
+        links.map(link =>
+          updateInvoice(link.id, { supplier_id: link.supplier_id, supplier_name: link.supplier_name })
+        )
+      );
+      const linkedById = new Map(links.map(link => [link.id, link]));
+      setInvoices(prev =>
+        prev.map(invoice => {
+          const link = linkedById.get(invoice.id);
+          return link ? { ...invoice, supplier_id: link.supplier_id, supplier_name: link.supplier_name } : invoice;
+        })
+      );
+    } catch (error) {
+      console.error('❌ Error backfilling invoice supplier_id:', error);
     }
   };
 
@@ -292,12 +335,23 @@ export function InvoicesSection({ settings, onInvoicesChanged }: InvoicesSection
     }
   };
 
+  const getExportSupplierNames = (): string[] | undefined => {
+    if (filterSupplier === 'all') return undefined;
+    const names = new Set<string>();
+    for (const invoice of invoices) {
+      if (getCanonicalSupplierKey(invoice, supplierIndex) === filterSupplier && invoice.supplier_name) {
+        names.add(invoice.supplier_name);
+      }
+    }
+    return [...names];
+  };
+
   const handleExportExcel = async () => {
     try {
       const blob = await InvoiceService.exportToExcel({
         include_paid: filterStatus !== 'unpaid',
         include_unpaid: filterStatus !== 'paid',
-        suppliers: filterSupplier !== 'all' ? [filterSupplier] : undefined
+        suppliers: getExportSupplierNames()
       });
 
       const url = window.URL.createObjectURL(blob);
@@ -321,7 +375,7 @@ export function InvoicesSection({ settings, onInvoicesChanged }: InvoicesSection
       const csv = await InvoiceService.exportToCSV({
         include_paid: filterStatus !== 'unpaid',
         include_unpaid: filterStatus !== 'paid',
-        suppliers: filterSupplier !== 'all' ? [filterSupplier] : undefined
+        suppliers: getExportSupplierNames()
       });
 
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -387,18 +441,29 @@ export function InvoicesSection({ settings, onInvoicesChanged }: InvoicesSection
     t('invoicesSection.december') || 'Dicembre',
   ];
 
-  const filteredInvoices = useMemo(() => invoices.filter(invoice => {
-    const matchesSearch =
-      invoice.invoice_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      invoice.supplier_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      invoice.notes?.toLowerCase().includes(searchQuery.toLowerCase());
+  const supplierIndex = useMemo(() => buildSupplierIndex(suppliers), [suppliers]);
 
-    const invoiceDate = new Date(invoice.date);
-    const matchesMonth = filterMonth === 'all' || invoiceDate.getMonth().toString() === filterMonth;
-    const matchesYear = filterYear === 'all' || invoiceDate.getFullYear().toString() === filterYear;
+  const filteredInvoices = useMemo(() => {
+    const query = searchQuery.replace(/\s+/g, " ").trim().toLowerCase();
+    return invoices.filter(invoice => {
+      const supplierName = getCanonicalSupplierName(invoice, supplierIndex).toLowerCase();
+      const matchesSearch =
+        !query ||
+        (invoice.invoice_number || '').toLowerCase().includes(query) ||
+        supplierName.includes(query) ||
+        (invoice.supplier_name || "").toLowerCase().includes(query) ||
+        (invoice.notes || '').toLowerCase().includes(query);
 
-    return matchesSearch && matchesMonth && matchesYear;
-  }), [invoices, searchQuery, filterMonth, filterYear]);
+      const matchesSupplier =
+        filterSupplier === 'all' || getCanonicalSupplierKey(invoice, supplierIndex) === filterSupplier;
+
+      const invoiceDate = new Date(invoice.date);
+      const matchesMonth = filterMonth === 'all' || invoiceDate.getMonth().toString() === filterMonth;
+      const matchesYear = filterYear === 'all' || invoiceDate.getFullYear().toString() === filterYear;
+
+      return matchesSearch && matchesSupplier && matchesMonth && matchesYear;
+    });
+  }, [invoices, searchQuery, filterSupplier, filterMonth, filterYear, supplierIndex]);
 
   const filteredStats = useMemo(() => {
     const paid = filteredInvoices.filter(inv => inv.is_paid);
@@ -574,9 +639,9 @@ export function InvoicesSection({ settings, onInvoicesChanged }: InvoicesSection
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">{t('invoicesSection.allSuppliers')}</SelectItem>
-                    {suppliers.map(supplier => (
-                      <SelectItem key={supplier} value={supplier}>
-                        {supplier}
+                    {supplierOptions.map(option => (
+                      <SelectItem key={option.key} value={option.key}>
+                        {option.label} ({option.count})
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -722,7 +787,7 @@ export function InvoicesSection({ settings, onInvoicesChanged }: InvoicesSection
                               <h3 className="font-bold text-lg text-slate-800">
                                 {invoice.invoice_number}
                               </h3>
-                              <p className="text-sm text-slate-600">{invoice.supplier_name}</p>
+                              <p className="text-sm text-slate-600">{getCanonicalSupplierName(invoice, supplierIndex)}</p>
                             </div>
                           </div>
                           <Badge

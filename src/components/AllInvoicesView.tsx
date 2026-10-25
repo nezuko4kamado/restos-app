@@ -9,6 +9,7 @@ import type { Invoice, Supplier } from '@/types';
 import { calculateInvoiceStats, formatCurrency } from '@/lib/invoiceStats';
 import { useLanguage } from '@/lib/i18n';
 import { formatPrice } from '@/lib/currency';
+import { buildSupplierIndex, getCanonicalSupplierKey, getCanonicalSupplierName } from '@/lib/supplierUtils';
 import {
   Select,
   SelectContent,
@@ -55,11 +56,13 @@ export default function AllInvoicesView({ invoices, suppliers, onDeleteInvoice, 
     return t[monthKeys[monthIndex]];
   };
 
-  const getSupplierName = (invoice: Invoice): string => {
-    const supplierId = invoice.supplierId || invoice.supplier_id;
-    const supplier = suppliers.find(s => s.id === supplierId);
-    return supplier?.name || invoice.supplier_name || t('unknownSupplier');
-  };
+  const supplierIndex = useMemo(() => buildSupplierIndex(suppliers), [suppliers]);
+
+  const getSupplierName = (invoice: Invoice): string =>
+    getCanonicalSupplierName(invoice, supplierIndex, t('unknownSupplier'));
+
+  const getSupplierKey = (invoice: Invoice): string =>
+    getCanonicalSupplierKey(invoice, supplierIndex) || 'unknown';
 
   const groupInvoicesByYearMonth = (invoices: Invoice[]): GroupedInvoices => {
     const grouped: GroupedInvoices = {};
@@ -166,19 +169,20 @@ export default function AllInvoicesView({ invoices, suppliers, onDeleteInvoice, 
     const year = date.getFullYear().toString();
     const monthIndex = date.getMonth();
     const monthName = getMonthName(monthIndex);
-    const supplierName = getSupplierName(invoice);
-    const amount = getInvoiceTotal(invoice);
+    // Group by canonical supplier key so OCR name variants share a single row.
+    const supplierKey = getSupplierKey(invoice);
+    const amount = Number(getInvoiceTotal(invoice)) || 0;
     const isPaid = invoice.is_paid || invoice.isPaid;
 
     if (!acc[year]) acc[year] = {};
     if (!acc[year][monthName]) acc[year][monthName] = { suppliers: {}, monthIndex };
-    if (!acc[year][monthName].suppliers[supplierName]) {
-      acc[year][monthName].suppliers[supplierName] = { paid: 0, unpaid: 0 };
+    if (!acc[year][monthName].suppliers[supplierKey]) {
+      acc[year][monthName].suppliers[supplierKey] = { name: getSupplierName(invoice), paid: 0, unpaid: 0 };
     }
-    if (isPaid) acc[year][monthName].suppliers[supplierName].paid += amount;
-    else acc[year][monthName].suppliers[supplierName].unpaid += amount;
+    if (isPaid) acc[year][monthName].suppliers[supplierKey].paid += amount;
+    else acc[year][monthName].suppliers[supplierKey].unpaid += amount;
     return acc;
-  }, {} as Record<string, Record<string, { suppliers: Record<string, { paid: number; unpaid: number }>; monthIndex: number }>>);
+  }, {} as Record<string, Record<string, { suppliers: Record<string, { name: string; paid: number; unpaid: number }>; monthIndex: number }>>);
 
   const summaryYears = Object.keys(monthlySupplierData).sort((a, b) => parseInt(b) - parseInt(a));
 
@@ -320,9 +324,11 @@ export default function AllInvoicesView({ invoices, suppliers, onDeleteInvoice, 
                                     <span className="text-orange-500 text-right">{t('unpaid') || 'Da Pagare'}</span>
                                     <span className="text-indigo-600 text-right">Totale</span>
                                   </div>
-                                  {Object.entries(suppliersData).map(([supplierName, amounts]) => (
-                                    <div key={supplierName} className="grid grid-cols-4 gap-2 px-16 py-2 text-sm hover:bg-white transition-colors border-b border-slate-100">
-                                      <span className="font-medium text-slate-700 truncate">{supplierName}</span>
+                                  {Object.entries(suppliersData)
+                                    .sort(([, a], [, b]) => a.name.localeCompare(b.name))
+                                    .map(([supplierKey, amounts]) => (
+                                    <div key={supplierKey} className="grid grid-cols-4 gap-2 px-16 py-2 text-sm hover:bg-white transition-colors border-b border-slate-100">
+                                      <span className="font-medium text-slate-700 truncate">{amounts.name}</span>
                                       <span className="text-green-600 text-right font-medium">{formatPrice(amounts.paid, currency)}</span>
                                       <span className="text-orange-500 text-right font-medium">{formatPrice(amounts.unpaid, currency)}</span>
                                       <span className="text-indigo-600 text-right font-bold">{formatPrice(amounts.paid + amounts.unpaid, currency)}</span>

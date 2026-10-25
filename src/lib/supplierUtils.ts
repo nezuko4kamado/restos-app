@@ -177,3 +177,120 @@ export const findSimilarSupplier = <T extends { id: string; name: string; email?
   
   return bestMatch;
 };
+/* ------------------------------------------------------------------ */
+/* Canonical supplier resolution for invoices                          */
+/* Invoices may carry only an OCR-detected name and no supplier_id, so */
+/* every grouped list must resolve the canonical supplier first:       */
+/* supplier_id -> normalized-name match -> normalized raw name.        */
+/* ------------------------------------------------------------------ */
+
+interface SupplierRef {
+  id: string;
+  name: string;
+}
+
+export interface InvoiceLike {
+  id: string;
+  supplier_id?: string | null;
+  supplierId?: string | null;
+  supplier_name?: string | null;
+}
+
+export interface SupplierIndex {
+  byId: Map<string, SupplierRef>;
+  byName: Map<string, SupplierRef>;
+}
+
+export interface SupplierFilterOption {
+  key: string;
+  label: string;
+  count: number;
+}
+
+export interface InvoiceSupplierLink {
+  id: string;
+  supplier_id: string;
+  supplier_name: string;
+}
+
+/** Comparable key for a supplier name (case, spacing and legal suffix insensitive). */
+export const supplierNameKey = (name?: string | null): string =>
+  normalizeSupplierName(name ?? '').toLowerCase();
+
+const getInvoiceSupplierId = (invoice: InvoiceLike): string =>
+  invoice.supplier_id || invoice.supplierId || '';
+
+export const buildSupplierIndex = (suppliers: SupplierRef[]): SupplierIndex => {
+  const byId = new Map<string, SupplierRef>();
+  const byName = new Map<string, SupplierRef>();
+  for (const supplier of suppliers) {
+    byId.set(supplier.id, supplier);
+    const key = supplierNameKey(supplier.name);
+    if (key && !byName.has(key)) byName.set(key, supplier);
+  }
+  return { byId, byName };
+};
+
+export const resolveInvoiceSupplier = (
+  invoice: InvoiceLike,
+  index: SupplierIndex
+): SupplierRef | undefined => {
+  const supplierId = getInvoiceSupplierId(invoice);
+  if (supplierId && index.byId.has(supplierId)) return index.byId.get(supplierId);
+  const key = supplierNameKey(invoice.supplier_name);
+  return key ? index.byName.get(key) : undefined;
+};
+
+/** Stable key: the same supplier always yields the same key, whatever the OCR spelling. */
+export const getCanonicalSupplierKey = (invoice: InvoiceLike, index: SupplierIndex): string => {
+  const supplier = resolveInvoiceSupplier(invoice, index);
+  if (supplier) return supplier.id;
+  const key = supplierNameKey(invoice.supplier_name);
+  return key ? `name:${key}` : '';
+};
+
+export const getCanonicalSupplierName = (
+  invoice: InvoiceLike,
+  index: SupplierIndex,
+  fallback = ''
+): string => {
+  const supplier = resolveInvoiceSupplier(invoice, index);
+  if (supplier) return supplier.name;
+  const raw = (invoice.supplier_name ?? '').replace(/\s+/g, ' ').trim();
+  return raw || fallback;
+};
+
+/** De-duplicated supplier filter options with real invoice counts. */
+export const buildSupplierOptions = (
+  invoices: InvoiceLike[],
+  index: SupplierIndex
+): SupplierFilterOption[] => {
+  const options = new Map<string, SupplierFilterOption>();
+  for (const invoice of invoices) {
+    const key = getCanonicalSupplierKey(invoice, index);
+    if (!key) continue;
+    const existing = options.get(key);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      options.set(key, { key, label: getCanonicalSupplierName(invoice, index, key), count: 1 });
+    }
+  }
+  return [...options.values()].sort((a, b) => a.label.localeCompare(b.label));
+};
+
+/** Legacy invoices without supplier_id whose name matches a known supplier. */
+export const findUnlinkedInvoiceSuppliers = (
+  invoices: InvoiceLike[],
+  index: SupplierIndex,
+  limit = 50
+): InvoiceSupplierLink[] => {
+  const links: InvoiceSupplierLink[] = [];
+  for (const invoice of invoices) {
+    if (links.length >= limit) break;
+    if (getInvoiceSupplierId(invoice)) continue;
+    const supplier = index.byName.get(supplierNameKey(invoice.supplier_name));
+    if (supplier) links.push({ id: invoice.id, supplier_id: supplier.id, supplier_name: supplier.name });
+  }
+  return links;
+};

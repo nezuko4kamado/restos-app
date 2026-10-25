@@ -35,8 +35,8 @@ export default function Login() {
   // This prevents the race condition where navigate('/') happens before auth state propagates
   useEffect(() => {
     if (user || isDemoMode) {
-      console.log('🔀 [LOGIN] User authenticated or demo mode, navigating to /');
-      navigate('/', { replace: true });
+      console.log('🔀 [LOGIN] User authenticated or demo mode, navigating to /app');
+      navigate('/app', { replace: true });
     }
   }, [user, isDemoMode, navigate]);
 

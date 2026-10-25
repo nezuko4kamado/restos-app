@@ -2,7 +2,7 @@
   "name": "Restaurant Manager",
   "short_name": "Ordini",
   "description": "App per la gestione di prodotti, fornitori e ordini per ristoranti",
-  "start_url": "/",
+  "start_url": "/app",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#1e40af",

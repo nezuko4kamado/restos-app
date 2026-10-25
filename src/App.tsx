@@ -12,6 +12,7 @@ import ContactUs from '@/pages/ContactUs';
 import Dashboard from '@/pages/Dashboard';
 import ResetPassword from '@/pages/ResetPassword';
 import NotFound from '@/pages/NotFound';
+import { PublicLanding } from '@/components/PublicLanding';
 
 function App() {
   return (
@@ -21,11 +22,15 @@ function App() {
           <LoadingProvider>
             <Router>
               <Routes>
+                {/* Landing pubblica (gli utenti già autenticati vengono reindirizzati a /app) */}
+                <Route path="/" element={<PublicLanding />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/contact" element={<ContactUs />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
+
+                {/* App protetta */}
                 <Route
-                  path="/"
+                  path="/app"
                   element={
                     <ProtectedRoute>
                       <Index />

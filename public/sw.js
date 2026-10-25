@@ -1,9 +1,10 @@
 // Service Worker per PWA - Restaurant Manager
 // CACHE_NAME versioned to force cache invalidation on every deploy
-// Updated: 2026-08-27 - v6 force cache bust (vercel no-cache headers + informe mensual + camera fix)
-const CACHE_NAME = 'restaurant-manager-v6';
+// Updated: 2026-10-25 - v7 landing page on / and app moved to /app
+const CACHE_NAME = 'restaurant-manager-v7';
 const urlsToCache = [
   '/',
+  '/app',
   '/index.html',
   '/manifest.json'
 ];

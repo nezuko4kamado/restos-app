@@ -37,7 +37,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   // Allow access if user is authenticated OR in demo mode
   if (!user && !isDemoMode) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;

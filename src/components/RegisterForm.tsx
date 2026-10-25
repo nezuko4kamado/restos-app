@@ -156,7 +156,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
           if (onSuccess) {
             onSuccess();
           } else {
-            navigate('/');
+            navigate('/app');
           }
           return;
         }
@@ -199,7 +199,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
           if (onSuccess) {
             onSuccess();
           } else {
-            navigate('/');
+            navigate('/app');
           }
         } else {
           // Email confirmation required

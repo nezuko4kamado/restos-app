@@ -76,9 +76,10 @@ async function determinePlanType(subscription: Stripe.Subscription): Promise<str
     if (priceId) {
       const price = await stripe.prices.retrieve(priceId)
       const amount = (price.unit_amount || 0) / 100
-      if (amount >= 40) return 'premium'
-      if (amount >= 15) return 'pro'
-      if (amount >= 5) return 'basic'
+      // Current prices: Basic €4.99, Pro €9.99, Premium €14.99
+      if (amount >= 14) return 'premium'
+      if (amount >= 9) return 'pro'
+      if (amount >= 4) return 'basic'
     }
   } catch (e) {
     console.error('Failed to retrieve price:', e)

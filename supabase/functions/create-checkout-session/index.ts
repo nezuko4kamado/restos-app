@@ -37,10 +37,22 @@ serve(async (req) => {
       throw new Error('No user found')
     }
 
-    const { priceId, planType } = await req.json()
+    const { priceId } = await req.json()
 
     if (!priceId) {
       throw new Error('Price ID is required')
+    }
+
+    // SECURITY: the plan is derived server-side from an allow-list of price IDs.
+    // The client-provided planType is ignored so nobody can pay Basic and get Premium.
+    const ALLOWED_PRICES: Record<string, string> = {
+      'price_1TnOCyERHOOWoH8ZQONG0cH3': 'basic',   // €4.99/mese
+      'price_1TnOCYERHOOWoH8ZtjpcvBgZ': 'pro',     // €9.99/mese
+      'price_1TnOAxERHOOWoH8ZsINJgJUN': 'premium', // €14.99/mese
+    }
+    const planType = ALLOWED_PRICES[priceId]
+    if (!planType) {
+      throw new Error('Invalid price ID')
     }
 
     // Get or create Stripe customer
@@ -83,7 +95,15 @@ serve(async (req) => {
       cancel_url: `${req.headers.get('origin')}/dashboard`,
       metadata: {
         user_id: user.id,
-        plan_type: planType || 'BASIC',
+        plan_type: planType,
+      },
+      // Persist the plan on the subscription too, so customer.subscription.updated
+      // events (renewals, portal changes) can resolve the plan reliably.
+      subscription_data: {
+        metadata: {
+          user_id: user.id,
+          plan_type: planType,
+        },
       },
     })
 

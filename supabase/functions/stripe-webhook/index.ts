@@ -10,9 +10,9 @@ const cryptoProvider = Stripe.createSubtleCryptoProvider()
 
 // ✅ Centralized plan limits configuration
 // Free: 20 products, 10 invoices, 10 scans (total)
-// Basic (€9.99/mo): 40 products, 20 invoices, 20 scans/month
-// Pro (€19.99/mo): 100 products, 50 invoices, 50 scans/month
-// Premium (€49.99/mo): unlimited
+// Basic (€4.99/mo): 40 products, 20 invoices, 20 scans/month
+// Pro (€9.99/mo): 100 products, 50 invoices, 50 scans/month
+// Premium (€14.99/mo): unlimited
 function getPlanLimits(planType: string): { products_limit: number; invoices_limit: number; scans_limit: number } {
   const plan = (planType || 'free').toLowerCase()
   switch (plan) {
@@ -41,7 +41,9 @@ function getPlanTypeFromPrice(priceId: string): string {
     'price_1SroFeERHOOWoH8ZzKxaihdT': 'pro',
     'price_1SroIRERHOOWoH8Zyi6tTBGy': 'premium',
   }
-  return priceToPlan[priceId] || 'basic'
+  // Unknown price: return '' so callers fall back to metadata/product name
+  // instead of silently downgrading a Pro/Premium payer to Basic.
+  return priceToPlan[priceId] || ''
 }
 
 serve(async (req) => {
@@ -84,7 +86,12 @@ serve(async (req) => {
           session.subscription as string
         )
 
-        const resolvedPlan = (planType || 'basic').toLowerCase()
+        // SECURITY: the price actually paid is the source of truth; metadata is only a fallback.
+        const paidPriceId = subscription.items.data[0]?.price?.id || ''
+        const resolvedPlan = getPlanTypeFromPrice(paidPriceId) || (planType || '').toLowerCase()
+        if (!['basic', 'pro', 'premium'].includes(resolvedPlan)) {
+          throw new Error(`Unknown plan for price ${paidPriceId}`)
+        }
         const limits = getPlanLimits(resolvedPlan)
 
         console.log(`✅ checkout.session.completed: user=${userId}, plan=${resolvedPlan}, limits=`, limits)
@@ -133,12 +140,10 @@ serve(async (req) => {
         const priceId = subscription.items.data[0]?.price?.id || ''
         const productId = subscription.items.data[0]?.price?.product as string || ''
         
-        // Try to get plan from subscription metadata first
-        let newPlanType = subscription.metadata?.plan_type?.toLowerCase() || ''
-        
-        // If no metadata, try to determine from price
-        if (!newPlanType && priceId) {
-          newPlanType = getPlanTypeFromPrice(priceId)
+        // Price first (reflects upgrades/downgrades made in the portal), then metadata
+        let newPlanType = getPlanTypeFromPrice(priceId)
+        if (!newPlanType) {
+          newPlanType = subscription.metadata?.plan_type?.toLowerCase() || ''
         }
 
         // If we still don't have a plan type, try to get it from the product name
@@ -149,7 +154,7 @@ serve(async (req) => {
             if (productName.includes('premium')) newPlanType = 'premium'
             else if (productName.includes('pro')) newPlanType = 'pro'
             else if (productName.includes('basic')) newPlanType = 'basic'
-            else newPlanType = 'basic'
+            else newPlanType = userSub.subscription_type || 'basic'
             console.log(`Resolved plan from product name "${product.name}": ${newPlanType}`)
           } catch (e) {
             console.error('Failed to retrieve product:', e)

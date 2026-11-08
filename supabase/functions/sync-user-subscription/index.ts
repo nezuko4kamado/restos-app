@@ -65,7 +65,7 @@ async function determinePlanType(subscription: Stripe.Subscription): Promise<str
       if (productName.includes('premium')) return 'premium'
       if (productName.includes('pro')) return 'pro'
       if (productName.includes('basic')) return 'basic'
-      console.log(`✅ Plan resolved from product name "${product.name}": basic (default)`)
+      console.warn(`⚠️ Product name "${product.name}" does not identify a plan`)
     } catch (e) {
       console.error('Failed to retrieve product:', e)
     }
@@ -85,7 +85,9 @@ async function determinePlanType(subscription: Stripe.Subscription): Promise<str
     console.error('Failed to retrieve price:', e)
   }
 
-  return 'basic' // default fallback for paid subscriptions
+  // Unknown plan: return '' so callers keep the current plan instead of guessing.
+  console.error(`❌ [SYNC] Could not determine plan for price=${priceId} product=${productId}`)
+  return ''
 }
 
 serve(async (req) => {
@@ -225,6 +227,12 @@ serve(async (req) => {
       if (pastDueSubscriptions.data.length > 0) {
         const sub = pastDueSubscriptions.data[0]
         const planType = await determinePlanType(sub)
+        if (!planType) {
+          return new Response(
+            JSON.stringify({ success: false, error: 'Unknown plan, subscription not changed', synced: false }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+          )
+        }
         const limits = getPlanLimits(planType)
 
         console.log(`⚠️ [SYNC] Found past_due subscription, plan: ${planType}`)
@@ -271,6 +279,12 @@ serve(async (req) => {
     // Use the most recent active subscription
     const activeSub = allActiveSubscriptions[0]
     const planType = await determinePlanType(activeSub)
+    if (!planType) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unknown plan, subscription not changed', synced: false }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      )
+    }
     const limits = getPlanLimits(planType)
 
     console.log(`✅ [SYNC] Syncing subscription: plan=${planType}, status=${activeSub.status}, limits=`, limits)

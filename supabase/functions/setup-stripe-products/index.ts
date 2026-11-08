@@ -24,21 +24,21 @@ serve(async (req) => {
     const products = [
       {
         name: 'BASIC',
-        price: 999, // €9.99 in cents
-        description: '50 products, 100 invoices/month',
-        features: ['50 Products', '100 Invoices per month', 'Email Support'],
+        price: 499, // €4.99 in cents
+        description: '40 products, 20 invoices/month, 20 scans/month',
+        features: ['40 Products', '20 Invoices per month', '20 Scans per month'],
       },
       {
         name: 'PRO',
-        price: 1999, // €19.99 in cents
-        description: '200 products, 500 invoices/month',
-        features: ['200 Products', '500 Invoices per month', 'Priority Support', 'Advanced Analytics'],
+        price: 999, // €9.99 in cents
+        description: '100 products, 50 invoices/month, 50 scans/month',
+        features: ['100 Products', '50 Invoices per month', '50 Scans per month'],
       },
       {
         name: 'PREMIUM',
-        price: 9999, // €99.99 in cents
-        description: 'Unlimited products and invoices',
-        features: ['Unlimited Products', 'Unlimited Invoices', '24/7 Premium Support', 'Custom Integrations', 'Dedicated Account Manager'],
+        price: 1499, // €14.99 in cents
+        description: 'Unlimited products, invoices and scans',
+        features: ['Unlimited Products', 'Unlimited Invoices', 'Unlimited Scans', 'Priority Support'],
       },
     ];
 

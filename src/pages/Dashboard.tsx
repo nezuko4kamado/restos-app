@@ -6,7 +6,7 @@ import { SubscriptionManager } from '@/components/SubscriptionManager'
 import { supabase } from '@/lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { LogOut, CreditCard } from 'lucide-react'
+import { LogOut, CreditCard, ArrowLeft } from 'lucide-react'
 import { User } from '@supabase/supabase-js'
 
 export default function Dashboard() {
@@ -39,6 +39,10 @@ export default function Dashboard() {
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">Dashboard</h1>
           <div className="flex items-center gap-4">
+            <Button variant="outline" size="sm" onClick={() => navigate('/app')}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Torna all'app
+            </Button>
             <span className="text-sm text-gray-600">{user.email}</span>
             <Button variant="outline" size="sm" onClick={handleLogout}>
               <LogOut className="h-4 w-4 mr-2" />
@@ -49,7 +53,7 @@ export default function Dashboard() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        <Tabs defaultValue="products" className="space-y-6">
+        <Tabs defaultValue={new URLSearchParams(window.location.search).has('session_id') ? 'subscription' : 'products'} className="space-y-6">
           <TabsList>
             <TabsTrigger value="products">Prodotti</TabsTrigger>
             <TabsTrigger value="orders">Ordini</TabsTrigger>
